@@ -1,0 +1,242 @@
+{{ header }}{{ column_left }}
+
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="pull-right">
+                <button type="submit" form="form-rbs" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+                <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+            </div>
+            <h1>{{ heading_title }}</h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_settings }}</h3>
+            </div>
+            <div class="panel-body">
+                <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-rbs" class="form-horizontal">
+
+                    <!-- Статус: Включен/Выключен -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label" for="payment_rbs_status">
+                            {{ entry_status }}
+                        </label>
+                        
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_status" id="payment_rbs_status" class="form-control">
+                                {% if payment_rbs_status %}
+                                    <option value="1" selected="selected">{{ status_enabled }}</option>
+                                    <option value="0">{{ status_disabled }}</option>
+                                {% else %}
+                                    <option value="1">{{ status_enabled }}</option>
+                                    <option value="0" selected="selected">{{ status_disabled }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Логин продавца -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label" for="">
+                            {{ entry_merchantLogin }}
+                        </label>
+                        <div class="col-sm-9">
+                            <input type="text" name="payment_rbs_merchantLogin" value="{{ payment_rbs_merchantLogin }}" class="form-control" />
+                        </div>
+                    </div>
+
+                    <!-- Пароль продавца -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label" for="">
+                            {{ entry_merchantPassword }}
+                        </label>
+                        <div class="col-sm-9">
+                            <input type="password" name="payment_rbs_merchantPassword" value="{{ payment_rbs_merchantPassword }}" class="form-control" />
+                        </div>
+                    </div>
+
+                    <!-- Режим работы модуля: Тестовый/БоевойРежим работы модуля: Тестовый/Боевой -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_mode }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_mode" class="form-control">
+                                <option value="test" {{ payment_rbs_mode  == 'test' ? 'selected="selected"' : '' }}>{{ mode_test }}</option>
+                                <option value="prod" {{ payment_rbs_mode  == 'prod' ? 'selected="selected"' : '' }}>{{ mode_prod }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Стадийность платежа: одностадийный/двустадийный -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_stage }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_stage" class="form-control">
+                                <option value="one" {{ payment_rbs_stage  == 'one' ? 'selected="selected"' : '' }}>{{ stage_one }}</option>
+                                <option value="two" {{ payment_rbs_stage  == 'two' ? 'selected="selected"' : '' }}>{{ stage_two }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label" for="input-order-status">{{ entry_order_status }}</label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_order_status_id" id="input-order-status" class="form-control">
+                                {% for order_status in order_statuses %}
+                                    {% if order_status.order_status_id  == payment_rbs_order_status_id %}
+                                        <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                    {% else %}
+                                        <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                    {% endif %} 
+                                {% endfor %}
+
+
+                            </select>
+                        </div>
+                    </div>
+
+
+                    <!-- Логирование: Включено/Выключено -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_logging }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_logging" class="form-control">
+                                <option value="1" {{ payment_rbs_logging  == 1 ? 'selected="selected"' : '' }}>{{ logging_enabled }}</option>
+                                <option value="0" {{ payment_rbs_logging  == 0 ? 'selected="selected"' : '' }}>{{ logging_disabled }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Выбор валюты -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_currency }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_currency" class="form-control">
+                                {% for currency in currency_list %}
+                                    <option value="{{ currency.numeric }}" {{ currency.numeric  == payment_rbs_currency ? 'selected="selected"' : '' }}>
+                                        {{ currency.numeric  == 0 ? currency.alphabetic : currency.alphabetic ~ ' (' ~ currency.numeric ~ ')' }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Фискализация: Включено/Выключено -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_ofdStatus }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_ofd_status" class="form-control">
+                                <option value="1" {{ payment_rbs_ofd_status  == 1 ? 'selected="selected"' : '' }}>{{ ofd_enabled }}</option>
+                                <option value="0" {{ payment_rbs_ofd_status  == 0 ? 'selected="selected"' : '' }}>{{ ofd_disabled }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Система налогообложения -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_taxSystem }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_taxSystem" class="form-control">
+                                {% for taxSystem in taxSystem_list %}
+                                <option value="{{ taxSystem.numeric }}" {{ taxSystem.numeric  == payment_rbs_taxSystem ? 'selected="selected"' : '' }}>
+                                {{ taxSystem.numeric  == 0 ? taxSystem.alphabetic : taxSystem.alphabetic }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Ставка НДС -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_taxType }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_taxType" class="form-control">
+                                {% for taxType in taxType_list %}
+                                <option value="{{ taxType.numeric }}" {{ taxType.numeric  == payment_rbs_taxType ? 'selected="selected"' : '' }}>
+                                {{ taxType.numeric  == 0 ? taxType.alphabetic : taxType.alphabetic }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!--
+                     Формат версии фискальных документов
+                     Формат версии требуется указать в личном кабинете банка и в кабинете сервиса фискализации.
+                     -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_ffdVersionFormat }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_ffdVersion" class="form-control">
+                                {% for ffd_version in ffd_versionList %}
+                                    <option value="{{ ffd_version.value }}" {{ ffd_version.value  == payment_rbs_ffdVersion ? 'selected="selected"' : '' }}>
+                                        {{ ffd_version.value  == 0 ? ffd_version.title : ffd_version.title }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- method -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_paymentMethod }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_paymentMethodType" class="form-control">
+                                {% for ffd_paymentMethodType in ffd_paymentMethodTypeList %}
+                                    <option value="{{ ffd_paymentMethodType.numeric }}" {{ ffd_paymentMethodType.numeric  == payment_rbs_paymentMethodType ? 'selected="selected"' : '' }}>
+                                        {{ ffd_paymentMethodType.value  == 0 ? ffd_paymentMethodType.alphabetic : ffd_paymentMethodType.alphabetic }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- object -->
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            {{ entry_paymentObject }}
+                        </label>
+                        <div class="col-sm-9">
+                            <select name="payment_rbs_paymentObjectType" class="form-control">
+                                {% for ffd_paymentObjectType in ffd_paymentObjectTypeList %}
+                                    <option value="{{ ffd_paymentObjectType.numeric }}" {{ ffd_paymentObjectType.numeric  == payment_rbs_paymentObjectType ? 'selected="selected"' : '' }}>
+                                        {{ ffd_paymentObjectType.value  == 0 ? ffd_paymentObjectType.alphabetic : ffd_paymentObjectType.alphabetic }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{{ footer }}

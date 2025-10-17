@@ -1,0 +1,179 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="button" data-toggle="tooltip" title="{{ button_delete }}" class="btn btn-danger" onclick="confirm('{{ text_confirm }}') ? $('#form-order').submit() : false;"><i class="fa fa-trash-o"></i></button>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i>{{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success"><i class="fa fa-check-circle"></i>{{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-list"></i>{{ heading_title }}</h3>
+      </div>
+      <div class="panel-body">
+
+        <div class="well">
+          <div class="row">
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label class="control-label" for="input-model">{{ wk_erpid }}</label>
+                <input type="text" name="filter_erpid" value="{{ filter_erpid }}" placeholder="{{ wk_erpid }}" id="filter-erpid" class="form-control" />
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label class="control-label" for="input-price">{{ wk_opencartid }}</label>
+                <input type="text" name="filter_opid" value="{{ filter_opid }}" placeholder="{{ wk_opencartid }}" id="filter-opid" class="form-control" />
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label class="control-label" for="input-price">{{ wk_cid }}</label>
+                <input type="text" name="filter_cid" value="{{ filter_cid }}" placeholder="{{ wk_cid }}" id="filter-cid" class="form-control" />
+              </div>
+
+              <button type="button" onclick="filter();" class="btn btn-primary pull-right"><i class="fa fa-search"></i>{{ button_filter }}</button>
+            </div>
+          </div>
+        </div>
+
+        <form action="{{ delete }}" method="post" enctype="multipart/form-data" id="form-order">
+
+          <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td width="1" style="text-align: center;"><input type="checkbox" onclick="$('input[name*=\'selected\']').attr('checked', this.checked);" /></td>
+                  <td class="center">
+                    {% if sort is same as('id') %}
+                    <a href="{{ sort_id }}" class="{{ order|lower }}">{{ wkid }}</a>
+                    {% else %}
+                    <a href="{{ sort_id }}" >{{ wkid }} </a>
+                    {% endif %}
+                  </td>
+                  <td class="text-left">
+                    {% if sort is same as ('erp_order_id') %}
+                    <a href="{{ sort_erpid }}" class="{{ order|lower }}">{{ wk_erpid }}</a>
+                    {% else %}
+                    <a href="{{ sort_erpid }}" >{{ wk_erpid }} </a>
+                    {% endif %}
+                  </td>
+                  <td class="text-right">
+                    {% if sort is same as('opencart_order_id') %}
+                    <a href="{{ sort_opid }}" class="{{ order|lower }}">{{ wk_opencartid }}</a>
+                    {% else %}
+                    <a href="{{ sort_opid }}" >{{ wk_opencartid }} </a>
+                    {% endif %}
+                  </td>
+                  <td class="text-right">
+                    {% if sort is same as('customer_id') %}
+                    <a href="{{ sort_cid }}" class="{{ order|lower }}">{{ wk_cid }}</a>
+                    {% else %}
+                    <a href="{{ sort_cid }}" >{{ wk_cid }} </a>
+                    {% endif %}
+                  </td>
+                  <td class="text-left">
+                    {% if sort is same as('created_by') %}
+                    <a href="{{ sort_by }}" class="{{ order|lower }}">{{ wk_createdby }}</a>
+                    {% else %}
+                    <a href="{{ sort_by }}" >{{ wk_createdby }} </a>
+                    {% endif %}
+                  </td>
+                  <td class="text-right">
+                    {% if sort is same as('created_on') %}
+                    <a href="{{ sort_date }}" class="{{ order|lower }}">{{ wk_createdon }}</a>
+                    {% else %}
+                    <a href="{{ sort_date }}" >{{ wk_createdon }} </a>
+                    {% endif %}
+                  </td>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% if orders %}
+                {% for value in orders %}
+                <tr>
+                  <td style="text-align: center;">{% if value.selected %}
+                      <input type="checkbox" name="selected[]" value="{{ value.id }}" checked="checked" />
+                      {% else %}
+                      <input type="checkbox" name="selected[]" value="{{ value.id }}" />
+                      {% endif %}</td>
+                  <td class="left" >{{ value.id }}</td>
+                  <td class="left" >{{ value.erpid }}</td>
+                  <td class="left" >{{ value.cartid }}</td>
+                  <td class="left" >{{ value.cid }}</td>
+                  <td class="left">{{  value.createdby }}</td>
+                  <td class="left" >{{ value.createddate }}</td>
+                </tr>
+                {% endfor %}
+                 {% else %}
+                <tr>
+                  <td class="text-center" colspan="11">{{ "no records founds" }}</td>
+                </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </form>
+        <div class="row">
+          <div class="col-sm-6 text-left">{{ pagination }}</div>
+          <div class="col-sm-6 text-right">{{ results }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ footer }}
+
+
+<script type="text/javascript"><!--
+
+function filter() {
+  url = 'index.php?route=catalog/wk_odoo_order&user_token={{ user_token }}';
+
+  var filter_id = $('input[name=\'filter_id\']').val();
+
+  if (filter_id) {
+    url += '&filter_id=' + encodeURIComponent(filter_id);
+  }
+
+  var filter_erpid = $('input[name=\'filter_erpid\']').val();
+
+  if (filter_erpid) {
+    url += '&filter_erpid=' + encodeURIComponent(filter_erpid);
+  }
+
+  var filter_opid = $('input[name=\'filter_opid\']').val();
+
+  if (filter_opid) {
+    url += '&filter_opid=' + encodeURIComponent(filter_opid);
+  }
+
+  var filter_cid = $('input[name=\'filter_cid\']').val();
+
+  if (filter_cid) {
+    url += '&filter_cid=' + encodeURIComponent(filter_cid);
+  }
+
+  location = url;
+}
+//--></script>

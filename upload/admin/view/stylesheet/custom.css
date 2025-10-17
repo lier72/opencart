@@ -1,0 +1,4 @@
+/* Fix for Safari overflow in Journal3 admin header */
+.oc3 .j-header {
+  width: calc(100% - 260px) !important;
+}

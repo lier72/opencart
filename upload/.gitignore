@@ -1,0 +1,17 @@
+/image
+/system/storage/cache
+/system/storage/logs
+/system/storage/download
+/system/storage/upload
+/system/storage/modification
+/system/storage/session
+/system/storage/export
+/system/storage/image
+/system/storage/backup
+/system/storage/vendor
+config.php
+admin/config.php
+.httpaccess
+.idea/oc3.uniqsport.ru.code-workspace
+config_orig.php
+config.php

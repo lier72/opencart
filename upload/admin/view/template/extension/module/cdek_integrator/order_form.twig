@@ -1,0 +1,1132 @@
+{{ header }}{{ column_left }}
+<div id="content">
+	<div class="page-header">
+		<div class="container-fluid">
+			<div class="pull-right">
+				<a onclick="$('#form').submit();" class="btn btn-primary">{{ button_send }}</a>
+				<a href="{{ cancel }}" class="btn btn-primary">{{ button_cancel }}</a>
+			</div>
+			<h1>{{ heading_title }}</h1>
+			<ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+					<li><a href="{{ breadcrumb['href'] }}">{{ breadcrumb['text'] }}</a></li>
+                {% endfor %}
+			</ul>
+		</div>
+	</div>
+	<div class="container-fluid">
+        {% if (error_warning) %}
+			<div class="warning">
+				<ul>
+                    {% for message in error_warning %}
+						<li>{{ message }}</li>
+                    {% endfor %}
+				</ul>
+			</div>
+        {% endif %}
+        {% if (success) %}
+			<div class="success">{{ success }}</div>
+        {% endif %}
+		<div class="box">
+			<div class="content">
+				<form action="{{ action }}" method="post" enctype="multipart/form-data" id="form">
+					<table class="form table">
+						<tbody>
+						<tr>
+							<td><em>Номер отправления</em></td>
+							<td>
+                                {{ number }}
+								<input type="hidden" name="number" value="{{ number }}" />
+							</td>
+						</tr>
+						<tr>
+							<td><em>{{ text_order_count_items }}</em></td>
+							<td>{{ total }}</td>
+						</tr>
+                        {% if (city_default) %}
+							<tr>
+								<td><em>{{ text_city }}</em></td>
+								<td>{{ city_name }}</td>
+							</tr>
+                        {% endif %}
+						</tbody>
+					</table>
+
+
+
+					<div id="vtabs" class="vtabs col-md-2">
+						<h2>{{ text_title_orders }}</h2>
+
+                        
+                            
+                            {% set activeA = 'active' %}
+                           
+
+							<a class="vtabs-link {{ activeA }}" href="#order-{{ cdek_orders['order_id'] }}" {% if (error['cdek_orders'] is defined) %} {{ 'class="error-tab"' }}{% endif %} data-toggle="tab">{{ text_order_n }}{{ cdek_orders['order_id'] }}</a><br>
+                        
+
+				</div>
+					<div class="cdek-orders col-md-10 tab-content">
+						
+                        {% set activeTab = ' active' %}                        
+
+						<div class="vtabs-content order tab-pane{{ activeTab }}" id="order-{{ cdek_orders['order_id'] }}" data-order="{{ cdek_orders['order_id'] }}">
+							<ul id="tabs-order-{{ cdek_orders['order_id'] }}" class="nav nav-tabs">
+								<li class="active"><a href="#order-data" data-toggle="tab">{{ tab_data }}</a></li>
+								<li><a href="#order-recipient" {% if (error['cdek_orders']['recipient'] is defined) %} class="error-tab" {% endif %} data-toggle="tab">{{ tab_recipient }}</a></li>
+								<li><a href="#order-package" {% if (error['cdek_orders']['package'] is defined) %} {{ 'class="error-tab"' }}{% endif %} data-toggle="tab">{{ tab_package }}</a></li>
+								<li><a href="#order-courier" {% if (error['cdek_orders']['courier'] is defined) %} {{ 'class="error-tab"' }}{% endif %} data-toggle="tab">{{ tab_courier }}</a></li>
+								<li><a href="#order-additional" {% if (error['cdek_orders']['add_service'] is defined) %} {{ 'class="error-tab"' }}{% endif %} data-toggle="tab">{{ tab_additional }}</a></li>
+		          			</ul>
+
+							<div class="tab-content">
+								<div id="order-data" class="form-horizontal tab-pane active">
+
+									<div class="form-group">
+										<label class="col-sm-2 control-label">{{ text_order_id }}</label>
+										<div class="col-sm-10">
+                                            {{ cdek_orders['order_id'] }}
+											<input type="hidden" name="cdek_orders[order_id]" value="{{ cdek_orders['order_id'] }}" />
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label class="col-sm-2 control-label">{{ text_order_total }}</label>
+										<div class="col-sm-10">
+                                            {{ cdek_orders['total'] }}
+										</div>
+									</div>
+
+									<div class="form-group {% if (not city_default) %}required{% endif %}">
+										<label class="col-sm-2 control-label" for="cdek-orders-city-id">{{ text_city }}</label>
+										<div class="col-sm-10">
+                                            {% if (city_default) %}
+                                                {{ city_name }}
+												<input type="hidden" name="cdek_orders[city_id]" value="{{city_id}}" />
+												<input type="hidden" name="cdek_orders[city_name]" value="{{ city_name }}" />
+                                            {% else %}
+												<input type="hidden" class="setting-city-id" name="cdek_orders[city_id]" value="{% if (cdek_orders['city_id'] is not empty) %}{{cdek_orders['city_id']|trim}}{% endif %}"/>
+
+												<a class="js city-from" style="{% if (cdek_orders['city_id'] is empty) %} {{ ' display:none;' }}{% endif %}">{% if (cdek_orders['city_name'] is not empty) %}{{ cdek_orders['city_name'] }}{% endif %}</a>
+
+												<input type="text" id="cdek-orders-city-id" class="setting-city-name form-control" name="cdek_orders[city_name]" value="{% if (cdek_orders['city_name'] is not empty) %} {{ cdek_orders['city_name'] }}{% endif %}" style="{% if (cdek_orders['city_id'] is not empty) %} {{ ' display: none;' }}{% endif %}"/>
+                                            {% endif %}
+
+                                            {% if (error['cdek_orders']['city_id'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['city_id'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>									
+									<div class="form-group required">
+										<label class="col-sm-2 control-label" for="cdek-orders-tariff-id">{{ entry_tariff }}</label>
+										<div class="col-sm-10">
+                                            {% if (cdek_orders['shipping_method']) %}
+												<p class="help">{{ text_customer_shipping_method }}: {{ cdek_orders['shipping_method'] }}</p>
+                                            {% endif %}
+											<select id="cdek-orders-tariff-id" class="tariff_switcher form-control" name="cdek_orders[tariff_id]">
+												<option value="">{{ text_select }}</option>
+                                                {% for tariff_id,tariff_info in tariff_list %}
+													<option value="{{ tariff_id }}"{% if (cdek_orders['tariff_id'] is not empty and cdek_orders['tariff_id'] == tariff_id) %} selected="selected"{% endif %} data-mode="{{ tariff_info['mode_id'] }}">{{ tariff_info['title'] }}</option>
+                                                {% endfor %}
+											</select>
+											<input type="hidden" class="setting-mode-id" name="cdek_orders[mode_id]" value="{% if (cdek_orders['mode_id'] is not empty) %}{{ cdek_orders['mode_id'] }}{% endif %}"/>
+                                            {% if (error['cdek_orders']['tariff_id'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['tariff_id'] }}</div>
+                                            {% endif %}
+											<div class="shipping-price"></div>
+										</div>
+									</div>
+									<div class="form-group seller-adress required" style="
+									{% if (cdek_orders['tariff_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] in [3, 4, 6]) %}
+									{{ ' display: none;' }}
+									{% endif  %} ">
+										<label class="col-sm-2 control-label" for="cdek-orders-city-id">{{ entry_sell_address }}</label>
+										<div class="col-sm-10">
+											<input type="text" class="form-control" name="cdek_orders[sell_address]" value="{{ sell_address }}" />
+										</div>
+									</div>
+									<div class="form-group required address-mode shipment-point" style="
+									{% if (cdek_orders['tariff_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1, 2, 5]) %}
+									{{ ' display: none;' }}
+									{% endif  %} ">
+
+										<label class="col-sm-2 control-label" for="">{{ entry_pvz_sell }}</label>
+										<div class="col-sm-10">
+											<select name="cdek_orders[shipment_point]" class="shipment-point-code form-control">
+												<option value="">{{ text_select }}</option>
+												{% if (cdek_orders['pvz_list_sell'] is not empty) %}
+												{% for pvz_info in cdek_orders['pvz_list_sell'] %}
+													<option {% if (cdek_orders['shipment_point'] is not empty and cdek_orders['shipment_point'] == pvz_info['Code']) %} selected="selected" {% endif %} {% if (cdek_orders['tariff_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1, 2, 6]) %} disabled="disabled" {% endif  %} value="{{ pvz_info['Code'] }}" data-name="{{ pvz_info['Name'] }}" data-y="{{ pvz_info['y'] }}" data-x="{{ pvz_info['x'] }}" data-address="{{ pvz_info['Address'] }}" data-worktime="{{ pvz_info['WorkTime'] }}" data-phone="{{ pvz_info['Phone'] }}"> {{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})</option>
+												{% endfor %}
+												{% endif %}
+											</select>
+										</div>
+								</div>
+
+									<div class="form-group required">
+										<label class="col-sm-2 control-label" for="cdek-orders-cod">{{ entry_cod }}</label>
+										<div class="col-sm-10">
+											<select id="cdek-orders-cod" class="cdek-order-cod toggle form-control" name="cdek_orders[cod]" data-toggletarget="#cdek-order-currency-cod">
+                                                {% for key,value in boolean_variables %}
+													<option value="{{ key }}"{% if (cdek_orders['cod'] == key) %} selected="selected"{% endif %}>{{ value }}</option>
+                                                {% endfor %}
+											</select>
+										</div>
+									</div>
+
+									<div class="form-group" id="cdek-order-currency-cod" style="display:{{ cdek_orders['cod'] ? 'block' : 'none' }}">
+										<label class="col-sm-2 control-label" for="cdek-orders-currency-cod">{{ entry_currency_cod }}</label>
+										<div class="col-sm-10">
+											<select class="form-control" id="cdek-orders-currency-cod" name="cdek_orders[currency_cod]">
+                                                {% for key,value in currency_list %}
+													<option value="{{ key }}"{% if (cdek_orders['currency_cod'] is defined and cdek_orders['currency_cod'] == key) %} selected="selected"{% endif %}>{{ value }}</option>
+                                                {% endfor %}
+											</select>
+                                            {% if (error['cdek_orders']['currency_cod'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['currency_cod'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-delivery-recipient-cost">{{ entry_delivery_recipient_cost }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-delivery-recipient-cost" type="text" name="cdek_orders[delivery_recipient_cost]" value="{% if (cdek_orders['delivery_recipient_cost'] is not empty) %}{{cdek_orders['delivery_recipient_cost'] }}{% endif %}" size="2" />
+                                            {% if (error['cdek_orders']['delivery_recipient_cost'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['delivery_recipient_cost'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-delivery-recipient-vat-rate">{{ entry_delivery_recipient_vat_rate }}</label>
+										<div class="col-sm-10">
+											<select class="form-control" id="cdek-orders-delivery-recipient-vat-rate" name="cdek_orders[delivery_recipient_vat_rate]">
+                                                {% for vat_rate,vat_rate_name in vat_rate_list %}
+
+                                                    {% set selected = '' %}
+                                                    {% if (cdek_orders['delivery_recipient_vat_rate'] is not empty and cdek_orders['delivery_recipient_vat_rate'] == vat_rate) %}
+                                                        {% set selected = 'selected' %}
+                                                    {% endif %}
+
+													<option value="{{ vat_rate }}" {{ selected }}>{{ vat_rate_name }}</option>
+                                                {% endfor %}
+											</select>
+                                            {% if (error['cdek_orders']['delivery_recipient_vat_rate'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['delivery_recipient_vat_rate'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-delivery-recipient-vat-sum">{{ entry_delivery_recipient_vat_sum }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-delivery-recipient-vat-sum" type="text" name="cdek_orders[delivery_recipient_vat_sum]" value="{% if (cdek_orders['delivery_recipient_vat_sum'] is not empty) %}{{cdek_orders['delivery_recipient_vat_sum'] }}{% endif %}" size="2" />
+                                            {% if (error['cdek_orders']['delivery_recipient_vat_sum'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['delivery_recipient_vat_sum'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-seller-name">{{ entry_seller_name }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-seller-name" type="text" name="cdek_orders[seller_name]" value="{% if (cdek_orders['seller_name'] is not empty) %}{{ cdek_orders['seller_name'] }}{% endif %}" maxlength="255" />
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-seller-telephone">{{ entry_seller_telephone }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-seller-telephone" type="text" name="cdek_orders[seller_telephone]" value="{% if (cdek_orders['seller_telephone'] is not empty) %}{{ cdek_orders['seller_telephone'] }}{% endif %}" maxlength="255" />
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-seller-inn">{{ entry_seller_inn }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-seller-inn" type="text" name="cdek_orders[seller_inn]" value="{% if (cdek_orders['seller_inn'] is not empty) %}{{ cdek_orders['seller_inn'] }}{% endif %}" maxlength="255" />
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-seller-address">{{ entry_seller_address }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-seller-address" type="text" name="cdek_orders[seller_address]" value="{% if (cdek_orders['seller_address'] is not empty) %}{{ cdek_orders['seller_address'] }}{% endif %}" maxlength="255" />
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-seller-ownership">{{ entry_seller_ownership }}</label>
+										<div class="col-sm-10">
+											<select class="form-control" id="cdek-orders-seller-ownership" name="cdek_orders[seller_ownership]">
+												{% for ownership_id,ownership_form in ownership_forms %}
+
+													{% set selected = '' %}
+													{% if (cdek_orders['seller_ownership'] is not empty and cdek_orders['seller_ownership'] == ownership_id) %}
+														{% set selected = 'selected' %}
+													{% endif %}
+
+													<option value="{{ ownership_id }}" {{ selected }}>{{ ownership_form }}</option>
+												{% endfor %}
+											</select>
+										</div>
+									</div>
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-cdek-comment">{{ entry_comment }}</label>
+										<div class="col-sm-10">
+                                            {% if (cdek_orders['comment'] is not empty) %}
+												<div class="help user-comment">
+													<p class="user-comment-title">{{ text_user_comment }}</p>
+                                                    {{ cdek_orders['comment'] }}
+												</div>
+                                            {% endif %}
+											<textarea class="form-control" id="cdek-orders-cdek-comment" rows="5" cols="50" name="cdek_orders[cdek_comment]" >{% if (cdek_orders['cdek_comment'] is not empty) %}{{cdek_orders['cdek_comment'] }}{% endif %}</textarea>
+                                            {% if (error['cdek_orders']['cdek_comment'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['cdek_comment'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+								</div>
+
+								<div id="order-recipient" class="form-horizontal recipient tab-pane">
+
+									<div class="form-group required">
+										<label class="col-sm-2 control-label" for="cdek-orders-recipient-name">{{ entry_recipient_name }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-recipient-name" type="text" name="cdek_orders[recipient_name]" value="{{ cdek_orders['recipient_name'] }}" maxlength="128" />
+                                            {% if (error['cdek_orders']['recipient_name'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['recipient_name'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group required">
+										<label class="col-sm-2 control-label" for="cdek-orders-recipient-telephone">{{ entry_recipient_telephone }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-recipient-telephone" type="text" name="cdek_orders[recipient_telephone]" value="{{ cdek_orders['recipient_telephone'] }}" maxlength="50" />
+                                            {% if (error['cdek_orders']['recipient_telephone'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['recipient_telephone'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group">
+										<label class="col-sm-2 control-label" for="cdek-orders-recipient-email">{{ entry_recipient_email }}</label>
+										<div class="col-sm-10">
+											<input class="form-control" id="cdek-orders-recipient-email" type="text" name="cdek_orders[recipient_email]" value="{{ cdek_orders['recipient_email'] }}" maxlength="255" />
+                                            {% if (error['cdek_orders']['recipient_email'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['recipient_email'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group">
+										<div class="col-sm-10">
+											<h3>{{ text_shipping_address }}</h3>
+                                            {% if (cdek_orders['shipping_address']) %}
+												<p class="help">{{ text_customer_shipping_address }}: {{ cdek_orders['shipping_address'] }}</p>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group required">
+										<label class="col-sm-2 control-label" for="cdek-orders-recipient-city-name">{{ entry_recipient_city }}</label>
+										<div class="col-sm-10">
+											<input type="hidden" class="setting-city-id" name="cdek_orders[recipient_city_id]" value="{% if (cdek_orders['recipient_city_id'] is not empty) %}{{ cdek_orders['recipient_city_id'] }}{% endif %}"/>
+
+											<a class="js city-from" style="{% if (cdek_orders['recipient_city_id'] is empty) %} {{ ' display: none;' }}{% endif %}">{% if (cdek_orders['recipient_city_name'] is not empty) %}{{ cdek_orders['recipient_city_name'] }}{% endif %}</a>
+
+											<input type="text" id="cdek-orders-recipient-city-name" class="setting-city-name form-control" name="cdek_orders[recipient_city_name]" value="{% if (cdek_orders['recipient_city_name'] is not empty) %}{{ cdek_orders['recipient_city_name'] }}{% endif %}" style="{% if (cdek_orders['recipient_city_id'] is not empty) %} {{ ' display: none;' }}{% endif %}" />
+
+                                            {% if (error['cdek_orders']['recipient_city_id'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['recipient_city_id'] }}</div>
+                                            {% endif %}
+										</div>
+									</div>
+
+									<div class="form-group required address-mode pvz" style="
+									{% if (cdek_orders['tariff_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1, 3]) %}
+									{{ ' display: none;' }}
+									{% endif  %} ">
+
+										<label class="col-sm-2 control-label" for="">{{ entry_pvz }}</label>
+                                            <div class="col-sm-10">
+                                            <select name="cdek_orders[address][pvz_code]" class="address-pvz-code form-control">
+                                            <option value="">{{ text_select }}</option>
+                                            {% if (cdek_orders['pvz_list'] is not empty) %}
+                                            {% for pvz_info in cdek_orders['pvz_list'] %}
+											<option {% if (cdek_orders['address']['pvz_code'] is not empty and cdek_orders['address']['pvz_code'] == pvz_info['Code']) %} selected="selected" {% if (cdek_orders['tariff_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1, 3]) %} disabled="disabled" {% endif  %} {% endif %} value="{{ pvz_info['Code'] }}" data-name="{{ pvz_info['Name'] }}" data-y="{{ pvz_info['y'] }}" data-x="{{ pvz_info['x'] }}" data-address="{{ pvz_info['Address'] }}" data-worktime="{{ pvz_info['WorkTime'] }}" data-phone="{{ pvz_info['Phone'] }}"> {{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})</option>
+                                            {% endfor %}
+                                            {% endif %}
+											</select>
+
+												<div class="pvz-wrapper">
+                                                    {% if (cdek_orders['pvz_info'] is not empty) %}
+														<p>{{ cdek_orders['pvz_info']['Name'] }}{% if (cdek_orders['pvz_info']['x']) %} (<a href="http://maps.google.ru/maps?q={{ cdek_orders['pvz_info']['y'] }},{{ cdek_orders['pvz_info']['x'] }}" target="_blank">на карте</a>){% endif %}</p>
+														<span class="help">
+												<strong>Адрес</strong>: {{ cdek_orders['pvz_info']['Address'] }}<br />
+                                                            {% if (cdek_orders['pvz_info']['Phone'] is not empty and cdek_orders['pvz_info']['Phone']|trim != '-') %}
+																<strong>Телефон</strong>: {{ cdek_orders['pvz_info']['Phone'] }}<br />
+                                                            {% endif %}
+                                                            {% if ( cdek_orders['pvz_info']['WorkTime'] is not empty and cdek_orders['pvz_info']['WorkTime']|trim != '-') %}
+																<strong>Режим работы</strong>: {{ cdek_orders['pvz_info']['WorkTime'] }}
+                                                            {% endif %}
+
+												</span>
+                                                    {% endif %}
+												</div>
+                                                {% if (error['cdek_orders']['address']['pvz_code'] is defined) %}
+													<div class="text-danger">{{ error['cdek_orders']['address']['pvz_code'] }}</div>
+                                                {% endif %}
+											</div>
+								</div>
+
+								<div class="address-mode address">
+
+									<div class="form-group required" style="
+									{% if (cdek_orders['tariff_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or
+									tariff_list[cdek_orders['tariff_id']]['mode_id'] in [2, 4, 6, 7]) %}
+									{{ ' display: none;' }}
+									{% endif %} ">
+										<label class="col-sm-2 control-label" for="cdek-orders-address-street">{{ entry_street }}</label>
+											<div class="col-sm-10">
+												<input class="form-control" id="cdek-orders-address-street" type="text" name="cdek_orders[address][street]" value="{% if (cdek_orders['address']['street'] is not empty) %}{{cdek_orders['address']['street']}} {% endif %}" maxlength="50" />
+                                        {% if (error['cdek_orders']['address']['street'] is defined) %}
+										<div class="text-danger">{{ error['cdek_orders']['address']['street'] }}</div>
+                                        {% endif %}
+									</div>
+								</div>
+
+								<div class="form-group {% if (cdek_orders['tariff_id'] is not empty and tariff_list[cdek_orders['tariff_id']]['mode_id'] is not empty and tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1,3]) %}  {{ 'required' }}{% endif %} ">
+									<label class="col-sm-2 control-label" for="cdek-orders-address-house">{{ entry_house }}</label>
+											<div class="col-sm-10">
+												<input class="form-control" id="cdek-orders-address-house" type="text" name="cdek_orders[address][house]" value="{% if (cdek_orders['address']['house'] is not empty) %}{{cdek_orders['address']['house'] }}{% endif %}" size="2" maxlength="30" />
+
+												{% if (error['cdek_orders']['address']['house'] is defined) %}
+												<div class="text-danger">{{ error['cdek_orders']['address']['house'] }}</div>
+												{% endif %}
+											</div>
+										</div>
+
+									<div class="form-group {% if (cdek_orders['tariff_id'] is not empty and tariff_list[cdek_orders['tariff_id']]['mode_id'] is not empty and  tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1, 3] )%}{{ 'required' }}{% endif %}">
+										<label class="col-sm-2 control-label" for="cdek-orders-address-flat">{{ entry_flat }}</label>
+											<div class="col-sm-10">
+												<input class="form-control" id="cdek-orders-address-flat" type="text" name="cdek_orders[address][flat]" value="{% if (cdek_orders['address']['flat'] is not empty) %}{{cdek_orders['address']['flat'] }}{% endif %}" size="2" maxlength="10" />
+                                        {% if (error['cdek_orders']['address']['flat'] is defined) %}
+										<div class="text-danger">{{ error['cdek_orders']['address']['flat'] }}</div>
+                                        {% endif %}
+									</div>
+								</div>
+							</div>
+						</div>
+								<div id="order-package" class="form-horizontal tab-pane">
+									<div class="form-group">
+										<label class="col-sm-2 control-label">{{ text_package }}</label>
+										<div class="col-sm-10">
+										<label class="radio-inline"> 
+											{% if checkpackage %}
+											<input type="radio" name="checkpackage" value="1" checked="checked"/>
+											{{ text_yes }}
+											{% else %}
+											<input type="radio" name="checkpackage" value="1"/>
+											{{ text_yes }}
+											{% endif %}
+										</label>
+										<label class="radio-inline">  
+											{% if not checkpackage %}
+											<input type="radio" name="checkpackage" value="0" checked="checked"/>
+											{{ text_no }}
+											{% else %}
+											<input type="radio" name="checkpackage" value="0"/>
+											{{ text_no }}
+											{% endif %}  
+										</label>
+										</div>
+									</div>
+                                    <div id="order-package-{{ package_id }}" class="package">
+										<div class="form-horizontal">
+											<div class="form-group required">
+												<label class="col-sm-2 control-label" for="cdek-orders-currency">{{ entry_currency }}</label>
+												<div class="col-sm-10">
+													<select class="form-control" id="cdek-orders-currency" name="cdek_orders[currency]">
+														{% for key,value in currency_list %}
+															<option value="{{ key }}"{% if (cdek_orders['currency'] is defined and cdek_orders['currency'] == key) %} selected="selected"{% endif %}>{{ value }}</option>
+														{% endfor %}
+													</select>
+												</div>
+											</div>
+											{% for package_id,package_info in cdek_orders['packages'] %}
+											<div class="form-group required">
+												<label class="col-sm-2 control-label" for="cdek-orders-package-{{ package_id }}-brcode">{{ entry_brcode }}</label>
+												<div class="col-sm-10">
+													<input class="form-control" id="cdek-orders-package-{{ package_id }}-brcode" type="text" name="cdek_orders[package][{{ package_id }}][brcode]" value="{% if (package_info['brcode'] is not empty) %}{{ package_info['brcode'] }}{% endif %}" maxlength="20" />
+												</div>
+											</div>											
+											<div class="form-group required" id="cdek-orders-package-{{ package_id }}-size-a-block">
+												<label class="col-sm-2 control-label" for="cdek-orders-package-{{ package_id }}-size-a">{{ entry_package }}</label>
+												<div class="col-sm-10">
+													<div class="form-inline">
+														<input class="form-control" id="cdek-orders-package-{{ package_id }}-size-a" type="text" placeholder="{{ text_short_length }}" name="cdek_orders[package][{{ package_id }}][size_a]" value="{% if (package_info['size_a'] is not empty) %} {{ package_info['size_a'] }}{% endif %}" size="2" /> x
+														<input class="form-control" type="text" placeholder="{{ text_short_width }}" name="cdek_orders[package][{{ package_id }}][size_b]" value="{% if (package_info['size_b'] is not empty) %}{{ package_info['size_b'] }}{% endif %}" size="2" /> x
+														<input class="form-control" type="text" placeholder="{{ text_short_height }}" name="cdek_orders[package][{{ package_id }}][size_c]" value="{% if (package_info['size_c'] is not empty) %}{{package_info['size_c'] }}{% endif %}" size="2" />
+													</div>
+													{% if (error['cdek_orders']['package'][package_id]['size'] is defined) %}
+														<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['size'] }}</div>
+													{% endif %}
+												</div>
+											</div>
+											<div class="form-group required">
+												<label class="col-sm-2 control-label" for="cdek-orders-package-{{ package_id }}-weight">{{ entry_order_weight }}</label>
+												<div class="col-sm-10">
+													<div class="form-inline">
+														<input class="package-weight form-control" id="cdek-orders-package-{{ package_id }}-weight" type="text" name="cdek_orders[package][{{ package_id }}][weight]" value="{{ package_info['weight'] }}" data-packing_prefix="{{ package_info['additional_weight']['prefix'] }}" data-packing_weight="{{ package_info['additional_weight']['weight'] }}" />
+														{% if (package_info['additional_weight']['weight']) %}
+															<span class="help inline">{{ package_info['additional_weight']['prefix'] ~ ' ' ~ package_info['additional_weight']['weight'] }} грамм</span>
+														{% endif %}
+													</div>
+													{% if (error['cdek_orders']['package'][package_id]['weight'] is defined) %}
+														<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['weight'] }}</div>
+													{% endif %}
+												</div>
+											</div>
+											<table class="list package-items table">
+												<thead>
+												<tr>
+													<td class="left">{{ column_title }}</td>
+													<td class="right">{{ column_weight }}</td>
+													<td class="right">{{ column_price }}</td>
+													<td class="right">{{ column_payment }}</td>
+													<td class="right">{{ column_amount }}</td>
+													<td class="right">{{ column_cost }}</td>
+												</tr>
+												</thead>
+												<tbody>
+													{% for row, item in package_info['item'] %}
+													<tr>
+														<td class="left">
+															{{ item['name'] }}
+															{% for option in item['option'] %}
+																<br />
+																{% if (option['type'] != 'file') %}
+																	&nbsp;<small> - {{ option['name'] }}: {{ option['value'] }}</small>
+																{% else %}
+																	&nbsp;<small> - {{ option['name'] }}: <a href="{{ option['href'] }}">{{ option['value'] }}</a></small>
+																{% endif %}
+															{% endfor %}
+															<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][comment]" value="{{ item['name'] }}" size="3" />
+															<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][ware_key]" value="{{ item['order_product_id'] }}" size="3" />
+														</td>
+														<td class="right">
+															<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][weight]" value="{{ item['weight'] }}" size="5" />
+															{% if (error['cdek_orders']['package'][package_id]['item'][row]['weight'] is defined) %}
+																<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['weight'] }}</div>
+															{% endif %}
+														</td>
+														<td class="right">
+															<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][cost]" value="{{ item['price'] }}" size="3" />
+															{% if (error['cdek_orders']['package'][package_id]['item'][row]['cost'] is defined) %}
+																<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['cost'] }}</div>
+															{% endif %}
+														</td>
+														<td class="right package-item-payment">
+															<div class="input-group">
+																<span class="input-group-addon">Оплата</span>
+
+																<input type="text" {% if (not cdek_orders['cod']) %} {{ ' readonly="readonly" ' }}{% endif %} class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][payment]" data-value="{{ item['payment'] }}" value="{{ cdek_orders['cod'] ? item['payment'] : 0 }}" size="3" />
+															</div>
+															{% if (error['cdek_orders']['package'][package_id]['item'][row]['payment'] is defined) %}
+																<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['payment'] }}</div>
+															{% endif %}
+
+															<div class="input-group">
+																<span class="input-group-addon">НДС</span>
+
+																<select class="form-control" {% if (not cdek_orders['cod']) %} {{ ' readonly="readonly" ' }}{% endif %} name="cdek_orders[package][{{ package_id }}][item][{{ row }}][payment_vat_rate]">
+																	{% for vat_rate,vat_rate_name in vat_rate_list %}
+																		{% set selected = '' %}
+																		{% if (item['payment_vat_rate'] and item['payment_vat_rate'] == vat_rate) %}
+																			{% set selected = 'selected' %}
+																		{% endif %}
+																		<div>{{ item['payment_vat_rate'] }} {{ vat_rate }} {{ selected }}</div>
+																		<option value="{{ vat_rate }}" {{ selected }}>{{ vat_rate_name }}</option>
+																	{% endfor %}
+																</select>
+															</div>
+															{% if (error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_rate'] is defined) %}
+																<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_rate'] }}</div>
+															{% endif %}
+
+															<div class="input-group">
+																<span class="input-group-addon">НДС Сумма</span>
+																<input type="text" class="form-control" {% if (not cdek_orders['cod']) %} {{ ' readonly="readonly" ' }}{% endif %} name="cdek_orders[package][{{ package_id }}][item][{{ row }}][payment_vat_sum]" data-value="{{ item['payment_vat_sum'] }}" value="{{ cdek_orders['cod'] ? item['payment_vat_sum'] : 0 }}" size="3" />
+															</div>
+
+															{% if (error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_sum'] is defined) %}
+																<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_sum'] }}</div>
+															{% endif %}
+														</td>
+														<td class="right">
+															<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][amount]" value="{{ item['quantity'] }}" size="3" />
+															{% if (error['cdek_orders']['package'][package_id]['item'][row]['amount'] is defined) %}
+																<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['amount'] }}</div>
+															{% endif %}
+														</td>
+														<td class="right">{{ item['total'] }}</td>
+													</tr>
+													{% endfor %}
+												</tbody>
+											</table>
+											{% endfor %}
+											<table class="list package-items table">
+												<tfoot>
+													{% for row,order_total in cdek_orders['totals'] %}
+														<tr>
+															<td class="right {{ order_total['code'] }}" colspan="5">{{ order_total['title'] }}</td>
+															<td class="right {{ order_total['code'] }}">{{ order_total['text'] }}</td>
+														</tr>
+													{% endfor %}
+												</tfoot>
+											</table>
+										</div>
+									</div>
+
+									{% for package_id,package_info in cdek_orders['full_packages'] %}
+									<div id="order-full_package-{{ package_id }}" class="full_package" style="display: none;">
+										{% if (error['cdek_orders']['package'][package_id]['warning'] is defined) %}
+											<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['warning'] }}</div>
+										{% endif %}
+										<br />
+
+										<div class="form-horizontal">
+											<div class="form-group required">
+												<label class="col-sm-2 control-label" for="cdek-orders-currency">{{ entry_currency }}</label>
+												<div class="col-sm-10">
+													<select class="form-control" id="cdek-orders-currency" name="cdek_orders[currency]" disabled="disabled">
+														{% for key,value in currency_list %}
+															<option value="{{ key }}"{% if (cdek_orders['currency'] is defined and cdek_orders['currency'] == key) %} selected="selected"{% endif %}>{{ value }}</option>
+														{% endfor %}
+													</select>
+												</div>
+											</div>
+
+
+											<div class="form-group required">
+												<label class="col-sm-2 control-label" for="cdek-orders-package-{{ package_id }}-brcode">{{ entry_brcode }}</label>
+												<div class="col-sm-10">
+													<input class="form-control" id="cdek-orders-package-{{ package_id }}-brcode" type="text" name="cdek_orders[package][{{ package_id }}][brcode]" value="{% if (package_info['brcode'] is not empty) %}{{ package_info['brcode'] }}{% endif %}" maxlength="20" disabled="disabled" />
+												</div>
+											</div>
+											<div class="form-group required" id="cdek-orders-package-{{ package_id }}-size-a-block">
+												<label class="col-sm-2 control-label" for="cdek-orders-package-{{ package_id }}-size-a">{{ entry_package }}</label>
+												<div class="col-sm-10">
+													<div class="form-inline">
+														<input class="form-control" id="cdek-orders-package-{{ package_id }}-size-a" type="text" placeholder="{{ text_short_length }}" name="cdek_orders[package][{{ package_id }}][size_a]" value="{% if (package_info['size_a'] is not empty) %} {{ package_info['size_a'] }}{% endif %}" size="2"  disabled="disabled"/> x
+														<input class="form-control" type="text" placeholder="{{ text_short_width }}" name="cdek_orders[package][{{ package_id }}][size_b]" value="{% if (package_info['size_b'] is not empty) %}{{ package_info['size_b'] }}{% endif %}" size="2"  disabled="disabled"/> x
+														<input class="form-control" type="text" placeholder="{{ text_short_height }}" name="cdek_orders[package][{{ package_id }}][size_c]" value="{% if (package_info['size_c'] is not empty) %}{{package_info['size_c'] }}{% endif %}" size="2" disabled="disabled"/>
+													</div>
+													{% if (error['cdek_orders']['package'][package_id]['size'] is defined) %}
+														<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['size'] }}</div>
+													{% endif %}
+												</div>
+											</div>
+
+											<div class="form-group required">
+												<label class="col-sm-2 control-label" for="cdek-orders-package-{{ package_id }}-weight">{{ entry_order_weight }}</label>
+												<div class="col-sm-10">
+													<div class="form-inline">
+														<input class="package-weight form-control" id="cdek-orders-package-{{ package_id }}-weight" type="text" name="cdek_orders[package][{{ package_id }}][weight]" value="{{ package_info['weight'] }}" data-packing_prefix="{{ package_info['additional_weight']['prefix'] }}" data-packing_weight="{{ package_info['additional_weight']['weight'] }}" disabled="disabled"/>
+														{% if (package_info['additional_weight']['weight']) %}
+															<span class="help inline">{{ package_info['additional_weight']['prefix'] ~ ' ' ~ package_info['additional_weight']['weight'] }} грамм</span>
+														{% endif %}
+													</div>
+													{% if (error['cdek_orders']['package'][package_id]['weight'] is defined) %}
+														<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['weight'] }}</div>
+													{% endif %}
+												</div>
+											</div>
+										</div>
+
+										<table class="list package-items table">
+											<thead>
+											<tr>
+												<td class="left">{{ column_title }}</td>
+												<td class="right">{{ column_weight }}</td>
+												<td class="right">{{ column_price }}</td>
+												<td class="right">{{ column_payment }}</td>
+												<td class="right">{{ column_amount }}</td>
+												<td class="right">{{ column_cost }}</td>
+											</tr>
+											</thead>
+											<tbody>
+												{% for row, item in package_info['item'] %}
+												<tr>
+													<td class="left">
+														{{ item['name'] }}
+														{% for option in item['option'] %}
+															<br />
+															{% if (option['type'] != 'file') %}
+																&nbsp;<small> - {{ option['name'] }}: {{ option['value'] }}</small>
+															{% else %}
+																&nbsp;<small> - {{ option['name'] }}: <a href="{{ option['href'] }}">{{ option['value'] }}</a></small>
+															{% endif %}
+														{% endfor %}
+														<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][comment]" value="{{ item['name'] }}" size="3" disabled="disabled"/>
+														<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][ware_key]" value="{{ item['order_product_id'] }}" size="3" disabled="disabled"/>
+													</td>
+													<td class="right">
+														<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][weight]" value="{{ item['weight'] }}" size="5" disabled="disabled"/>
+														{% if (error['cdek_orders']['package'][package_id]['item'][row]['weight'] is defined) %}
+															<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['weight'] }}</div>
+														{% endif %}
+													</td>
+													<td class="right">
+														<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][cost]" value="{{ item['price'] }}" size="3" disabled="disabled"/>
+														{% if (error['cdek_orders']['package'][package_id]['item'][row]['cost'] is defined) %}
+															<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['cost'] }}</div>
+														{% endif %}
+													</td>
+													<td class="right package-item-payment">
+														<div class="input-group">
+															<span class="input-group-addon">Оплата</span>
+
+															<input type="text" {% if (not cdek_orders['cod']) %} {{ ' readonly="readonly" ' }}{% endif %} class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][payment]" data-value="{{ item['payment'] }}" value="{{ cdek_orders['cod'] ? item['payment'] : 0 }}" size="3" disabled="disabled"/>
+														</div>
+														{% if (error['cdek_orders']['package'][package_id]['item'][row]['payment'] is defined) %}
+															<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['payment'] }}</div>
+														{% endif %}
+
+														<div class="input-group">
+															<span class="input-group-addon">НДС</span>
+
+															<select class="form-control" {% if (not cdek_orders['cod']) %} {{ ' readonly="readonly" ' }}{% endif %} name="cdek_orders[package][{{ package_id }}][item][{{ row }}][payment_vat_rate]" disabled="disabled">
+																{% for vat_rate,vat_rate_name in vat_rate_list %}
+																	{% set selected = '' %}
+																	{% if (item['payment_vat_rate'] and item['payment_vat_rate'] == vat_rate) %}
+																		{% set selected = 'selected' %}
+																	{% endif %}
+																	<div>{{ item['payment_vat_rate'] }} {{ vat_rate }} {{ selected }}</div>
+																	<option value="{{ vat_rate }}" {{ selected }}>{{ vat_rate_name }}</option>
+																{% endfor %}
+															</select>
+														</div>
+														{% if (error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_rate'] is defined) %}
+															<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_rate'] }}</div>
+														{% endif %}
+
+														<div class="input-group">
+															<span class="input-group-addon">НДС Сумма</span>
+															<input type="text" class="form-control" {% if (not cdek_orders['cod']) %} {{ ' readonly="readonly" ' }}{% endif %} name="cdek_orders[package][{{ package_id }}][item][{{ row }}][payment_vat_sum]" data-value="{{ item['payment_vat_sum'] }}" value="{{ cdek_orders['cod'] ? item['payment_vat_sum'] : 0 }}" size="3" disabled="disabled"/>
+														</div>
+
+														{% if (error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_sum'] is defined) %}
+															<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['payment_vat_sum'] }}</div>
+														{% endif %}
+													</td>
+													<td class="right">
+														<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][amount]" value="{{ item['quantity'] }}" size="3" disabled="disabled"/>
+														{% if (error['cdek_orders']['package'][package_id]['item'][row]['amount'] is defined) %}
+															<div class="text-danger">{{ error['cdek_orders']['package'][package_id]['item'][row]['amount'] }}</div>
+														{% endif %}
+													</td>
+													<td class="right">{{ item['total'] }}</td>
+												</tr>
+												{% endfor %}
+											</tbody>
+											<tfoot>
+											{% for row,order_total in cdek_orders['totals'] %}
+												<tr>
+													<td class="right {{ order_total['code'] }}" colspan="5">{{ order_total['title'] }}</td>
+													<td class="right {{ order_total['code'] }}">{{ order_total['text'] }}</td>
+												</tr>
+											{% endfor %}
+											</tfoot>
+										</table>
+									</div>
+									{% endfor %}
+								</div>
+								<div id="order-courier" class="tab-pane">
+									<table class="form table">
+										<tbody>
+										<tr>
+											<td colspan="2">
+												<span class="help"><em class="red">{{ text_attention }}</em></span>
+												<ul class="help">
+													<li>Вызов курьера возможно сделать только на будущую дату;</li>
+													<li>На один день возможно не более одного вызова курьера на один адрес;</li>
+													<li>{{ text_courier_hour_range }}.</li>
+												</ul>
+											</td>
+										</tr>
+										<tr class="parent">
+											<td><label for="cdek-orders-courier-call">{{ entry_courier_call }}</label></td>
+												<td>
+													<select id="cdek-orders-courier-call" name="cdek_orders[courier][call]" class="toggle" data-toggletarget="#cdek-orders-courier-call-block">
+                                                        {% for key,value in boolean_variables %}
+															<option value="{{ key }}"{% if (cdek_orders['courier']['call'] is defined and cdek_orders['courier']['call'] == key) %} selected="selected"{% endif %}>{{ value }}</option>
+                                                        {% endfor %}
+													</select>
+												</td>
+										</tr>
+											<tr>
+												<td colspan="2" class="include">
+													<div id="cdek-orders-courier-call-block" style="{% if (cdek_orders['courier']['call'] is not defined or not cdek_orders['courier']['call']) %} {{ " display:none" }}{% endif %}">
+														<table class="form table">
+															<tbody>
+															<tr>
+																<td colspan="2"><h4>{{ text_courier }}</h4></td>
+															</tr>
+															<tr>
+																<td><label for="cdek-orders-courier-date"><span class="required">*</span> {{ entry_courier_date }}</label></td>
+																<td>
+																	<input id="cdek-orders-courier-date" class="date" type="text" name="cdek_orders[courier][date]" value="{% if (cdek_orders['courier']['date'] is not empty) %}{{ cdek_orders['courier']['date'] }}{% endif %}" size="8" />
+                                                                    {% if (error['cdek_orders']['courier']['date'] is defined) %}
+																		<div class="text-danger">{{ error['cdek_orders']['courier']['date'] }}</div>
+                                                                    {% endif %}
+																</td>
+															</tr>
+															<tr>
+																<td><label for="cdek-orders-courier-time-beg"><span class="required">*</span> {{ entry_courier_time }}</label></td>
+																<td>
+																	<span class="text-from">{{ text_from }}</span> <input id="cdek-orders-courier-time-beg" class="time" type="text" name="cdek_orders[courier][time_beg]" value="{% if (cdek_orders['courier']['time_beg'] is not empty) %}{{cdek_orders['courier']['time_beg'] }}{% endif %}" size="8" /> {{ text_to }} <input class="time" type="text" name="cdek_orders[courier][time_end]" value="{% if (cdek_orders['courier']['time_end'] is not empty) %}{{cdek_orders['courier']['time_end'] }}{% endif %}" size="8" />
+                                                                    {% if (error['cdek_orders']['courier']['time'] is defined) %}
+																		<div class="text-danger">{{ error['cdek_orders']['courier']['time'] }}</div>
+                                                                    {% endif %}
+																</td>
+															</tr>
+															<tr>
+																<td><label for="cdek-orders-courier-lunch-beg">{{ entry_courier_lunch }}</label></td>
+																<td>
+																	<span class="text-from">{{ text_from }}</span> <input id="cdek-orders-courier-lunch-beg" class="time" type="text" name="cdek_orders[courier][lunch_beg]" value="{% if (cdek_orders['courier']['lunch_beg'] is not empty) %}{{cdek_orders['courier']['lunch_beg'] }}{% endif %}" size="8" /> {{ text_to }} <input class="time" type="text" name="cdek_orders[courier][lunch_end]" value="{% if (cdek_orders['courier']['lunch_end'] is not empty) %}{{ cdek_orders['courier']['lunch_end'] }}{% endif %}" size="8" />
+                                                                    {% if (error['cdek_orders']['courier']['lunch'] is defined) %}
+																		<div class="text-danger">{{ error['cdek_orders']['courier']['lunch'] }}</div>
+                                                                    {% endif %}
+																</td>
+															</tr>
+															</tbody>
+														</table>
+													</div>
+												</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+								<div id="order-additional" class="tab-pane">
+									<table class="form table">
+										<tbody>
+										<tr>
+											<td>{{ entry_add_service }}</td>
+											<td>
+												<div class="scrollbox cervices">
+                                                    {% set class = 'even' %}
+                                                    {% set checked = [] %}
+                                                    {% if (cdek_orders['add_service'] is not empty) %}
+														{% set checked = []%}
+                                                        {% for service_id,cervice_info in cdek_orders['add_service'] %} {% set checked = checked|merge([service_id]) %}{% endfor %}
+                                                    {% endif %}
+                                                    {% for cervice_code,cervice_info in add_cervices %}
+                                                        {% if (cervice_info['hide'] is defined) %}
+                                                            {% set class = class == 'even' ? 'odd' : 'even' %}{% endif %}
+														<div class="{{ class }}">
+															<input type="checkbox" name="cdek_orders[add_service][{{ cervice_code }}][service_id]" value="{{ cervice_code }}" {% if cervice_code in checked %} {{ 'checked="checked"' }}{% endif %} />
+															<div class="item-description">
+                                                                {{ cervice_info['title'] }}<span class="help">{{ cervice_info['description'] }}</span>
+															</div>
+														</div>
+                                                    {% endfor %}
+												</div>
+                                                {% if (error['cdek_orders']['add_service'] is defined) %}
+													<div class="text-danger">{{ error['cdek_orders']['add_service'] }}</div>
+                                                {% endif %}
+											</td>
+										</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript"><!--
+
+$('.vtabs-link').click(function(){
+	$('#vtabs').find("a").removeClass('active');
+	$(this).addClass('active');
+});
+
+$('.cdek-order-cod').change(function(){
+	
+	var cod_enable = $(this).val();
+	var context = $(this).closest('.vtabs-content');
+	var input = $('table.package-items td.package-item-payment input:text', context);
+    if (cod_enable == 1){
+		$('.package-item-payment select').attr('readonly', '').removeAttr('readonly');
+	}else{
+        $('.package-item-payment select').attr('readonly', 'readonly');
+	}
+	$(input).each(function(i,elem){
+	   if (cod_enable == 1){
+	       $(this).val($(this).data('value'));
+           $(this).attr('readonly', '').removeAttr('readonly');
+	   } else {
+           $(this).data('value', $(this).val());
+           $(this).val(0);
+           $(this).attr('readonly', 'readonly');
+	   }
+	});
+});
+
+    $('input.package-weight').change(function(){
+
+        var self = this;
+        var context = $(self).closest('div');
+        var weight = $(self).val();
+
+        if (!isNaN(weight) && weight > 0) {
+
+            $.ajax({
+                url: "index.php?route=extension/module/cdek_integrator/getAjaxPackingWeight&user_token={{ token }}&weight=" + weight,
+                dataType: "json",
+                beforeSend: function(jqXHR, settings){
+                    $('.help', context).text('');
+                    if (!$('.loader', context).length) $(self).after('<img class="loader" src="view/image/cdek_integrator/loader.gif" alt="Загрузка..." title="Загрузка..." />');
+                },
+                complete: function(jqXHR, textStatus) {
+                    $('.loader', context).remove();
+                },
+                success: function(json) {
+
+                    if (json.packing_weight) {
+
+                        $(self).data('packing_prefix', json.packing_weight.prefix);
+                        $(self).data('packing_weight', json.packing_weight.weight);
+
+                        $('.help', context).text(json.packing_weight.prefix + ' ' + json.packing_weight.weight + ' грамм');
+                    }
+
+                }
+            });
+
+        } else {
+            $('.help', context).text('');
+        }
+
+    });
+
+$('.tariff_switcher').change(function(event){
+	
+	var context = $(this).closest('.vtabs-content');
+	
+	$('.address-mode.pvz', context).hide();
+	
+	if ($(this).val() != 0) {
+		
+		var mode_id = $('option:selected', this).data('mode');
+		
+		if (mode_id == 1 || mode_id == 3) {
+			$('.address-mode.address', context).find('.form-group').addClass('required');
+			$(".address-mode.address").removeAttr('disabled');
+			$('.address-mode.pvz select').attr('disabled','disabled');
+		} else {
+			$('.address-mode.pvz', context).show();
+			$('.address-mode.address', context).hide();
+			$('.address-mode.pvz select').removeAttr('disabled');
+			$(".address-mode.address").attr('disabled','disabled');
+			$('.address-mode.address', context).find('.form-group').removeClass('required');
+		}
+		
+		$('.setting-mode-id', context).val(mode_id);
+		
+		//$('.address-mode' + className, context).show();
+		$(this).closest('td').find('.error').remove();
+	}
+	
+	$('.address-mode.shipment-point', context).hide();
+	
+	if ($(this).val() != 0) {
+		
+		var mode_id = $('option:selected', this).data('mode');
+		
+		if (mode_id == 1 || mode_id == 2 || mode_id == 5) {
+			$('.seller-adress', context).find('.form-group').addClass('required');			
+			$('.seller-adress', context).show();
+			$(".seller-adress input").removeAttr('disabled');
+			$('.address-mode.shipment-point select').attr('disabled','disabled');
+		} else {
+			$('.address-mode.shipment-point', context).show();
+			$('.address-mode.shipment-point select').removeAttr('disabled');
+			$('.seller-adress', context).hide();
+			$(".seller-adress input").attr('disabled','disabled');
+			$('.seller-adress', context).find('.form-group').removeClass('required');
+		}
+		
+		$('.setting-mode-id', context).val(mode_id);
+		
+		//$('.address-mode' + className, context).show();
+		$(this).closest('td').find('.error').remove();
+	}
+});
+
+$(".setting-city-name").bind('cityselect', function(){
+
+	var context = $(this).closest('.tab-pane');
+
+	var city_code = $('input.setting-city-id', context).val();
+
+	if (city_code != '') {
+
+		var element = $('.address-mode.pvz select', context);
+
+		$('option:gt(0)', element).remove();
+
+		$.ajax({
+			url: "index.php?route=extension/module/cdek_integrator/getPVZByCity&user_token={{ token }}&city_code=" + city_code,
+			dataType: "json",
+			beforeSend: function(jqXHR, settings){
+				if (!$('.address-mode.pvz .loader', context).length) $(element).after('<img class="loader" src="view/image/cdek_integrator/loader.gif" alt="Загрузка..." title="Загрузка..." />');
+			},
+			complete: function(jqXHR, textStatus) {
+				$('.address-mode.pvz .loader', context).remove();
+			},
+			success: function(json) {
+				if (json.List) {
+
+					var html = '';
+
+					for (var row in json.List) {
+						html += '<option value="' + json.List[row].Code + '" data-name="' + json.List[row].Name + '" data-y="' + json.List[row].y + '" data-x="' + json.List[row].x + '" data-address="' + json.List[row].Address + '" data-worktime="' + json.List[row].WorkTime + '" data-phone="' + json.List[row].Phone + '">' + json.List[row].Address + + '</option>';
+					}
+
+					if (html != '') {
+						$(element).append(html);
+
+					}
+				}
+
+				$(element).trigger('change');
+			}
+		});
+	}
+
+});
+
+function initTimepicker() {
+	
+	//$('.date').datepicker({dateFormat: 'yy-mm-dd'});
+	//$('.time').timepicker({timeFormat: 'hh:mm'});
+	$('.time').datetimepicker({
+		format: 'HH:mm',
+		pickDate: false,
+	})
+	$('.date').datetimepicker({
+		format: 'YYYY-MM-DD',
+		pickTime: false
+	})
+}
+
+initTimepicker();
+
+$('select.address-pvz-code').change(function(event){
+	$(this).parent().find('.pvz-wrapper').html('');
+	$(this).parent().find('.error').remove();
+	
+	if ($(this).val() != '') {
+		
+		var option = $('option[value=' + $(this).val() + ']', this);
+		
+		var html = '<p>' + $(option).data('name');
+		
+		if ($(option).data('x')) {
+			html += ' (<a href="http://maps.google.ru/maps?q=' + $(option).data('y') + ',' + $(option).data('x') + '" target="_blank">на карте</a>)';
+		}
+		
+		html += '</p>';
+		html += '<span class="help">';
+		html += '<strong>Адрес</strong>: ' + $(option).data('address') + '<br />';
+		
+		if ($(option).data('phone') && $(option).data('phone') != '-') {
+			html += '<strong>Телефон</strong>: ' + $(option).data('phone') + '<br />';
+		}
+		
+		if ($(option).data('worktime') && $(option).data('worktime') != '-') {
+			html += '<strong>Режим работы</strong>: ' + $(option).data('worktime');
+		}
+		
+		html += '</span>';
+		
+		$(this).parent().find('.pvz-wrapper').html(html);
+		
+	}
+	
+});
+
+
+//--></script>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+		$('#cdek-orders-recipient-city-name').autocomplete({
+			source: function(request,response) {
+				$.ajax({
+					url: "index.php?route=extension/module/cdek_integrator/getCityByName&user_token={{ token }}",
+					dataType: "json",
+					data: {
+						q: function () { return $('#cdek-orders-recipient-city-name').val() },
+						name_startsWith: function () { return $('#cdek-orders-recipient-city-name').val() }
+					},
+					success: function(data) {
+						response($.map(data, function(item) {
+							return {
+								label: item.full_name,
+								value: item.full_name,
+								id: item.code
+							}
+						}));
+					}
+				});
+			},
+			minLength: 1,
+			select: function(event) {
+				$('.setting-city-id').parent().find('.error').remove();
+				$('.setting-city-id').val(event.id);
+				$('.setting-city-name').val(event.value);
+				$('.js.city-from').text(event.label).show();
+				$('.setting-city-name').hide();
+
+				$('.setting-city-name').trigger('cityselect');
+
+				$('.setting-city-id').trigger('change');
+
+			}
+		});
+		$('input[name=\'checkpackage\']').trigger('change');   
+    });
+	$('input[name=\'checkpackage\']').on('change', function() {
+		var check = $('input[name=\'checkpackage\']:checked').val();
+		if (check == 1) {
+			$('.package').css('display', 'block');
+			$('.package input').removeAttr('disabled');
+			$('.package select').removeAttr('disabled');
+			$('.full_package').css('display', 'none');
+			$('.full_package input').attr('disabled', 'disabled');
+			$('.full_package select').attr('disabled', 'disabled');
+		} else {
+			$('.package').css('display', 'none');	  
+			$('.package input').attr('disabled', 'disabled');
+			$('.package select').attr('disabled', 'disabled');
+			$('.full_package').css('display', 'block');
+			$('.full_package input').removeAttr('disabled');
+			$('.full_package select').removeAttr('disabled');
+		}
+	});
+</script>
+{{ footer }}

@@ -1,0 +1,64 @@
+<style type="text/css">
+#bor td{
+  border:0px;
+}
+#wk_webservices td{
+    font-family: 'Trebuchet MS';
+    font-size: 13px;
+    height: 24px;
+    margin: 0;
+    min-width: 108px;
+
+    text-indent: 5px;
+    vertical-align: top;
+}
+
+#wk_webservices select{
+    border: 1px solid #C8C8C8;
+    border-radius: 3px 3px 3px 3px;
+    color: #323232;
+    font-family: Tahoma;
+    width: 550px;
+    padding: 4px;
+}
+
+#wk_webservices select:focus{
+    border: 1px solid #fafafa;
+    background: white;
+    box-shadow: 0px 0px 5px #007eff;
+}
+
+</style>
+{{ header }}
+<div id="content">
+<div class="breadcrumb">
+  {% for breadcrumb in breadcrumbs %}
+  {{ breadcrumb.separator }}<a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a>
+  {% endfor %}
+</div>
+{% if error_warning %}
+<div class="warning">{{ error_warning }}</div>
+{% endif %}
+
+<div class="box">
+  <div class="heading">
+    <h1><img src="view/image/module.png" alt="" /> {{ heading_title }}</h1>
+    <div class="buttons"><a onclick="$('#form').submit();" class="button"><span>{{ button_save }}</span></a><a onclick="location = '{{ cancel }}';" class="button"><span>{{ button_cancel }}</span></a></div>
+  </div>
+  <div class="content">
+    <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form">
+	    <table class="form" id="wk_webservices">
+        <tr>
+          <td>
+            Welcome You Have sccussfully installed Opencart Webservices .
+            <input type="hidden" name="wk_webservices_enable" value="1" >
+          </td>
+        </tr>
+
+      </table>
+    </form>
+  </div>
+</div>
+</div>
+
+{{ footer }}

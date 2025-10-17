@@ -1,0 +1,940 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  
+  <div id="SmartSorting">
+  
+    <div class="page-header">
+      <div class="container-fluid">
+        <div class="pull-right">
+          <button type="button" data-submission_type="save" data-code="{{ code }}" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary">
+            <i class="fa fa-save"></i>
+          </button>        
+          <button  type="button" data-submission_type="save-and-close" data-code="{{ code }}" data-toggle="tooltip" title="{{ button_save_and_close }}" class="btn btn-info">
+            <i class="fa fa-save"></i>
+          </button>        
+          <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+        </div>
+        <h1>{{ heading_title }} <span class="version badge">{{ version }}</span></h1>
+        <ul class="breadcrumb">
+          {% for breadcrumb in breadcrumbs %}
+          <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+          {% endfor %}
+        </ul> 
+      </div>
+    </div>
+    <div class="container-fluid">    
+      
+      {% if error_warning %}
+        <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+          <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+      {% endif %}
+
+      {% if success %}
+        <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+          <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+      {% endif %}
+
+      <div id="fountainG" class="ajax-loader">
+        <div id="fountainG_1" class="fountainG"></div>
+        <div id="fountainG_2" class="fountainG"></div>
+        <div id="fountainG_3" class="fountainG"></div>
+        <div id="fountainG_4" class="fountainG"></div>
+        <div id="fountainG_5" class="fountainG"></div>
+        <div id="fountainG_6" class="fountainG"></div>
+        <div id="fountainG_7" class="fountainG"></div>
+        <div id="fountainG_8" class="fountainG"></div>
+      </div>
+      
+      <div class="panel panel-default">
+
+        <div class="panel-heading">
+          <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+        </div>
+
+        <div class="panel-body">
+
+          <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-{{ code }}" class="form-horizontal" autocomplete="off">
+
+            <ul id="global-tabs" class="nav nav-tabs">
+              <li class="active"><a href="#tab-smart-sorting" data-toggle="tab"><i class="fa fa-sort green" aria-hidden="true"></i>{{ tab_smart_sorting }}</a></li>
+              <li><a href="#tab-config" data-toggle="tab"><i class="fa fa-cog violet"></i>{{ tab_config }}</a></li>
+              <li><a href="#tab-help" data-toggle="tab"><i class="fa fa-life-ring marine-blue" aria-hidden="true"></i>{{ tab_help }} <span class="badge badge-tab-help"></span></a></li>
+            </ul>
+
+            <div class="tab-content">
+
+              <div id="tab-smart-sorting" class="tab-pane active">
+
+                <ul id="smart-sorting-tabs" class="nav nav-tabs">
+                  <li class="active"><a href="#tab-smart-sorting-category" data-toggle="tab"><i class="fa fa-tags green" aria-hidden="true"></i>{{ tab_smart_sorting_category }}</a></li>
+                  <li><a href="#tab-smart-sorting-manufacturer" data-toggle="tab"><i class="fa fa-wrench violet" aria-hidden="true"></i>{{ tab_smart_sorting_manufacturer }}</a></li>
+                  <li><a href="#tab-smart-sorting-search" data-toggle="tab"><i class="fa fa-search marine-blue" aria-hidden="true"></i>{{ tab_smart_sorting_search }}</a></li>
+                  <li><a href="#tab-smart-sorting-special" data-toggle="tab"><i class="fa fa-cube orange" aria-hidden="true"></i>{{ tab_smart_sorting_special }}</a></li>
+                </ul>
+                
+                <div class="tab-content">
+                  
+                  <div id="tab-smart-sorting-category" class="tab-pane active">
+                    
+                    <div class="vtabs">
+                      <div class="col-sm-3">
+                        <ul id="smart-sorting-category-store-tabs" class="vtabs-tab-container nav nav-tabs tabs-left"><!--<ul class="vtabs-tab-container nav nav-pills nav-stacked">-->
+                          {% for store in stores %}
+                            <li class="{{ store.store_id == 0 ? "active" : "" }}">
+                              <a href="#tab-smart-sorting-category-store-{{ store.store_id }}" data-toggle="tab">
+                                <span class="{{ module_smart_sorting[store.store_id].category_status == false ? 'red' : '' }}">{{ store.name }}</span>
+                              </a>
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      <!-- .col -->
+
+                      <hr class="hidden-lg hidden-md hidden-sm" />
+
+                      <div class="vtabs-content-container tab-content col-sm-9">
+                        
+                        {% for store in stores %}
+                        
+                          <fieldset id="tab-smart-sorting-category-store-{{ store.store_id }}" class="tab-pane {{ store.store_id == 0 ? "active" : "" }}">
+
+                            <legend>{{ store.name }} - {{ text_heading_category }}</legend>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-category-status">
+                                <span data-toggle="tooltip" title="{{ help_category_status }}">{{ entry_category_status }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][category_status]" id="input-store-{{ store.store_id }}-category-status" class="form-control">
+                                      {% if module_smart_sorting[store.store_id].category_status %}
+                                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                                      <option value="0">{{ text_disabled }}</option>
+                                      {% else %}
+                                      <option value="1">{{ text_enabled }}</option>
+                                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                                      {% endif %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-category-disable-sorting-methods">
+                                {{ entry_category_disable_sorting_methods }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="well well-sm well-scrollable mbm">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][category_disable_sorting_methods][]" value="" />
+                                  {% for category_sorting_method in category_sorting_methods %}
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" name="{{ code }}[{{ store.store_id }}][category_disable_sorting_methods][]" value="{{ category_sorting_method.value }}" {{ (category_sorting_method.value in module_smart_sorting[store.store_id].category_disable_sorting_methods) ? 'checked' : '' }} />
+                                      {{ category_sorting_method.text }}
+                                    </label>
+                                  </div>
+                                  {% endfor %}
+                                </div>
+                                <div class="check-uncheck-all-container">
+                                  <a href="#" class="well-check-all btn btn-info btn-sm">{{ text_check_all }}</a>
+                                  <a href="#" class="well-uncheck-all btn btn-warning btn-sm">{{ text_uncheck_all }}</a>
+                                </div>                      
+                              </div>
+                            </div>
+
+                            <div class="space-10"></div>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-category-default-sort-order">
+                                {{ entry_category_default_sort_order }}
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][category_default_sort_order]" id="input-store-{{ store.store_id }}-category-default-sort-order" class="form-control">
+                                      {% for category_sorting_method in category_sorting_methods %}
+                                        <option value="{{ category_sorting_method.value }}" {{ category_sorting_method.value == module_smart_sorting[store.store_id].category_default_sort_order ? 'selected="selected"' : '' }}>{{ category_sorting_method.text }}</option>
+                                      {% endfor %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+                            
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-category-product-limit-status"></label>
+                              <div class="col-sm-10">
+                                <div class="bs-switch bs-switch-common" data-bs-switch-toggle-target="toggle-store-{{ store.store_id }}-category-product-limit-status">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][category_product_limit_status]" value="0" />
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" id="input-store-{{ store.store_id }}-category-product-limit-status" name="{{ code }}[{{ store.store_id }}][category_product_limit_status]" value="1" {{ module_smart_sorting[store.store_id].category_product_limit_status == true ? 'checked' : '' }} />
+                                      {{ entry_category_product_limit_status }}
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>                            
+                            
+                            <div class="{{ module_smart_sorting[store.store_id].category_product_limit_status == true ? 'open' : 'closed' }}" data-bs-switch-toggle-id="toggle-store-{{ store.store_id }}-category-product-limit-status">
+                            
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-category-product-limits">
+                                  <span data-toggle="tooltip" title="{{ help_category_product_limits }}">{{ entry_category_product_limits }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-6">
+                                      <input type="text" name="{{ code }}[{{ store.store_id }}][category_product_limits]" value="{{ module_smart_sorting[store.store_id].category_product_limits }}" id="input-store-{{ store.store_id }}-category-product-limits" class="form-control" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-category-default-product-limit">
+                                  <span data-toggle="tooltip" title="{{ help_category_default_product_limit }}">{{ entry_category_default_product_limit }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-3 col-md-2">
+                                      <input type="number" name="{{ code }}[{{ store.store_id }}][category_default_product_limit]" value="{{ module_smart_sorting[store.store_id].category_default_product_limit }}" id="input-store-{{ store.store_id }}-category-default-product-limit" class="form-control" min="1" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>                   
+                            </div>
+ 
+                          </fieldset>
+                        
+                        {% endfor %}
+
+                      </div>
+                      <!-- /.vtabs-content-container -->
+                    </div>
+                    <!-- /.vtabs -->
+
+                  </div>
+                  <!-- /.tab-pane -->
+                  
+                  <div id="tab-smart-sorting-manufacturer" class="tab-pane">
+
+                    <div class="vtabs">
+                      <div class="col-sm-3">
+                        <ul id="smart-sorting-manufacturer-store-tabs" class="vtabs-tab-container nav nav-tabs tabs-left"><!--<ul class="vtabs-tab-container nav nav-pills nav-stacked">-->
+                          {% for store in stores %}
+                            <li class="{{ store.store_id == 0 ? "active" : "" }}">
+                              <a href="#tab-smart-sorting-manufacturer-store-{{ store.store_id }}" data-toggle="tab">
+                                <span class="{{ module_smart_sorting[store.store_id].manufacturer_status == false ? 'red' : '' }}">{{ store.name }}</span>
+                              </a>
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      <!-- .col -->
+
+                      <hr class="hidden-lg hidden-md hidden-sm" />
+
+                      <div class="vtabs-content-container tab-content col-sm-9">
+                        
+                        {% for store in stores %}
+                        
+                          <fieldset id="tab-smart-sorting-manufacturer-store-{{ store.store_id }}" class="tab-pane {{ store.store_id == 0 ? "active" : "" }}">
+
+                            <legend>{{ store.name }} - {{ text_heading_manufacturer }}</legend>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-manufacturer-status">
+                                <span data-toggle="tooltip" title="{{ help_manufacturer_status }}">{{ entry_manufacturer_status }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][manufacturer_status]" id="input-store-{{ store.store_id }}-manufacturer-status" class="form-control">
+                                      {% if module_smart_sorting[store.store_id].manufacturer_status %}
+                                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                                      <option value="0">{{ text_disabled }}</option>
+                                      {% else %}
+                                      <option value="1">{{ text_enabled }}</option>
+                                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                                      {% endif %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-manufacturer-disable-sorting-methods">
+                                {{ entry_manufacturer_disable_sorting_methods }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="well well-sm well-scrollable mbm">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][manufacturer_disable_sorting_methods][]" value="" />
+                                  {% for manufacturer_sorting_method in manufacturer_sorting_methods %}
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" name="{{ code }}[{{ store.store_id }}][manufacturer_disable_sorting_methods][]" value="{{ manufacturer_sorting_method.value }}" {{ manufacturer_sorting_method.value in module_smart_sorting[store.store_id].manufacturer_disable_sorting_methods ? 'checked' : '' }} />
+                                      {{ manufacturer_sorting_method.text }}
+                                    </label>
+                                  </div>
+                                  {% endfor %}
+                                </div>
+                                <div class="check-uncheck-all-container">
+                                  <a href="#" class="well-check-all btn btn-info btn-sm">{{ text_check_all }}</a>
+                                  <a href="#" class="well-uncheck-all btn btn-warning btn-sm">{{ text_uncheck_all }}</a>
+                                </div>                      
+                              </div>
+                            </div>
+
+                            <div class="space-10"></div>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-manufacturer-default-sort-order">
+                                {{ entry_manufacturer_default_sort_order }}
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][manufacturer_default_sort_order]" id="input-store-{{ store.store_id }}-manufacturer-default-sort-order" class="form-control">
+                                      {% for manufacturer_sorting_method in manufacturer_sorting_methods %}
+                                        <option value="{{ manufacturer_sorting_method.value }}" {{ manufacturer_sorting_method.value == module_smart_sorting[store.store_id].manufacturer_default_sort_order ? 'selected="selected"' : '' }}>{{ manufacturer_sorting_method.text }}</option>
+                                      {% endfor %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+                            
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-manufacturer-product-limit-status"></label>
+                              <div class="col-sm-10">
+                                <div class="bs-switch bs-switch-common" data-bs-switch-toggle-target="toggle-store-{{ store.store_id }}-manufacturer-product-limit-status">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][manufacturer_product_limit_status]" value="0" />
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" id="input-store-{{ store.store_id }}-manufacturer-product-limit-status" name="{{ code }}[{{ store.store_id }}][manufacturer_product_limit_status]" value="1" {{ module_smart_sorting[store.store_id].manufacturer_product_limit_status == true ? 'checked' : '' }} />
+                                      {{ entry_manufacturer_product_limit_status }}
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>                            
+                            
+                            <div class="{{ module_smart_sorting[store.store_id].manufacturer_product_limit_status == true ? 'open' : 'closed' }}" data-bs-switch-toggle-id="toggle-store-{{ store.store_id }}-manufacturer-product-limit-status">
+                            
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-manufacturer-product-limits">
+                                  <span data-toggle="tooltip" title="{{ help_manufacturer_product_limits }}">{{ entry_manufacturer_product_limits }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-6">
+                                      <input type="text" name="{{ code }}[{{ store.store_id }}][manufacturer_product_limits]" value="{{ module_smart_sorting[store.store_id].manufacturer_product_limits }}" id="input-store-{{ store.store_id }}-manufacturer-product-limits" class="form-control" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-manufacturer-default-product-limit">
+                                  <span data-toggle="tooltip" title="{{ help_manufacturer_default_product_limit }}">{{ entry_manufacturer_default_product_limit }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-3 col-md-2">
+                                      <input type="number" name="{{ code }}[{{ store.store_id }}][manufacturer_default_product_limit]" value="{{ module_smart_sorting[store.store_id].manufacturer_default_product_limit }}" id="input-store-{{ store.store_id }}-manufacturer-default-product-limit" class="form-control" min="1" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>                   
+                            </div>
+ 
+                          </fieldset>
+                        
+                        {% endfor %}
+
+                      </div>
+                      <!-- /.vtabs-content-container -->
+                    </div>
+                    <!-- /.vtabs -->
+                    
+                  </div>
+                  <!-- /.tab-pane -->
+                  
+                  <div id="tab-smart-sorting-search" class="tab-pane">
+
+                    <div class="vtabs">
+                      <div class="col-sm-3">
+                        <ul id="smart-sorting-search-store-tabs" class="vtabs-tab-container nav nav-tabs tabs-left"><!--<ul class="vtabs-tab-container nav nav-pills nav-stacked">-->
+                          {% for store in stores %}
+                            <li class="{{ store.store_id == 0 ? "active" : "" }}">
+                              <a href="#tab-smart-sorting-search-store-{{ store.store_id }}" data-toggle="tab">
+                                <span class="{{ module_smart_sorting[store.store_id].search_status == false ? 'red' : '' }}">{{ store.name }}</span>
+                              </a>
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      <!-- .col -->
+
+                      <hr class="hidden-lg hidden-md hidden-sm" />
+
+                      <div class="vtabs-content-container tab-content col-sm-9">
+                        
+                        {% for store in stores %}
+                        
+                          <fieldset id="tab-smart-sorting-search-store-{{ store.store_id }}" class="tab-pane {{ store.store_id == 0 ? "active" : "" }}">
+
+                            <legend>{{ store.name }} - {{ text_heading_search }}</legend>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-search-status">
+                                <span data-toggle="tooltip" title="{{ help_search_status }}">{{ entry_search_status }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][search_status]" id="input-store-{{ store.store_id }}-search-status" class="form-control">
+                                      {% if module_smart_sorting[store.store_id].search_status %}
+                                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                                      <option value="0">{{ text_disabled }}</option>
+                                      {% else %}
+                                      <option value="1">{{ text_enabled }}</option>
+                                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                                      {% endif %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-search-disable-sorting-methods">
+                                {{ entry_search_disable_sorting_methods }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="well well-sm well-scrollable mbm">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][search_disable_sorting_methods][]" value="" />
+                                  {% for search_sorting_method in search_sorting_methods %}
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" name="{{ code }}[{{ store.store_id }}][search_disable_sorting_methods][]" value="{{ search_sorting_method.value }}" {{ (search_sorting_method.value in module_smart_sorting[store.store_id].search_disable_sorting_methods) ? 'checked' : '' }} />
+                                      {{ search_sorting_method.text }}
+                                    </label>
+                                  </div>
+                                  {% endfor %}
+                                </div>
+                                <div class="check-uncheck-all-container">
+                                  <a href="#" class="well-check-all btn btn-info btn-sm">{{ text_check_all }}</a>
+                                  <a href="#" class="well-uncheck-all btn btn-warning btn-sm">{{ text_uncheck_all }}</a>
+                                </div>                      
+                              </div>
+                            </div>
+
+                            <div class="space-10"></div>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-search-default-sort-order">
+                                {{ entry_search_default_sort_order }}
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][search_default_sort_order]" id="input-store-{{ store.store_id }}-search-default-sort-order" class="form-control">
+                                      {% for search_sorting_method in search_sorting_methods %}
+                                        <option value="{{ search_sorting_method.value }}" {{ search_sorting_method.value == module_smart_sorting[store.store_id].search_default_sort_order ? 'selected="selected"' : '' }}>{{ search_sorting_method.text }}</option>
+                                      {% endfor %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+                            
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-search-product-limit-status"></label>
+                              <div class="col-sm-10">
+                                <div class="bs-switch bs-switch-common" data-bs-switch-toggle-target="toggle-store-{{ store.store_id }}-search-product-limit-status">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][search_product_limit_status]" value="0" />
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" id="input-store-{{ store.store_id }}-search-product-limit-status" name="{{ code }}[{{ store.store_id }}][search_product_limit_status]" value="1" {{ module_smart_sorting[store.store_id].search_product_limit_status == true ? 'checked' : '' }} />
+                                      {{ entry_search_product_limit_status }}
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>                            
+                            
+                            <div class="{{ module_smart_sorting[store.store_id].search_product_limit_status == true ? 'open' : 'closed' }}" data-bs-switch-toggle-id="toggle-store-{{ store.store_id }}-search-product-limit-status">
+                            
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-search-product-limits">
+                                  <span data-toggle="tooltip" title="{{ help_search_product_limits }}">{{ entry_search_product_limits }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-6">
+                                      <input type="text" name="{{ code }}[{{ store.store_id }}][search_product_limits]" value="{{ module_smart_sorting[store.store_id].search_product_limits }}" id="input-store-{{ store.store_id }}-search-product-limits" class="form-control" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-search-default-product-limit">
+                                  <span data-toggle="tooltip" title="{{ help_search_default_product_limit }}">{{ entry_search_default_product_limit }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-3 col-md-2">
+                                      <input type="number" name="{{ code }}[{{ store.store_id }}][search_default_product_limit]" value="{{ module_smart_sorting[store.store_id].search_default_product_limit }}" id="input-store-{{ store.store_id }}-search-default-product-limit" class="form-control" min="1" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>                   
+                            </div>
+ 
+                          </fieldset>
+                        
+                        {% endfor %}
+
+                      </div>
+                      <!-- /.vtabs-content-container -->
+                    </div>
+                    <!-- /.vtabs -->
+                    
+                  </div>
+                  <!-- /.tab-pane -->
+                  
+                  <div id="tab-smart-sorting-special" class="tab-pane">
+
+                    <div class="vtabs">
+                      <div class="col-sm-3">
+                        <ul id="smart-sorting-special-store-tabs" class="vtabs-tab-container nav nav-tabs tabs-left"><!--<ul class="vtabs-tab-container nav nav-pills nav-stacked">-->
+                          {% for store in stores %}
+                            <li class="{{ store.store_id == 0 ? "active" : "" }}">
+                              <a href="#tab-smart-sorting-special-store-{{ store.store_id }}" data-toggle="tab">
+                                <span class="{{ module_smart_sorting[store.store_id].special_status == false ? 'red' : '' }}">{{ store.name }}</span>
+                              </a>
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      <!-- .col -->
+
+                      <hr class="hidden-lg hidden-md hidden-sm" />
+
+                      <div class="vtabs-content-container tab-content col-sm-9">
+                        
+                        {% for store in stores %}
+                        
+                          <fieldset id="tab-smart-sorting-special-store-{{ store.store_id }}" class="tab-pane {{ store.store_id == 0 ? "active" : "" }}">
+
+                            <legend>{{ store.name }} - {{ text_heading_special }}</legend>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-special-status">
+                                <span data-toggle="tooltip" title="{{ help_special_status }}">{{ entry_special_status }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][special_status]" id="input-store-{{ store.store_id }}-special-status" class="form-control">
+                                      {% if module_smart_sorting[store.store_id].special_status %}
+                                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                                      <option value="0">{{ text_disabled }}</option>
+                                      {% else %}
+                                      <option value="1">{{ text_enabled }}</option>
+                                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                                      {% endif %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-special-disable-sorting-methods">
+                                {{ entry_special_disable_sorting_methods }}</span>
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="well well-sm well-scrollable mbm">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][special_disable_sorting_methods][]" value="" />
+                                  {% for special_sorting_method in special_sorting_methods %}
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" name="{{ code }}[{{ store.store_id }}][special_disable_sorting_methods][]" value="{{ special_sorting_method.value }}" {{ (special_sorting_method.value in module_smart_sorting[store.store_id].special_disable_sorting_methods) ? 'checked' : '' }} />
+                                      {{ special_sorting_method.text }}
+                                    </label>
+                                  </div>
+                                  {% endfor %}
+                                </div>
+                                <div class="check-uncheck-all-container">
+                                  <a href="#" class="well-check-all btn btn-info btn-sm">{{ text_check_all }}</a>
+                                  <a href="#" class="well-uncheck-all btn btn-warning btn-sm">{{ text_uncheck_all }}</a>
+                                </div>                      
+                              </div>
+                            </div>
+
+                            <div class="space-10"></div>
+
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-special-default-sort-order">
+                                {{ entry_special_default_sort_order }}
+                              </label>
+                              <div class="col-sm-10">
+                                <div class="row">
+                                  <div class="col-sm-6">
+                                    <select name="{{ code }}[{{ store.store_id }}][special_default_sort_order]" id="input-store-{{ store.store_id }}-special-default-sort-order" class="form-control">
+                                      {% for special_sorting_method in special_sorting_methods %}
+                                        <option value="{{ special_sorting_method.value }}" {{ special_sorting_method.value == module_smart_sorting[store.store_id].special_default_sort_order ? 'selected="selected"' : '' }}>{{ special_sorting_method.text }}</option>
+                                      {% endfor %}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+                            
+                            <div class="form-group">
+                              <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-special-product-limit-status"></label>
+                              <div class="col-sm-10">
+                                <div class="bs-switch bs-switch-common" data-bs-switch-toggle-target="toggle-store-{{ store.store_id }}-special-product-limit-status">
+                                  <input type="hidden" name="{{ code }}[{{ store.store_id }}][special_product_limit_status]" value="0" />
+                                  <div class="checkbox">
+                                    <label>
+                                      <input type="checkbox" id="input-store-{{ store.store_id }}-special-product-limit-status" name="{{ code }}[{{ store.store_id }}][special_product_limit_status]" value="1" {{ module_smart_sorting[store.store_id].special_product_limit_status == true ? 'checked' : '' }} />
+                                      {{ entry_special_product_limit_status }}
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>                            
+                            
+                            <div class="{{ module_smart_sorting[store.store_id].special_product_limit_status == true ? 'open' : 'closed' }}" data-bs-switch-toggle-id="toggle-store-{{ store.store_id }}-special-product-limit-status">
+                            
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-special-product-limits">
+                                  <span data-toggle="tooltip" title="{{ help_special_product_limits }}">{{ entry_special_product_limits }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-6">
+                                      <input type="text" name="{{ code }}[{{ store.store_id }}][special_product_limits]" value="{{ module_smart_sorting[store.store_id].special_product_limits }}" id="input-store-{{ store.store_id }}-special-product-limits" class="form-control" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="form-group">
+                                <label class="col-sm-2 control-label" for="input-store-{{ store.store_id }}-special-default-product-limit">
+                                  <span data-toggle="tooltip" title="{{ help_special_default_product_limit }}">{{ entry_special_default_product_limit }}</span>
+                                </label>
+                                <div class="col-sm-10">
+                                  <div class="row">
+                                    <div class="col-sm-3 col-md-2">
+                                      <input type="number" name="{{ code }}[{{ store.store_id }}][special_default_product_limit]" value="{{ module_smart_sorting[store.store_id].special_default_product_limit }}" id="input-store-{{ store.store_id }}-special-default-product-limit" class="form-control" min="1" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>                   
+                            </div>
+ 
+                          </fieldset>
+                        
+                        {% endfor %}
+
+                      </div>
+                      <!-- /.vtabs-content-container -->
+                    </div>
+                    <!-- /.vtabs --> 
+                    
+                  </div>
+                  <!-- /.tab-pane -->
+                  
+                  
+                </div>
+                <!-- /#tab-smart-sorting .tab-content -->
+                
+              </div>
+              <!-- /#tab-smart-sorting .tab-pane -->
+
+              <div id="tab-config" class="tab-pane">
+
+                <fieldset>
+                  <legend>{{ text_general }}</legend>
+
+                  <div class="form-group">
+                    <label class="col-sm-2 control-label" for="input-config-status">
+                      <span data-toggle="tooltip" title="{{ help_config_status }}">{{ entry_config_status }}</span>
+                    </label>
+                    <div class="col-sm-4">
+                      <select name="config[{{ code }}_status]" id="input-config-status" class="form-control">
+                        {% if config[code~'_status'] %}
+                          <option value="1" selected="selected">{{ text_enabled }}</option>
+                          <option value="0">{{ text_disabled }}</option>
+                        {% else %}
+                          <option value="1">{{ text_enabled }}</option>
+                          <option value="0" selected="selected">{{ text_disabled }}</option>
+                        {% endif %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <hr />
+
+                  <div class="form-group">
+                    <label class="col-sm-2 control-label" for="input-config-js-debug">
+                      <span data-toggle="tooltip" title="{{ help_config_js_debug }}">{{ entry_config_js_debug }}</span>
+                    </label>
+                    <div class="col-sm-10">
+                      <div class="bs-switch bs-switch-common" data-bs-switch-toggle-target="js_debug">
+                        <input type="hidden" name="config[{{ code }}_config][js_debug]" value="0" />
+                        <div class="checkbox">
+                          <label>
+                            <input type="checkbox" id="input-config-js-debug" class="input-config-js-debug" name="config[{{ code }}_config][js_debug]" value="1" {{ config[code~'_config'].js_debug == 1 ? 'checked' : '' }} /> 
+                          </label>
+                        </div>                            
+                      </div>
+                    </div>
+                  </div>
+                        
+                  <hr />
+
+                  <div class="form-group">
+                    <label class="col-sm-2 control-label" for="input-config-sold-time-range">
+                      <span data-toggle="tooltip" title="{{ help_config_sold_time_range }}">{{ entry_config_sold_time_range }}</span>
+                    </label>
+                    <div class="col-sm-10">
+                      <div class="row">
+                        <div class="col-sm-3 col-md-2">
+                          <input type="number" id="input-config-sold-time-range" class="input-config-sold-time-range form-control" name="config[{{ code }}_config][sold_time_range]" value="{{ config[code~'_config'].sold_time_range }}" min="0" /> 
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                          
+                  <hr />
+
+                  <div class="form-group">
+                    <label class="col-sm-2 control-label" for="input-config-reviewed-time-range">
+                      <span data-toggle="tooltip" title="{{ help_config_reviewed_time_range }}">{{ entry_config_reviewed_time_range }}</span>
+                    </label>
+                    <div class="col-sm-10">
+                      <div class="row">
+                        <div class="col-sm-3 col-md-2">
+                          <input type="number" id="input-config-reviewed-time-range" class="input-config-reviewed-time-range form-control" name="config[{{ code }}_config][reviewed_time_range]" value="{{ config[code~'_config'].reviewed_time_range }}" min="0" /> 
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                        
+                </fieldset>
+
+              </div>
+              <!-- /.tab-pane -->              
+              
+              <div id="tab-help" class="tab-pane">               
+                <div class="row">
+                  <div class="col-sm-6">
+                    <h3><i class="fa fa-key green"></i> License information</h3>
+                    <div class="alert-lic-notice-container"></div>
+                    <p>The following table shows your current license information:</p>
+                    <table class="table table-striped table-lic-info">
+                      <tbody>
+                        <tr>
+                          <td class="text-right">Licensee:</td>
+                          <td class="lic-licensee-name">{{ config[code~'_lic'].licensee.name }}</td>
+                        </tr>
+                        <tr>
+                          <td class="text-right">Domain:</td>
+                          <td class="lic-server">{{ config[code~'_lic'].server }}</td>
+                        </tr>
+                        <tr>
+                          <td class="text-right">Purchase Date:</td>
+                          <td class="lic-purchased_at-formatted">{{ config[code~'_lic'].purchased_at.formatted }}</td>
+                        </tr>
+                        <tr>
+                          <td class="text-right">Expiration Date:</td>
+                          <td class="lic-expires_at-formatted">{{ config[code~'_lic'].expires_at.formatted }}</td>
+                        </tr>
+                        <tr>
+                          <td class="text-right">Status:</td>
+                          <td class="lic-status-name"><i class="fa {{ config[code~'_lic'].status.icon.name }} fa-fw" style="color: {{ config[code~'_lic'].status.icon.color }}"></i> {{ config[code~'_lic'].status.name }}</td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td class="text-right" colspan="2">
+                            <a class="btn btn-primary btn-manage-license-keys" target="_blank" href="{{ config[code~'_lic'].urls.list }}" role="button">Manage License Keys</a>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    <input type="hidden" name="config[{{ code }}_lic][key]" value="{{ config[code~'_lic'].key }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][licensee][name]" value="{{ config[code~'_lic'].licensee.name }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][server]" value="{{ config[code~'_lic'].server }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][purchased_at][raw]" value="{{ config[code~'_lic'].purchased_at.raw }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][purchased_at][formatted]" value="{{ config[code~'_lic'].purchased_at.formatted }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][expires_at][raw]" value="{{ config[code~'_lic'].expires_at.raw }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][expires_at][formatted]" value="{{ config[code~'_lic'].expires_at.formatted }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][status][id]" value="{{ config[code~'_lic'].status.id }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][status][name]" value="{{ config[code~'_lic'].status.name }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][status][icon][name]" value="{{ config[code~'_lic'].status.icon.name }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][status][icon][color]" value="{{ config[code~'_lic'].status.icon.color }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][checked_at][raw]" value="{{ config[code~'_lic'].checked_at.raw }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][checked_at][formatted]" value="{{ config[code~'_lic'].checked_at.formatted }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][urls][list]" value="{{ config[code~'_lic'].urls.list }}" readonly="readonly" />
+                    <input type="hidden" name="config[{{ code }}_lic][urls][detail]" value="{{ config[code~'_lic'].urls.detail }}" readonly="readonly" />
+                    <hr>
+                    <h3><i class="fa fa-info-circle marine-blue"></i> About application</h3>
+                    <p>{{ heading_title }}, version {{ version }}</p>
+                    <p>Copyright &copy; {{ copyright_notice_year }} Cuispi. All rights reserved.</p>
+                  </div>
+                  <div class="col-sm-6">
+                    <div class="well">
+                      <h3><i class="fa fa-life-ring orange"></i> Priority support</h3>
+                      <p>
+                        Cuispi Priority Support is a priority response support channel that is staffed with our friendly and experienced Technical Support team. 
+                        Priority Support is automatically included in your initial purchase price for a period of one year.
+                      </p>
+                      <p class="text-right">
+                        <a class="btn btn-primary" target="_blank" href="http://support.cuispi.com/" role="button">Get Support</a>
+                      </p>
+                    </div>
+                    <div class="well">
+                      <h3><i class="fa fa-tags aqua-green"></i> Other products you may like</h3>
+                      <p>
+                        Cuispi products, systems and services offer innovative solutions with outstanding added value to customers. 
+                        Check out all our top quality products now!
+                      </p>
+                      <p class="text-right">
+                        <a class="btn btn-primary" target="_blank" href="http://productcentral.cuispi.com/" role="button">Find Out More</a>
+                      </p>                      
+                    </div>                   
+                  </div>
+                </div>
+                <!-- /.row -->
+              </div>
+              <!-- /.tab-pane -->             
+              
+            </div>
+
+          </form>
+          
+          <input type="hidden" id="lic-key" name="lic_key" value="{{ lic_key }}" readonly="readonly" />          
+          
+        </div>
+      </div>
+    </div>
+    <!-- /.container-fluid -->
+  
+  </div>
+  <!-- /#SmartSorting -->  
+  
+  <div id="Activation" style="display: none;">
+    <div class="page-header">
+      <div class="container-fluid">
+        <div class="pull-right">
+          <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+        </div>
+        <h1>{{ heading_title }} <span class="version badge">{{ version }}</span></h1>
+        <ul class="breadcrumb">
+          {% for breadcrumb in breadcrumbs %}
+          <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+          {% endfor %}
+        </ul>             
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title"><i class="fa fa-key"></i> Activate {{ heading_title }}</h3>
+        </div>
+        <div class="panel-body">
+          <form>
+            <p class="help-block">Please enter your license key to activate the extension.</p>
+            <p class="help-block">
+              Don&rsquo;t have a license key? <a href="http://getkey.cuispi.com/opencart" target="_blank">Get one now! <i class="fa fa-external-link"></i></a>
+            </p>
+            <div class="form-group">
+              <label for="input-lic-key">License Key</label>
+              <div class="row">
+                <div class="col-sm-6">
+                  <input type="text" id="input-lic-key" class="form-control" name="config[{{ code }}_config][lic][key]" value="" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"  maxlength="29">
+                </div>
+              </div>
+              <p class="help-block">
+                Before you enter your license key, please make sure that you are connected to the Internet and press &ldquo;Activate&rdquo; button to initiate the license verification process.
+              </p>
+            </div>
+            <button type="button" id="btn-activate" class="btn btn-lg btn-success">Activate</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /#Activation -->
+  
+  <script type="text/javascript">
+  $(function() {
+
+    {% if initialization_errors.error_admin_js_not_loaded is defined %}
+
+      $('#SmartSorting').hide();
+      alert('{{ initialization_errors.error_admin_js_not_loaded }}');
+      
+    {% else %}
+      
+      var options = {};
+
+      options['js_debug'] = Boolean({{ config[code~'_config'].js_debug }});
+      options['oc_version'] = '{{ constant('VERSION') }}';
+      options['code'] = '{{ code }}';
+      options['_code'] = '{{ _code }}';
+      options['extension_path'] = '{{ extension_path }}';
+      options['initialization_errors'] = {{ initialization_errors | json_encode() }};
+      options['user_token_key'] = '{{ user_token_key }}';
+      options['user_token_value'] = '{{ user_token_value }}';
+
+      options['stores'] = {{ stores | json_encode() }};
+
+      options['lic'] = {
+        svr: '{{ server_name }}',
+        lang: '{{ admin_language }}',
+        tz: '{{ date_default_timezone }}',
+        ip: '{{ server_addr }}'
+      }; 
+
+      options['translations'] = {
+        text_on: '{{ text_on }}',
+        text_off: '{{ text_off }}'
+      };
+
+      $('#SmartSorting').smartSorting(options);
+      
+    {% endif %}	
+    
+  });
+  </script> 
+  
+</div>
+<!-- /#content -->
+
+{{ footer }}

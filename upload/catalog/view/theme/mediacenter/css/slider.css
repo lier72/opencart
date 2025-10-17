@@ -1,0 +1,123 @@
+/* Revolution slider */
+
+.tp-bullets {
+    background: #fff;
+    padding: 10px;
+    bottom: 0 !important;
+    border-radius: 3px 3px 0 0;
+    -webkit-border-radius: 3px 3px 0 0;
+    -moz-border-radius: 3px 3px 0 0;
+    opacity: 1;
+    -webkit-transition: all 200ms ease-out;
+    -moz-transition: all 200ms ease-out;
+    -o-transition: all 200ms ease-out;
+    transition: all 200ms ease-out;
+}
+
+.tp-bullets.hidebullets{
+    bottom: -40px !important;
+}
+
+.tp-bullets.simplebullets.round .bullet {
+    width: 15px;
+    height: 15px;
+    background: #d3d3d3;
+    margin: 0 5px;
+    border-radius: 100%;
+    -webkit-transition: all 200ms ease-out;
+    -moz-transition: all 200ms ease-out;
+    -o-transition: all 200ms ease-out;
+    transition: all 200ms ease-out;
+}
+
+.rev_slider_wrapper{
+    margin-top: 30px !important;
+}
+
+#slider.full-width .rev_slider_wrapper{
+    margin-top: 0px !important;
+}
+
+.tparrows {
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=30)";
+    -moz-opacity: 0.3;
+    -khtml-opacity: 0.3;
+    opacity: 0.3;
+    -webkit-transition: all 200ms ease-out;
+    -moz-transition: all 200ms ease-out;
+    -o-transition: all 200ms ease-out;
+    transition: all 200ms ease-out;
+    -webkit-transform: translateZ(5px);
+}
+
+.tp-leftarrow.default:hover, .tp-rightarrow.default:hover {
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
+    -moz-opacity: 0.8;
+    -khtml-opacity: 0.8;
+    opacity: 0.8;
+}
+
+.tp-leftarrow.default,
+.tp-rightarrow.default {
+    background-image: none;
+    width: 30px;
+    height: 30px;
+    font-size: 21px;
+    color: #FFF;
+    background-color: #d3d3d3;
+    border: none;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    border-radius: 3px;
+    -webkit-transition: all 200ms ease-in-out;
+    -moz-transition: all 200ms ease-in-out;
+    -o-transition: all 200ms ease-in-out;
+    transition: all 200ms ease-in-out;
+}
+
+#slider.full-width .tp-leftarrow.default,
+#slider.full-width .tp-rightarrow.default{
+    width: 60px;
+    height: 60px;
+    font-size: 42px;
+}
+
+.tp-leftarrow.default{
+    margin-left: 0;
+}
+.tp-leftarrow.default.hidearrows{
+    margin-left: -10px;
+}
+.tp-rightarrow.default{
+    margin-right: 0;
+}
+.tp-rightarrow.default.hidearrows{
+    margin-right: -10px;
+}
+
+.tp-leftarrow.default:before,
+.tp-rightarrow.default:before{
+    font-family: fontawesome;
+    position: relative;
+    left: 20%;
+}
+
+.tp-leftarrow.default:before{
+    content: "\f053";
+}
+
+.tp-rightarrow.default:before{
+    content: "\f054";
+    left: 28%;
+}
+
+.revslider-big-text .stronger {
+    font-size: 90px;
+    font-weight: 900;
+    line-height: 70px;
+}
+
+.revslider-big-text .stronger .sign {
+    font-size: 42px;
+    vertical-align: super;
+}

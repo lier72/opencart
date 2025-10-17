@@ -1,0 +1,218 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <a href="{{ insert }}" data-toggle="tooltip" title="{{ button_insert }}" class="btn btn-primary"><i class="fa fa-plus"></i></a>
+
+        <a onclick="confirm('{{ sync_confirm }}') ?  window.location.href =  '{{ action }}' : false;" data-toggle="tooltip" title="{{ button_sync }}" class="btn btn-default"><i class="fa fa-refresh"></i></a>
+
+        <button type="button" data-toggle="tooltip" title="{{ button_delete }}" class="btn btn-danger" onclick="confirm('{{ text_confirm }}') ? $('#form-carrier').submit() : false;"><i class="fa fa-trash-o"></i></button>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success"><i class="fa fa-check-circle"></i> {{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-list"></i> {{ heading_title }}</h3>
+      </div>
+      <div class="panel-body">
+
+        <div class="well">
+          <div class="row">
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label class="control-label" for="filter-erpid">{{ wk_erpid }}</label>
+                <input type="text" name="filter_erpid" value="{{ filter_erpid }}" placeholder="{{ wk_erpid }}" id="filter-erpid" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="control-label" for="filter-opid">{{ wk_opencartid }}</label>
+                <input type="text" name="filter_opid" value="{{ filter_opid }}" placeholder="{{ wk_opencartid }}" id="filter-opid" class="form-control" />
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label class="control-label" for="filter-name">{{ wk_name }}</label>
+                <input type="text" name="filter_name" value="{{ filter_name }}" placeholder="{{ wk_name }}" id="filter-name" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="control-label" for="filter-by">{{ wk_createdby }}</label>
+                <input type="text" name="filter_by" value="{{ filter_by }}" placeholder="{{ wk_createdby }}" id="filter-by" class="form-control" />
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="form-group">
+                <label class="control-label" for="input-status">{{ wk_issync }}</label>
+                <select name="filter_status" class="form-control">
+                  <option value="*"></option>
+                  {% if filter_status %}
+                  <option value="1" selected="selected">{{ text_syncreq }}</option>
+                  {% else %}
+                  <option value="1">{{ text_syncreq }}</option>
+                  {% endif %}
+
+                  {% if filter_status is not null and not filter_status %}
+                  <option value="0" selected="selected">{{ text_syncnreq}}</option>
+                  {% else %}
+                  <option value="0">{{ text_syncnreq }}</option>
+                  {% endif %}
+                </select>
+
+              </div>
+              <button type="button" onclick="filter();" class="btn btn-primary pull-right"><i class="fa fa-search"></i> {{ button_filter }}</button>
+            </div>
+          </div>
+        </div>
+
+        <form action="{{ delete }}" method="post" enctype="multipart/form-data" id="form-carrier">
+
+          <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td width="1" style="text-align: center;"><input type="checkbox" onclick="$('input[name*=\'selected\']').attr('checked', this.checked);" /></td>
+                  <td class="center">
+                    {% if sort is same as ('id') %}
+                    <a href="{{ sort_id }}" class="{{ order|length }}">{{ wkid }}</a>
+                    {% else %}
+                    <a href="{{ sort_id }}" > {{ wkid }}</a>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if sort is same as ('erp_carrier_id') %}
+                    <a href="{{ sort_erpid }}" class="{{ order|length }}">{{ wk_erpid }}</a>
+                    {% else %}
+                    <a href="{{ sort_erpid }}" > {{ wk_erpid }}</a>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if sort is same as ('opencart_carrier_cod') %}
+                    <a href="{{ sort_opid }}" class="{{ order|length }}">{{ wk_opencartid }}</a>
+                    {% else %}
+                    <a href="{{ sort_opid }}" > {{ wk_opencartid }}</a>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if sort is same as ('name') %}
+                    <a href="{{ sort_name }}" class="{{ order|length }}">{{ wk_name }}</a>
+                    {% else %}
+                    <a href="{{ sort_name }}" > {{ wk_name }}</a>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if sort is same as ('created_by') %}
+                    <a href="{{ sort_by }}" class="{{ order|length }}">{{ wk_createdby }}</a>
+                    {% else %}
+                    <a href="{{ sort_by }}" > {{ wk_createdby }}</a>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                     {% if sort is same as ('created_on') %}
+                    <a href="{{ sort_date }}" class="{{ order|length }}">{{ wk_createdon }}</a>
+                    {% else %}
+                    <a href="{{ sort_date }}" > {{ wk_createdon }}</a>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if sort is same as ('is_synch') %}
+                    <a href="{{ sort_status }}" class="{{ order|length }}">{{ wk_issync }}
+                    {% else %}
+                    <a href="{{ sort_status }}" > {{ wk_issync }}</a>
+                    {% endif %}
+                  </td>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% if carrier %}
+                {% for value in carrier %}
+                <tr>
+                  <td style="text-align: center;">{% if value.selected %}
+                      <input type="checkbox" name="selected[]" value="{{ value.id }}" checked="checked" />
+                      {% else %}
+                      <input type="checkbox" name="selected[]" value="{{ value.id }}" />
+                      {% endif %}</td>
+                  <td class="left" >{{ value.id }}</td>
+                  <td class="left" >{{ value.erpid }}</td>
+                  <td class="left" >{{ value.cartid }}</td>
+                  <td class="left" >{{ value.name }}</td>
+                  <td class="left">{{  value.createdby }}</td>
+                  <td class="left" >{{ value.createddate }}</td>
+                  <td class="left">{{  value.sync }}</td>
+                </tr>
+                {% endfor %}
+                 {% else %}
+                <tr>
+                  <td class="text-center" colspan="11">{{ "no records founds" }}</td>
+                </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </form>
+        <div class="row">
+          <div class="col-sm-6 text-left">{{ pagination }}</div>
+          <div class="col-sm-6 text-right">{{ results }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ footer }}
+
+
+<script type="text/javascript"><!--
+
+function filter() {
+  url = 'index.php?route=catalog/wk_odoo_carrier&user_token={{ user_token }}';
+
+  var filter_id = $('input[name=\'filter_id\']').val();
+
+  if (filter_id) {
+    url += '&filter_id=' + encodeURIComponent(filter_id);
+  }
+
+  var filter_erpid = $('input[name=\'filter_erpid\']').val();
+
+  if (filter_erpid) {
+    url += '&filter_erpid=' + encodeURIComponent(filter_erpid);
+  }
+
+  var filter_opid = $('input[name=\'filter_opid\']').val();
+
+  if (filter_opid) {
+    url += '&filter_opid=' + encodeURIComponent(filter_opid);
+  }
+
+  var filter_by = $('input[name=\'filter_by\']').val();
+
+  if (filter_by) {
+    url += '&filter_by=' + encodeURIComponent(filter_by);
+  }
+
+  var filter_status = $('select[name=\'filter_status\']').val();
+
+  if (filter_status != '*') {
+    url += '&filter_status=' + encodeURIComponent(filter_status);
+  }
+
+  location = url;
+}
+//--></script>

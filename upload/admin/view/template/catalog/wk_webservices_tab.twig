@@ -1,0 +1,182 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <a onclick="location = '{{ insert }}';" data-toggle="tooltip" title="{{ button_insert }}" class="btn btn-success" ><i class="fa fa-plus"></i></a>
+        <a onclick="$('#form-delete').submit();" data-toggle="tooltip" class="btn btn-danger" title="{{ button_delete }}"><i class="fa fa-trash-o"></i></a>
+     </div>
+
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success"><i class="fa fa-check-circle"></i> {{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+
+
+     <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-list"></i> {{ heading_title }}</h3>
+      </div>
+      <div class="panel-body">
+        <div class="well">
+          <div class="row">
+
+            <div class="col-sm-6">
+              <div class="form-group">
+                <label class="control-label" for="input-user">{{ wk_user }}</label>
+                    <input type="text" name="filter_user" value="{{ filter_user }}" placeholder="{{ wk_user }}" id="input-user" class="form-control" />
+                    </span>
+              </div>
+
+              <div class="form-group">
+                <label class="control-label" for="input-model">{{ wk_email }}</label>
+                <input type="text" name="filter_email" value="{{ filter_email }}" placeholder="{{ wk_email }}" id="input-model" class="form-control" />
+              </div>
+            </div>
+
+            <div class="col-sm-6">
+              <div class="form-group">
+                <label class="control-label" for="input-name">{{ entry_name }}</label>
+                    <input type="text" name="filter_name" value="{{ filter_name }}" placeholder="{{ entry_name }}" id="input-name" class="form-control" />
+                    </span>
+              </div>
+              <div class="form-group">
+                <label class="control-label" for="input-status">{{ wk_status}}</label>
+                <select name="filter_status" id="input-status" class="form-control">
+                  <option value="*"></option>
+                  {% if filter_status %}
+                  <option value="1" selected="selected">{{ entry_enabled }}</option>
+                  {% else %}
+                  <option value="1">{{ entry_enabled }}</option>
+                  {% endif %}
+                  {% if filter_status is not null and not filter_status %}
+                  <option value="0" selected="selected">{{ entry_disabled}}</option>
+                  {% else %}
+                  <option value="0">{{ entry_disabled }}</option>
+                  {% endif %}
+                </select>
+              </div>
+            </div>
+
+              <button type="button" onclick="filter();" class="btn btn-primary pull-right"><i class="fa fa-search"></i>Filter</button>
+            </div><!--row-->
+          </div><!--wall-->
+        </div><!--panel-body-->
+      </div><!--panel panel-default-->
+
+      <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-delete" class="form-horizontal">
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+              <tr>
+                <td width="1" style="text-align: center;" class="text-center"><input type="checkbox" onclick="$('input[name*=\'selected\']').attr('checked', this.checked);" /></td>
+                <td class="text-left">{% if sort is same as ('user') %}
+                  <a href="{{ sort_user }}" class="{{ order|length }}">{{ wk_user }}</a>
+                  {% else %}
+                  <a href="{{ sort_user }}">{{ wk_user }}</a>
+                  {% endif %}
+                  </td>
+                <td class="text-left">{% if sort is same as ('name') %}
+                  <a href="{{ sort_name }}" class="{{ order|length }}">{{ entry_name }}</a>
+                  {% else %}
+                  <a href="{{ sort_name }}">{{ entry_name }}</a>
+                  {% endif %}
+                  </td>
+                <td class="text-left">{% if sort is same as ('c.email') %}
+                  <a href="{{ sort_email }}" class="{{ order|length }}">{{ wk_email }}</a>
+                  {% else %}
+                  <a href="{{ sort_email }}">{{ wk_email }}</a>
+                  {% endif %}</td>
+                <td class="text-left">{% if sort is same as ('c.status') %}
+                  <a href="{{ sort_status }}" class="{{ order|length }}">{{ wk_status}}</a>
+                  {% else %}
+                  <a href="{{ sort_status }}">{{ wk_status}}</a>
+                  {% endif %}
+                  </td>
+                  <td class="text-left">{{ wk_key_description }}</td>
+                <td class="text-right">{{ entry_action }}</td>
+              </tr>
+            </thead>
+
+            <tbody>
+               {% if keys %}
+            {% for value in keys %}
+            <tr>
+              <td style="text-align: center;" class="text-center">{% if value.selected %}
+                  <input type="checkbox" name="selected[]" value="{{ value.id }}" checked="checked" />
+                  {% else %}
+                  <input type="checkbox" name="selected[]" value="{{ value.id }}" />
+                  {% endif %}</td>
+                    <td class="text-left" >{{ value.user }}</td>
+                    <td class="text-left" >{{ value.name }}</td>
+                    <td class="text-left" >{{ value.email }}</td>
+                    <td class="text-left">{{  value.status|capitalize }}</td>
+                    <td class="text-left">{{  value.key_description }}</td>
+                    <td class="text-center">
+                {% for action in value.action %}
+                    <a href="{{ action.href }}" data-toggle="tooltip" title="{{ action.text }}" class="btn btn-primary" > <i class="fa fa-pencil"></i></a>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endfor %}
+             {% else %}
+              <tr>
+                <td class="text-center" colspan="11">{{ entry_no_result }}</td>
+              </tr>
+            {% endif %}
+            </tbody>
+          </table>
+        </div><!-- table-responsive-->
+      </form>
+
+  </div><!--container-fluid-->
+</div><!--content-->
+<script type="text/javascript">
+function filter(){
+
+  url = 'index.php?route=catalog/wk_webservices_tab&user_token={{ user_token }}';
+
+  var filter_user = $('input[name=\'filter_user\']').val();
+
+  if(filter_user){
+    url += '&filter_user=' + encodeURIComponent(filter_user);
+  }
+
+  var filter_email = $('input[name=\'filter_email\']').val();
+
+  if(filter_email){
+    url += '&filter_email=' + encodeURIComponent(filter_email);
+  }
+
+  var filter_name = $('input[name=\'filter_name\']').val();
+
+  if(filter_name){
+    url += '&filter_name=' + encodeURIComponent(filter_name);
+  }
+
+  var filter_status = $('select[name=\'filter_status\']').val();
+
+  if (filter_status != '*') {
+    url += '&filter_status=' + encodeURIComponent(filter_status);
+  }
+
+location = url;
+}
+</script>
+{{ footer }}

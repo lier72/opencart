@@ -1,0 +1,76 @@
+	@charset "UTF-8";
+
+
+    .seomatic_success,
+    .seomatic_warning,
+    .seomatic_attention {
+        margin-bottom:0; 
+        border-radius:0; 
+        -moz-border-radius:0; 
+        -webkit-border-radius:0;
+    }
+
+
+    /*
+        
+        Rank Report Styles
+
+    */
+
+    .seomatic-serp {
+        position:relative;
+    }
+
+    .seomatic-serp-up,
+    .seomatic-serp-down,
+    .seomatic-serp-static {
+        -webkit-border-radius:2px;
+        -moz-border-radius:2px;
+        border-radius:2px;
+        color:#FFF;
+        font-style:normal;
+        padding:2px 7px;
+        white-space:nowrap;
+    }
+
+    .seomatic-serp-up .fa-chevron-up,
+    .seomatic-serp-down .fa-chevron-down {
+        font-size:9px;
+        position:relative;
+        top:-2px;
+        padding-right:3px;
+        z-index:0;
+    }
+
+    .seomatic-serp-up {
+        background:#5cb85c;
+    }
+
+    .seomatic-serp-down {
+        background:#d9534f;
+    }
+
+    .seomatic-serp-static {
+        background:#ccc;
+    }
+
+    /*
+        1.4.x fixes
+    */
+    .scrollbox img {
+        float:right;
+        cursor:pointer;
+    }
+
+
+
+    /*
+        List Styles
+    */
+    .no-keywords-text span {
+        visibility:hidden;
+        color:#AAA;
+    }
+    .no-keywords-text:hover span {
+        visibility:visible;
+    }
