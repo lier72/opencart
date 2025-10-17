@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData">
+  <component name="PublishConfigData" serverName="oc3.uniqsport.ru" exclude=".svn;.cvs;.idea;.DS_Store;.git;.hg;*.hprof;*.pyc;*.pdf;*.zip">
     <serverData>
-      <paths name="opencart-website">
+      <paths name="oc3.uniqsport.ru">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="www/oc3.uniqsport.ru" local="$PROJECT_DIR$" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath path="/www/oc3.uniqsport.ru/image/cache" />
+            <excludedPath path="/www/oc3.uniqsport.ru/image/catalog" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

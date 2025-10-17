@@ -113,7 +113,10 @@ class ControllerStartupStartup extends Controller {
 		$this->registry->set('customer', $customer);
 		
 		// Customer Group
-		if (isset($this->session->data['customer']) && isset($this->session->data['customer']['customer_group_id'])) {
+        //Modified by Maxim Surdu in order to make two price system work
+        $this->config->set('customer_default_group_id',$this->config->get('config_customer_group_id'));
+        // The end of modifications
+        if (isset($this->session->data['customer']) && isset($this->session->data['customer']['customer_group_id'])) {
 			// For API calls
 			$this->config->set('config_customer_group_id', $this->session->data['customer']['customer_group_id']);
 		} elseif ($this->customer->isLogged()) {

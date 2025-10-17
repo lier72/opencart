@@ -230,6 +230,11 @@ class ControllerProductProduct extends Controller {
 			$data['text_minimum'] = sprintf($this->language->get('text_minimum'), $product_info['minimum']);
 			$data['text_login'] = sprintf($this->language->get('text_login'), $this->url->link('account/login', '', true), $this->url->link('account/register', '', true));
 
+// Modification made by Maxim Surdu
+//            $data['text_dealer_price'] = $this->language->get('text_dealer_price');
+//            $data['text_price_warning'] = $this->language->get('text_price_warning');
+// End of modifications
+
 			$this->load->model('catalog/review');
 
 			$data['tab_review'] = sprintf($this->language->get('tab_review'), $product_info['reviews']);
@@ -241,15 +246,16 @@ class ControllerProductProduct extends Controller {
 			$data['reward'] = $product_info['reward'];
 			$data['points'] = $product_info['points'];
 			$data['description'] = html_entity_decode($product_info['description'], ENT_QUOTES, 'UTF-8');
-
+// Modifications to show stock quantity only if user is specified group user
 			if ($product_info['quantity'] <= 0) {
 				$data['stock'] = $product_info['stock_status'];
-			} elseif ($this->config->get('config_stock_display')) {
+			} elseif ($this->config->get('config_stock_display') || ($this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id'))){
+
 				$data['stock'] = $product_info['quantity'];
 			} else {
 				$data['stock'] = $this->language->get('text_instock');
 			}
-
+// End of modifications
 			$this->load->model('tool/image');
 
 			if ($product_info['image']) {
@@ -274,14 +280,22 @@ class ControllerProductProduct extends Controller {
 					'thumb' => $this->model_tool_image->resize($result['image'], $this->config->get('theme_' . $this->config->get('config_theme') . '_image_additional_width'), $this->config->get('theme_' . $this->config->get('config_theme') . '_image_additional_height'))
 				);
 			}
-
-			if ($this->customer->isLogged() || !$this->config->get('config_customer_price')) {
-				$data['price'] = $this->currency->format($this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
+// this is Max's addition to show retail price. Only define reatil_price when user is logged
+//			echo '$product_id =' . $product_info['product_id'] .'$price =' . $product_info['price'] . '$retail_prce =' . $product_info['retail_price'] . '<br/>';
+            if ($this->customer->isLogged() && $this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id')){
+				$data['retail_price'] = $this->currency->format($this->tax->calculate($product_info['retail_price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
 			} else {
-				$data['price'] = false;
+				$data['reatil_price'] = false;
 			}
+//			echo '$data[retail_price] =' . $data['retail_price'] . '<br/>';
+// the end of modifications
+            if (($this->config->get('config_customer_price') && $this->customer->isLogged()) || !$this->config->get('config_customer_price')) {
+                $data['price'] = $this->currency->format($this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
+            } else {
+                $data['price'] = false;
+            }
 
-			if ((float)$product_info['special']) {
+            if ((float)$product_info['special']) {
 				$data['special'] = $this->currency->format($this->tax->calculate($product_info['special'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
 			} else {
 				$data['special'] = false;
