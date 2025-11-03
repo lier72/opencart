@@ -1,76 +1,36 @@
 <?php  
 class order_print extends cdek_integrator implements exchange {
 	
-	private $xml;
+	private $post;
 	
-	protected $method = 'orders_print.php';
+	protected $method = 'v2/print/orders';
 	
 	public function setData($data) {
-		$this->xml = $this->createXML($data);
+		$this->post = $this->createPost($data);
 	}
 	
 	public function getData(){
-		return array(
-			'xml_request' => $this->xml
-		);
+		return $this->post;
 	}
 	
-	public function prepareResponse($data, &$error) {
-		
-		if (strpos($data, '<?xml') === 0) {
-			
-			$response = new SimpleXMLElement($data);
-			
-			if (isset($response->Order)) {
-			
-				foreach ($response->Order as $order) {
-					
-					$attributes = $order->attributes();
-					
-					if (isset($attributes->ErrorCode) ) {
-						$error[(string)$attributes->ErrorCode] = mb_convert_encoding((string)($attributes->Msg), 'UTF-8', 'auto');
-					}
-					
-				}
+	private function createPost($data = array()) {
+
+		$prints['orders'] = array();
 				
-			}
-			
-		}
-		
-		return $data;
-	}
-	
-	public function getParser() {
-		return new parser_original();
-	}
-	
-	private function createXML($data = array()) {
-		
-		$xml = '<?xml version="1.0" encoding="UTF-8" ?>';
-		
 		if (!empty($data)) {
 			
 			if (!empty($data['order'])) {
 				
-				$copy_count = isset($data['copy_count']) ? (int)$data['copy_count'] : 1;
-				
-				$xml .= '<OrdersPrint Date="' . $this->date . '" Account="' . $this->account . '" Secure="' . $this->getSecure() . '" OrderCount="' . count($data['order']) . '" CopyCount="' . $copy_count . '">';
-				
+				$prints['copy_count'] = isset($data['copy_count']) ? (int)$data['copy_count'] : 2;
+							
 				foreach ($data['order'] as $order_info) {
 					
-					$attribute = array();
-					
 					if (isset($order_info['dispatch_number'])) {
-						$attribute[] =	'DispatchNumber="' . $order_info['dispatch_number'] . '"';
+						$prints['orders'][] = array('order_uuid' => $order_info['dispatch_number']);
 					} else {
-						$attribute[] =	'Number="' . $order_info['order_id'] . '"';
-						$attribute[] =	'Date="' . $this->date . '"';
+						$prints['orders'][] = array('cdek_number' => $order_info['order_id']);
 					}
-					
-					$xml .= '<Order ' . implode(' ', $attribute) . ' />';
 				}
-				
-				$xml .= '</OrdersPrint>';
 				
 			} else {
 				throw new Exception('Component "order_print" invalid argument.');
@@ -78,7 +38,7 @@ class order_print extends cdek_integrator implements exchange {
 		
 		}
 		
-		return $xml;
+		return $prints;
 	}
 	
 }

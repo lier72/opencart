@@ -131,3 +131,7 @@ $_['error_permission']           = 'У Вас нет прав для измен�
 $_['error_action']               = 'Не удалось завершить действие!';
 $_['error_filetype']             = 'Неправильный тип файла!';
 
+// Odoo Integration
+$_['button_create_odoo']         = 'Создать в Odoo';
+$_['text_confirm_odoo']          = 'Вы уверены, что хотите создать этот заказ в Odoo?';
+

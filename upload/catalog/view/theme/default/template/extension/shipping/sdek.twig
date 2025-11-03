@@ -9,7 +9,7 @@
 
     {% if (usePvz) %}
 		<div class="sdek_pvz_info">
-			<a id="selectCdekPvz" href="javascript:" onclick="cdekPvzClick('{{ code }}', '{{ pvzType }}');">Выбрать пункт выдачи</a>
+			<a id="selectCdekPvz" href="javascript:" onclick="cdekPvzClick('{{ code }}', '{{ pvzType }}');">Выбрать ПВЗ</a>
             {% set pvz_address = '' %}
             {% if (selected_pvz[code] is defined) %}
                 {% set pvz_address = selected_pvz[code] %}

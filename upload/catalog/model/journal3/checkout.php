@@ -518,6 +518,16 @@ class ModelJournal3Checkout extends Model {
 					$quote = $this->{'model_extension_shipping_' . $result['code']}->getQuote($this->session->data['shipping_address']);
 
 					if ($quote) {
+						// Map 'description' to 'desc' for each shipping option (for CDEK PVZ support)
+						if (isset($quote['quote']) && is_array($quote['quote'])) {
+							foreach ($quote['quote'] as &$option) {
+								if (isset($option['description']) && !isset($option['desc'])) {
+									$option['desc'] = $option['description'];
+								}
+							}
+							unset($option);
+						}
+
 						$method_data[$result['code']] = array(
 							'title'      => $quote['title'],
 							'quote'      => $quote['quote'],
@@ -541,6 +551,16 @@ class ModelJournal3Checkout extends Model {
 					$quote = $this->{'model_extension_shipping_' . $result['code']}->getQuote($this->session->data['shipping_address']);
 
 					if ($quote) {
+						// Map 'description' to 'desc' for each shipping option (for CDEK PVZ support)
+						if (isset($quote['quote']) && is_array($quote['quote'])) {
+							foreach ($quote['quote'] as &$option) {
+								if (isset($option['description']) && !isset($option['desc'])) {
+									$option['desc'] = $option['description'];
+								}
+							}
+							unset($option);
+						}
+
 						$method_data[$result['code']] = array(
 							'title'      => $quote['title'],
 							'quote'      => $quote['quote'],

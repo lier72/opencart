@@ -1,0 +1,146 @@
+{{ header }}{{ column_left }}
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="pull-right">
+                <button type="submit" form="form-odoo-config" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+                <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+            </div>
+            <h1>{{ heading_title }}</h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="container-fluid">
+        {% if error_warning %}
+        <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        {% endif %}
+        {% if success %}
+        <div class="alert alert-success"><i class="fa fa-check-circle"></i> {{ success }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        {% endif %}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+            </div>
+            <div class="panel-body">
+                <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-odoo-config" class="form-horizontal">
+                    <div class="alert alert-info">
+                        <i class="fa fa-info-circle"></i>
+                        {{ text_environment_status }}:
+                        {% if test_environment %}
+                        <strong>{{ text_test_mode }}</strong>
+                        {% else %}
+                        <strong>{{ text_production_mode }}</strong>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-url">{{ entry_url }}</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="odoo_url" value="{{ odoo_url }}" placeholder="{{ entry_url }}" id="input-url" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-db">{{ entry_database }}</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="odoo_db_name" value="{{ odoo_db_name }}" placeholder="{{ entry_database }}" id="input-db" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-username">{{ entry_username }}</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="odoo_user" value="{{ odoo_user }}" placeholder="{{ entry_username }}" id="input-username" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-password">{{ entry_password }}</label>
+                        <div class="col-sm-10">
+                            <input type="password" name="odoo_password" value="{{ odoo_password }}" placeholder="{{ entry_password }}" id="input-password" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-port">{{ entry_port }}</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="odoo_port" value="{{ odoo_port }}" placeholder="{{ entry_port }}" id="input-port" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label"></label>
+                        <div class="col-sm-10">
+                            <button type="button" id="button-test" class="btn btn-info"><i class="fa fa-check"></i> {{ button_test_connection }}</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-sync-batch-size">
+                         <span data-toggle="tooltip" title="{{ help_sync_batch_size }}">
+                            {{ entry_sync_batch_size }}
+                        </span>
+                        </label>
+                        <div class="col-sm-10">
+                            <input type="number" name="sync_batch_size" value="{{ sync_batch_size }}"
+                                   placeholder="{{ entry_sync_batch_size }}"
+                                   id="input-sync-batch-size" class="form-control" min="1" max="100" />
+                            {% if error_sync_batch_size %}
+                            <div class="text-danger">{{ error_sync_batch_size }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-debug">{{ entry_debug }}</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="debug" value="{{ debug }}" placeholder="{{ entry_debug }}" id="input-debug" class="form-control" />
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript"><!--
+    $('#button-test').on('click', function() {
+        // Decode any HTML entities (e.g. &amp;) that may be present in the URL
+        // then only append the user_token if the URL does not already contain a user_token param.
+        var testUrl = $('<div/>').html('{{ test_connection_url|raw }}').text();
+
+        console.log('Sending request to:', testUrl);
+        console.log('Form data:', $('#form-odoo-config').serialize());
+
+        $.ajax({
+            url: testUrl,
+            type: 'POST',
+            data: $('#form-odoo-config').serialize(),
+            dataType: 'json',
+            beforeSend: function() {
+                $('#button-test').prop('disabled', true);
+            },
+            complete: function() {
+                $('#button-test').prop('disabled', false);
+            },
+            success: function(json) {
+                $('.alert').remove();
+                if (json['success']) {
+                    $('#content > .container-fluid').prepend('<div class="alert alert-success"><i class="fa fa-check-circle"></i> ' + json['success'] + '</div>');
+                }
+                if (json['error']) {
+                    $('#content > .container-fluid').prepend('<div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> ' + json['error'] + '</div>');
+                }
+            }
+        });
+    });
+    //--></script>
+{{ footer }}

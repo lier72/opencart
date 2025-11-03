@@ -71,47 +71,65 @@ class ControllerCatalogProduct extends Controller {
 
 		$this->load->model('catalog/product');
 
+		$is_ajax_request = isset($this->request->post['ajax']) && $this->request->post['ajax'] === '1';
+
 		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validateForm()) {
-			$this->model_catalog_product->editProduct($this->request->get['product_id'], $this->request->post);
+		    try{
+                $this->model_catalog_product->editProduct($this->request->get['product_id'], $this->request->post);
 
-			$this->session->data['success'] = $this->language->get('text_success');
+                $this->session->data['success'] = $this->language->get('text_success');
 
-			$url = '';
+                $url = '';
 
-			if (isset($this->request->get['filter_name'])) {
-				$url .= '&filter_name=' . urlencode(html_entity_decode($this->request->get['filter_name'], ENT_QUOTES, 'UTF-8'));
-			}
+                if (isset($this->request->get['filter_name'])) {
+                    $url .= '&filter_name=' . urlencode(html_entity_decode($this->request->get['filter_name'], ENT_QUOTES, 'UTF-8'));
+                }
 
-			if (isset($this->request->get['filter_model'])) {
-				$url .= '&filter_model=' . urlencode(html_entity_decode($this->request->get['filter_model'], ENT_QUOTES, 'UTF-8'));
-			}
+                if (isset($this->request->get['filter_model'])) {
+                    $url .= '&filter_model=' . urlencode(html_entity_decode($this->request->get['filter_model'], ENT_QUOTES, 'UTF-8'));
+                }
 
-			if (isset($this->request->get['filter_price'])) {
-				$url .= '&filter_price=' . $this->request->get['filter_price'];
-			}
+                if (isset($this->request->get['filter_price'])) {
+                    $url .= '&filter_price=' . $this->request->get['filter_price'];
+                }
 
-			if (isset($this->request->get['filter_quantity'])) {
-				$url .= '&filter_quantity=' . $this->request->get['filter_quantity'];
-			}
+                if (isset($this->request->get['filter_quantity'])) {
+                    $url .= '&filter_quantity=' . $this->request->get['filter_quantity'];
+                }
 
-			if (isset($this->request->get['filter_status'])) {
-				$url .= '&filter_status=' . $this->request->get['filter_status'];
-			}
+                if (isset($this->request->get['filter_status'])) {
+                    $url .= '&filter_status=' . $this->request->get['filter_status'];
+                }
 
-			if (isset($this->request->get['sort'])) {
-				$url .= '&sort=' . $this->request->get['sort'];
-			}
+                if (isset($this->request->get['sort'])) {
+                    $url .= '&sort=' . $this->request->get['sort'];
+                }
 
-			if (isset($this->request->get['order'])) {
-				$url .= '&order=' . $this->request->get['order'];
-			}
+                if (isset($this->request->get['order'])) {
+                    $url .= '&order=' . $this->request->get['order'];
+                }
 
-			if (isset($this->request->get['page'])) {
-				$url .= '&page=' . $this->request->get['page'];
-			}
+                if (isset($this->request->get['page'])) {
+                    $url .= '&page=' . $this->request->get['page'];
+                }
 
-			$this->response->redirect($this->url->link('catalog/product', 'user_token=' . $this->session->data['user_token'] . $url, true));
-		}
+                // Add debug logging after save
+                $this->log->write("Product saved successfully - ID: " .
+                    $this->request->get['product_id']);
+
+                if ($is_ajax_request) {
+                    // If AJAX request, return JSON
+                    $json = array('success' => true);
+                    $this->response->addHeader('Content-Type: application/json');
+                    $this->response->setOutput(json_encode($json));
+                    return;
+                }
+                $this->response->redirect($this->url->link('catalog/product', 'user_token=' . $this->session->data['user_token'] . $url, true));
+            } catch (Exception $e){
+                $this->log->write("Error saving product: " . $e->getMessage());
+                throw $e;
+                }
+        }
 
 		$this->getForm();
 	}
@@ -571,6 +589,8 @@ class ControllerCatalogProduct extends Controller {
 			$data['action'] = $this->url->link('catalog/product/add', 'user_token=' . $this->session->data['user_token'] . $url, true);
 		} else {
 			$data['action'] = $this->url->link('catalog/product/edit', 'user_token=' . $this->session->data['user_token'] . '&product_id=' . $this->request->get['product_id'] . $url, true);
+			$pl_url = preg_replace('/&page=(\d+)/', '&pl_page=$1', $url);
+			$data['price_history'] = $this->url->link('extension/module/odoo_price_mapping/history', 'user_token=' . $this->session->data['user_token'] . '&product_id=' . $this->request->get['product_id'] . $pl_url, true);
 		}
 
 		$data['cancel'] = $this->url->link('catalog/product', 'user_token=' . $this->session->data['user_token'] . $url, true);
@@ -1163,7 +1183,58 @@ class ControllerCatalogProduct extends Controller {
 		$this->load->model('design/layout');
 
 		$data['layouts'] = $this->model_design_layout->getLayouts();
-		
+
+		// Sync History - only load if editing existing product and model exists
+		if (isset($this->request->get['product_id'])) {
+			$data['product_id'] = $this->request->get['product_id'];
+
+			// Check if odoo_product_mapping model file exists before loading
+			$model_file = DIR_APPLICATION . 'model/extension/module/odoo_product_mapping.php';
+			if (is_file($model_file)) {
+				$this->load->model('extension/module/odoo_product_mapping');
+
+				// Add pagination variables
+				if (isset($this->request->get['sync_page'])) {
+					$sync_page = $this->request->get['sync_page'];
+				} else {
+					$sync_page = 1;
+				}
+
+				$limit = 10;
+
+				// Get sync history with pagination
+				$filter_data = array(
+					'sort'  => 'created_on',
+					'order' => 'DESC',
+					'start' => ($sync_page - 1) * $limit,
+					'limit' => $limit
+				);
+
+				$data['sync_history'] = $this->model_extension_module_odoo_product_mapping->getProductSyncHistory($this->request->get['product_id'], $filter_data);
+				$sync_history_total = $this->model_extension_module_odoo_product_mapping->getTotalSyncHistoryEntries($this->request->get['product_id']);
+
+				// Add pagination
+				$pagination = new Pagination();
+				$pagination->total = $sync_history_total;
+				$pagination->page = $sync_page;
+				$pagination->limit = $filter_data['limit'];
+				$pagination->url = $this->url->link('catalog/product/edit', 'user_token=' . $this->session->data['user_token'] . '&product_id=' . $this->request->get['product_id'] . '&sync_page={page}', true);
+
+				$data['sync_pagination'] = $pagination->render();
+				$data['sync_results'] = sprintf($this->language->get('text_pagination'),
+					($sync_history_total) ? (($sync_page - 1) * $limit) + 1 : 0,
+					((($sync_page - 1) * $limit) > ($sync_history_total - $limit)) ? $sync_history_total : ((($sync_page - 1) * $limit) + $limit),
+					$sync_history_total,
+					ceil($sync_history_total / $limit)
+				);
+			} else {
+				// Model doesn't exist, initialize empty sync history
+				$data['sync_history'] = array();
+				$data['sync_pagination'] = '';
+				$data['sync_results'] = '';
+			}
+		}
+
 		$data['header'] = $this->load->controller('common/header');
 		$data['column_left'] = $this->load->controller('common/column_left');
 		$data['footer'] = $this->load->controller('common/footer');
@@ -1320,5 +1391,134 @@ class ControllerCatalogProduct extends Controller {
 
 		$this->response->addHeader('Content-Type: application/json');
 		$this->response->setOutput(json_encode($json));
+	}
+
+	public function updateImages() {
+		// Clear any previous output
+		if (ob_get_level()) {
+			ob_end_clean();
+		}
+
+		// Set JSON header early
+		$this->response->addHeader('Content-Type: application/json');
+
+		$json = array();
+
+		// Check user has permission
+		if (!$this->user->hasPermission('modify', 'catalog/product')) {
+			$json['error'] = $this->language->get('error_permission');
+			$this->response->setOutput(json_encode($json));
+			return;
+		}
+
+		// Check product ID provided
+		if (!isset($this->request->get['product_id'])) {
+			$json['error'] = 'Product ID required';
+			$this->response->setOutput(json_encode($json));
+			return;
+		}
+
+		try {
+			// Load required model
+			$this->load->model('catalog/product');
+
+			// Get product model
+			$product_info = $this->model_catalog_product->getProduct($this->request->get['product_id']);
+
+			if ($product_info) {
+				// Call the update images function
+				$result = $this->model_catalog_product->updateProductImagesFromFiles(
+					$product_info['model'],
+					$this->request->get['product_id']
+				);
+
+				if ($result['success']) {
+					$json['success'] = sprintf('Successfully updated %d images', $result['images_found']);
+
+					// Add log entry
+					$this->log->write("Product images updated automatically for product ID: " .
+						$this->request->get['product_id'] . ", Model: " . $product_info['model']);
+				} else {
+					$json['error'] = $result['message'];
+				}
+			} else {
+				$json['error'] = 'Product not found';
+			}
+		} catch (Exception $e) {
+			$json['error'] = $e->getMessage();
+		}
+
+		$this->response->setOutput(json_encode($json));
+	}
+
+	public function findSimilarProducts() {
+		if (!$this->user->hasPermission('modify', 'catalog/product')) {
+			$this->response->setOutput(json_encode(['error' => $this->language->get('error_permission')]));
+			return;
+		}
+
+		if (isset($this->request->get['product_id'])) {
+			$product_id = (int)$this->request->get['product_id'];
+
+			$this->log->write('INFO findSimilarProducts product_id :' . $product_id);
+
+			$this->load->model('catalog/product');
+
+			$product = $this->model_catalog_product->getProduct($product_id);
+			$categories = $this->model_catalog_product->getProductCategories($product_id);
+
+			if ($product) {
+
+				$pattern = implode(" ", array_slice(explode(" ",$product['name']),0,2));
+				$this->log->write('INFO findSimilarProducts Pattern to find similar products :' . $pattern);
+
+				$matches = $this->model_catalog_product->getSimilarProducts($product_id, $pattern, $categories);
+
+				// Load weight and length classes for proper display
+				$this->load->model('localisation/weight_class');
+				$this->load->model('localisation/length_class');
+
+				foreach ($matches as &$match) {
+					$weight_class = $this->model_localisation_weight_class->getWeightClass($match['weight_class_id']);
+					$length_class = $this->model_localisation_length_class->getLengthClass($match['length_class_id']);
+
+					$match['weight_unit'] = $weight_class['unit'];
+					$match['length_unit'] = $length_class['unit'];
+				}
+
+				$this->response->setOutput(json_encode(['success' => true, 'products' => $matches]));
+			} else {
+				$this->response->setOutput(json_encode(['error' => 'Product not found']));
+			}
+		} else {
+			$this->response->setOutput(json_encode(['error' => 'Invalid product ID']));
+		}
+	}
+
+	public function copyDimensions() {
+		if (!$this->user->hasPermission('modify', 'catalog/product')) {
+			$this->response->setOutput(json_encode(['error' => $this->language->get('error_permission')]));
+			return;
+		}
+
+		if (isset($this->request->post['source_id']) && isset($this->request->post['target_id'])) {
+			$source_id = (int)$this->request->post['source_id'];
+			$target_id = (int)$this->request->post['target_id'];
+
+			$this->load->model('catalog/product');
+
+			try {
+				$this->model_catalog_product->copyProductDimensions($source_id, $target_id);
+
+				// Set success message in session
+				$this->session->data['success'] = $this->language->get('text_copied_dimensions');
+
+				$this->response->setOutput(json_encode(['success' => true]));
+			} catch (Exception $e) {
+				$this->response->setOutput(json_encode(['error' => $e->getMessage()]));
+			}
+		} else {
+			$this->response->setOutput(json_encode(['error' => 'Invalid parameters']));
+		}
 	}
 }

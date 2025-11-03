@@ -3,6 +3,10 @@
   <div class="page-header">
     <div class="container-fluid">
       <div class="pull-right">
+        {% if product_id %}
+        <button type="button" form="form-product" data-toggle="tooltip" title="{{ button_sync|default('Sync to Odoo') }}" class="btn btn-info" onclick="saveAndSync('{{ product_id }}');"><i class="fa fa-refresh"></i></button>
+        <a href="{{ price_history }}" data-toggle="tooltip" title="{{ button_price_history|default('Price History') }}" class="btn btn-success"><i class="fa fa-dollar"></i></a>
+        {% endif %}
         <button type="submit" form="form-product" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
         <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a></div>
       <h1>{{ heading_title }}</h1>
@@ -37,6 +41,7 @@
             <li><a href="#tab-reward" data-toggle="tab">{{ tab_reward }}</a></li>
             <li><a href="#tab-seo" data-toggle="tab">{{ tab_seo }}</a></li>
             <li><a href="#tab-design" data-toggle="tab">{{ tab_design }}</a></li>
+            <li><a href="#tab-sync-history" data-toggle="tab">{{ tab_sync_history }}</a></li>
           </ul>
           <div class="tab-content">
             <div class="tab-pane active" id="tab-general">
@@ -339,6 +344,16 @@
                   </select>
                 </div>
               </div>
+              {% if product_id %}
+              <div class="form-group">
+                <label class="col-sm-2 control-label"></label>
+                <div class="col-sm-10">
+                  <button type="button" onclick="showSimilarProducts();" class="btn btn-info">
+                    <i class="fa fa-copy"></i> Copy Dimensions from Similar Product
+                  </button>
+                </div>
+              </div>
+              {% endif %}
               <div class="form-group">
                 <label class="col-sm-2 control-label" for="input-status">{{ entry_status }}</label>
                 <div class="col-sm-10">
@@ -368,7 +383,14 @@
               <div class="form-group">
                 <label class="col-sm-2 control-label" for="input-sort-order">{{ entry_sort_order }}</label>
                 <div class="col-sm-10">
-                  <input type="text" name="sort_order" value="{{ sort_order }}" placeholder="{{ entry_sort_order }}" id="input-sort-order" class="form-control"/>
+                  <div class="input-group">
+                    <input type="text" name="sort_order" value="{{ sort_order }}" placeholder="{{ entry_sort_order }}" id="input-sort-order" class="form-control"/>
+                    <span class="input-group-btn">
+                      <button type="button" data-toggle="tooltip" title="Calculate from model" class="btn btn-info" onclick="updateSortOrder();">
+                        <i class="fa fa-calculator"></i>
+                      </button>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -988,6 +1010,14 @@
                 </table>
               </div>
               <div class="table-responsive">
+                <!-- Auto-Find Images Button -->
+                {% if product_id %}
+                <div class="pull-right" style="margin-bottom: 10px;">
+                  <button type="button" data-toggle="tooltip" title="Find and attach images based on product model" class="btn btn-info" onclick="updateImagesFromFiles();">
+                    <i class="fa fa-search"></i> Auto-Find Images
+                  </button>
+                </div>
+                {% endif %}
                 <table id="images" class="table table-striped table-bordered table-hover">
                   <thead>
                     <tr>
@@ -1113,6 +1143,40 @@
                     {% endfor %}
                   </tbody>
                 </table>
+              </div>
+            </div>
+            <div class="tab-pane" id="tab-sync-history">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                  <thead>
+                  <tr>
+                    <td class="text-left">{{ column_date }}</td>
+                    <td class="text-left">{{ column_direction }}</td>
+                    <td class="text-left">{{ column_sync_status }}</td>
+                    <td class="text-left">{{ column_message }}</td>
+                  </tr>
+                  </thead>
+                  <tbody>
+                  {% if sync_history %}
+                    {% for history in sync_history %}
+                      <tr>
+                        <td class="text-left">{{ history.created_on }}</td>
+                        <td class="text-left">{{ history.sync_direction }}</td>
+                        <td class="text-left">{{ history.status }}</td>
+                        <td class="text-left">{{ history.message }}</td>
+                      </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr>
+                      <td class="text-center" colspan="4">{{ text_no_results }}</td>
+                    </tr>
+                  {% endif %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="row">
+                <div class="col-sm-6 text-left">{{ pagination }}</div>
+                <div class="col-sm-6 text-right">{{ results }}</div>
               </div>
             </div>
           </div>
@@ -1627,5 +1691,312 @@
   $('#language a:first').tab('show');
   $('#option a:first').tab('show');
   //--></script>
+  <script type="text/javascript">
+    function syncProduct(product_id) {
+        console.log('SyncProduct called with product_id: ' + product_id);
+        $('.alert').remove();
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_product_mapping/sync&user_token={{ user_token }}&product_id=' + product_id,
+            type: 'post',
+            data: {
+                ajax: '1'
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                $('#content').fadeTo('slow', 0.5);
+            },
+            complete: function() {
+                $('#content').fadeTo('slow', 1);
+            },
+            success: function(json) {
+                console.log('Sync response:', json);
+
+                // Handle case where response might be string
+                if (typeof json === 'string') {
+                    try {
+                        json = JSON.parse(json);
+                    } catch (e) {
+                        console.error('Failed to parse JSON:', e);
+                        $('.panel').before('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> Invalid response from server<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                        return;
+                    }
+                }
+
+                if (json['error']) {
+                    $('.panel').before('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json['error'] + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                }
+                if (json['success']) {
+                    $('.panel').before('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + json['success'] + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+
+                    // Reload the page after a short delay to show updated sync history
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                }
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                console.error('Ajax error:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    responseText: xhr.responseText,
+                    thrownError: thrownError
+                });
+
+                var errorMsg = 'Sync failed: ';
+                if (xhr.responseText) {
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        errorMsg += response.error || xhr.statusText;
+                    } catch(e) {
+                        errorMsg += xhr.statusText + ' (' + xhr.status + ')';
+                    }
+                } else {
+                    errorMsg += thrownError || xhr.statusText;
+                }
+
+                $('.panel').before('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + errorMsg + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+            }
+        });
+    }
+
+    function saveAndSync(product_id) {
+        // Get form and form data
+        var form = $('#form-product')[0];
+        var formData = new FormData(form);
+
+        // Add flag to indicate AJAX request
+        formData.append('ajax', '1');
+
+        $.ajax({
+            url: form.action,
+            type: 'post',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(json) {
+                if (json.success) {
+                    syncProduct(product_id);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+                }
+                if (json.error) {
+                    $('.panel').before('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json.error + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error saving product: ' + error);
+            }
+        });
+
+        return false;
+    }
+
+    // Auto-Find Images Function
+    function updateImagesFromFiles() {
+        $.ajax({
+            url: 'index.php?route=catalog/product/updateImages&user_token={{ user_token }}&product_id={{ product_id }}',
+            type: 'POST',
+            dataType: 'json',
+            beforeSend: function() {
+                $('button[onclick="updateImagesFromFiles()"]')
+                    .html('<i class="fa fa-circle-o-notch fa-spin"></i> Searching...')
+                    .prop('disabled', true);
+            },
+            complete: function() {
+                $('button[onclick="updateImagesFromFiles()"]')
+                    .html('<i class="fa fa-search"></i> Auto-Find Images')
+                    .prop('disabled', false);
+            },
+            success: function(json) {
+                $('.alert-dismissible').remove();
+
+                if (json['error']) {
+                    $('#content > .container-fluid').prepend(
+                        '<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' +
+                        json['error'] +
+                        '<button type="button" class="close" data-dismiss="alert">&times;</button></div>'
+                    );
+                }
+
+                if (json['success']) {
+                    $('#content > .container-fluid').prepend(
+                        '<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' +
+                        json['success'] +
+                        '<button type="button" class="close" data-dismiss="alert">&times;</button></div>'
+                    );
+
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1000);
+                }
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                console.error('Error:', thrownError, xhr.responseText);
+                alert('Error: ' + thrownError + "\r\n" + xhr.responseText);
+                $('button[onclick="updateImagesFromFiles()"]')
+                    .html('<i class="fa fa-search"></i> Auto-Find Images')
+                    .prop('disabled', false);
+            }
+        });
+    }
+
+    // Show Similar Products Modal
+    function showSimilarProducts() {
+        $.ajax({
+            url: 'index.php?route=catalog/product/findSimilarProducts&user_token={{ user_token }}&product_id={{ product_id }}',
+            dataType: 'json',
+            beforeSend: function() {
+                $('#similar-products-list').html('<tr><td colspan="5" class="text-center"><i class="fa fa-circle-o-notch fa-spin"></i> Loading...</td></tr>');
+                $('#modal-copy-dimensions').modal('show');
+            },
+            success: function(json) {
+                var html = '';
+
+                if (json.success && json.products.length > 0) {
+                    json.products.forEach(function(product) {
+                        html += '<tr>';
+                        html += '<td class="text-left">' + product.name + '</td>';
+                        html += '<td class="text-left">' + product.model + '</td>';
+                        html += '<td class="text-right">' + product.weight + ' ' + product.weight_unit + '</td>';
+                        html += '<td class="text-right">' + product.length + ' × ' + product.width + ' × ' + product.height + ' ' + product.length_unit + '</td>';
+                        html += '<td class="text-center">';
+                        html += '<button type="button" onclick="copyDimensions(' + product.product_id + ')" class="btn btn-primary btn-sm">';
+                        html += '<i class="fa fa-copy"></i> Copy</button>';
+                        html += '</td>';
+                        html += '</tr>';
+                    });
+
+                    $('#similar-products-list').html(html);
+                    $('#no-products-message').hide();
+                } else {
+                    $('#similar-products-list').html('');
+                    $('#no-products-message').show();
+                }
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                console.error('Error:', thrownError, xhr.responseText);
+                alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+            }
+        });
+    }
+
+    // Copy Dimensions Function
+    function copyDimensions(source_id) {
+        $.ajax({
+            url: 'index.php?route=catalog/product/copyDimensions&user_token={{ user_token }}',
+            type: 'POST',
+            data: {
+                source_id: source_id,
+                target_id: '{{ product_id }}'
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                $('#modal-copy-dimensions button').prop('disabled', true);
+            },
+            complete: function() {
+                $('#modal-copy-dimensions button').prop('disabled', false);
+            },
+            success: function(json) {
+                if (json.success) {
+                    $('#modal-copy-dimensions').modal('hide');
+                    location.reload();
+                }
+
+                if (json.error) {
+                    $('.alert-dismissible').remove();
+                    $('.page-header').after('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' +
+                        json.error +
+                        '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                }
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                console.error('Error:', thrownError, xhr.responseText);
+                alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+            }
+        });
+    }
+
+    // Calculate Sort Order based on model
+    function calculateSortOrder(model) {
+        // Default to 10000 if no model provided
+        if (!model) return 10000;
+
+        let sum = 0;
+
+        // Calculate first 3 positions normally
+        for (let i = 0; i < 3; i++) {
+            if (i < model.length) {
+                sum += model.charCodeAt(i);
+            }
+        }
+
+        // Fourth position is multiplied by 100
+        if (model.length >= 4) {
+            sum += model.charCodeAt(3) * 100;
+        }
+
+        return 10000 - sum;
+    }
+
+    function updateSortOrder() {
+        const model = $('#input-model').val();
+        const sortOrder = calculateSortOrder(model);
+
+        if (confirm('Do you want to update the sort order based on the model number?')) {
+            $('#input-sort-order').val(sortOrder);
+            // Show success message using OpenCart's existing alert system
+            $('.alert-dismissible').remove();
+            $('.page-header').after('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> Sort order updated to ' + sortOrder + '. <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+        }
+    }
+
+    // Add event listener for Enter key on model field
+    $(document).ready(function() {
+        $('#input-model').keypress(function(e) {
+            if (e.which == 13) { // Enter key
+                e.preventDefault(); // Prevent form submission
+                updateSortOrder();
+            }
+        });
+    });
+  </script>
+
+  <!-- Copy Dimensions Modal -->
+  <div id="modal-copy-dimensions" class="modal fade">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Copy Dimensions from Similar Product</h4>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td class="text-left">Product Name</td>
+                  <td class="text-left">Model</td>
+                  <td class="text-right">Weight</td>
+                  <td class="text-right">Dimensions (L × W × H)</td>
+                  <td class="text-center">Action</td>
+                </tr>
+              </thead>
+              <tbody id="similar-products-list">
+              </tbody>
+            </table>
+          </div>
+          <div id="no-products-message" style="display: none;" class="alert alert-info">
+            No similar products found with matching categories.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">{{ button_cancel }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {{ footer }} 

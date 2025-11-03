@@ -154,16 +154,10 @@
 									{{ ' display: none;' }}
 									{% endif  %} ">
 
-										<label class="col-sm-2 control-label" for="">{{ entry_pvz_sell }}</label>
+										<label class="col-sm-2 control-label" for="cdek-orders-shipment-point">{{ entry_pvz_sell }}</label>
 										<div class="col-sm-10">
-											<select name="cdek_orders[shipment_point]" class="shipment-point-code form-control">
-												<option value="">{{ text_select }}</option>
-												{% if (cdek_orders['pvz_list_sell'] is not empty) %}
-												{% for pvz_info in cdek_orders['pvz_list_sell'] %}
-													<option {% if (cdek_orders['shipment_point'] is not empty and cdek_orders['shipment_point'] == pvz_info['Code']) %} selected="selected" {% endif %} {% if (cdek_orders['tariff_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1, 2, 6]) %} disabled="disabled" {% endif  %} value="{{ pvz_info['Code'] }}" data-name="{{ pvz_info['Name'] }}" data-y="{{ pvz_info['y'] }}" data-x="{{ pvz_info['x'] }}" data-address="{{ pvz_info['Address'] }}" data-worktime="{{ pvz_info['WorkTime'] }}" data-phone="{{ pvz_info['Phone'] }}"> {{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})</option>
-												{% endfor %}
-												{% endif %}
-											</select>
+											<input type="hidden" name="cdek_orders[shipment_point]" id="cdek-orders-shipment-point-value" value="{% if (cdek_orders['shipment_point'] is not empty) %}{{ cdek_orders['shipment_point'] }}{% endif %}" />
+											<input type="text" id="cdek-orders-shipment-point" class="shipment-point-code-input form-control" placeholder="Начните вводить название или адрес ПВЗ отправителя..." value="" autocomplete="off" />
 										</div>
 								</div>
 
@@ -353,16 +347,10 @@
 									{{ ' display: none;' }}
 									{% endif  %} ">
 
-										<label class="col-sm-2 control-label" for="">{{ entry_pvz }}</label>
+										<label class="col-sm-2 control-label" for="cdek-orders-address-pvz-code">{{ entry_pvz }}</label>
                                             <div class="col-sm-10">
-                                            <select name="cdek_orders[address][pvz_code]" class="address-pvz-code form-control">
-                                            <option value="">{{ text_select }}</option>
-                                            {% if (cdek_orders['pvz_list'] is not empty) %}
-                                            {% for pvz_info in cdek_orders['pvz_list'] %}
-											<option {% if (cdek_orders['address']['pvz_code'] is not empty and cdek_orders['address']['pvz_code'] == pvz_info['Code']) %} selected="selected" {% if (cdek_orders['tariff_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] is empty or tariff_list[cdek_orders['tariff_id']]['mode_id'] in [1, 3]) %} disabled="disabled" {% endif  %} {% endif %} value="{{ pvz_info['Code'] }}" data-name="{{ pvz_info['Name'] }}" data-y="{{ pvz_info['y'] }}" data-x="{{ pvz_info['x'] }}" data-address="{{ pvz_info['Address'] }}" data-worktime="{{ pvz_info['WorkTime'] }}" data-phone="{{ pvz_info['Phone'] }}"> {{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})</option>
-                                            {% endfor %}
-                                            {% endif %}
-											</select>
+                                            <input type="hidden" name="cdek_orders[address][pvz_code]" id="cdek-orders-address-pvz-code-value" value="{% if (cdek_orders['address']['pvz_code'] is not empty) %}{{ cdek_orders['address']['pvz_code'] }}{% endif %}" />
+                                            <input type="text" id="cdek-orders-address-pvz-code" class="address-pvz-code-input form-control" placeholder="Начните вводить название или адрес ПВЗ..." value="{% if (cdek_orders['pvz_info'] is not empty) %}{{ cdek_orders['pvz_info']['Name'] }} ({{ cdek_orders['pvz_info']['Address'] }}){% endif %}" autocomplete="off" />
 
 												<div class="pvz-wrapper">
                                                     {% if (cdek_orders['pvz_info'] is not empty) %}
@@ -984,35 +972,91 @@ $(".setting-city-name").bind('cityselect', function(){
 
 	if (city_code != '') {
 
-		var element = $('.address-mode.pvz select', context);
+		var element = $('#cdek-orders-address-pvz-code', context);
 
-		$('option:gt(0)', element).remove();
+		// Clear current value
+		element.val('');
+		$('#cdek-orders-address-pvz-code-value').val('');
+		$('.address-mode.pvz .pvz-wrapper').html('');
 
 		$.ajax({
 			url: "index.php?route=extension/module/cdek_integrator/getPVZByCity&user_token={{ token }}&city_code=" + city_code,
 			dataType: "json",
 			beforeSend: function(jqXHR, settings){
-				if (!$('.address-mode.pvz .loader', context).length) $(element).after('<img class="loader" src="view/image/cdek_integrator/loader.gif" alt="Загрузка..." title="Загрузка..." />');
+				if (!$('.address-mode.pvz .loader', context).length) element.after('<img class="loader" src="view/image/cdek_integrator/loader.gif" alt="Загрузка..." title="Загрузка..." />');
 			},
 			complete: function(jqXHR, textStatus) {
 				$('.address-mode.pvz .loader', context).remove();
 			},
 			success: function(json) {
 				if (json.List) {
-
-					var html = '';
-
+					// Update pvz_list_recipient with new data
+					pvz_list_recipient = [];
 					for (var row in json.List) {
-						html += '<option value="' + json.List[row].Code + '" data-name="' + json.List[row].Name + '" data-y="' + json.List[row].y + '" data-x="' + json.List[row].x + '" data-address="' + json.List[row].Address + '" data-worktime="' + json.List[row].WorkTime + '" data-phone="' + json.List[row].Phone + '">' + json.List[row].Address + + '</option>';
+						pvz_list_recipient.push({
+							code: json.List[row].Code,
+							name: json.List[row].Name,
+							address: json.List[row].Address,
+							y: json.List[row].y,
+							x: json.List[row].x,
+							worktime: json.List[row].WorkTime,
+							phone: json.List[row].Phone,
+							label: json.List[row].Name + ' (' + json.List[row].Address + ')'
+						});
 					}
 
-					if (html != '') {
-						$(element).append(html);
+					// Reinitialize autocomplete with new data
+					element.autocomplete('destroy');
+					element.autocomplete({
+						source: function(request, response) {
+							var term = (request.term || '').toLowerCase();
+							var results = [];
 
-					}
+							for (var i = 0; i < pvz_list_recipient.length; i++) {
+								var item = pvz_list_recipient[i];
+								// Search only in code and address
+								var searchText = (item.code + ' ' + item.address).toLowerCase();
+
+								if (searchText.indexOf(term) !== -1) {
+									results.push({
+										label: item.code + ', ' + item.address,
+										value: item.code + ', ' + item.address,
+										pvz_code: item.code,
+										pvz_name: item.name,
+										pvz_address: item.address,
+										pvz_y: item.y,
+										pvz_x: item.x,
+										pvz_worktime: item.worktime,
+										pvz_phone: item.phone
+									});
+								}
+							}
+
+							response(results);
+						},
+						minLength: 1,
+						select: function(event, ui) {
+							// Set hidden field with PVZ code
+							$('#cdek-orders-address-pvz-code-value').val(ui.item.pvz_code);
+
+							// Update PVZ info display
+							var html = '<p>' + ui.item.pvz_name;
+							if (ui.item.pvz_x) {
+								html += ' (<a href="http://maps.google.ru/maps?q=' + ui.item.pvz_y + ',' + ui.item.pvz_x + '" target="_blank">на карте</a>)';
+							}
+							html += '</p><span class="help">';
+							html += '<strong>Адрес</strong>: ' + ui.item.pvz_address + '<br />';
+							if (ui.item.pvz_phone && ui.item.pvz_phone != '-') {
+								html += '<strong>Телефон</strong>: ' + ui.item.pvz_phone + '<br />';
+							}
+							if (ui.item.pvz_worktime && ui.item.pvz_worktime != '-') {
+								html += '<strong>Режим работы</strong>: ' + ui.item.pvz_worktime;
+							}
+							html += '</span>';
+							$('.address-mode.pvz .pvz-wrapper').html(html);
+						}
+					});
 				}
-
-				$(element).trigger('change');
 			}
 		});
 	}
@@ -1034,41 +1078,6 @@ function initTimepicker() {
 }
 
 initTimepicker();
-
-$('select.address-pvz-code').change(function(event){
-	$(this).parent().find('.pvz-wrapper').html('');
-	$(this).parent().find('.error').remove();
-	
-	if ($(this).val() != '') {
-		
-		var option = $('option[value=' + $(this).val() + ']', this);
-		
-		var html = '<p>' + $(option).data('name');
-		
-		if ($(option).data('x')) {
-			html += ' (<a href="http://maps.google.ru/maps?q=' + $(option).data('y') + ',' + $(option).data('x') + '" target="_blank">на карте</a>)';
-		}
-		
-		html += '</p>';
-		html += '<span class="help">';
-		html += '<strong>Адрес</strong>: ' + $(option).data('address') + '<br />';
-		
-		if ($(option).data('phone') && $(option).data('phone') != '-') {
-			html += '<strong>Телефон</strong>: ' + $(option).data('phone') + '<br />';
-		}
-		
-		if ($(option).data('worktime') && $(option).data('worktime') != '-') {
-			html += '<strong>Режим работы</strong>: ' + $(option).data('worktime');
-		}
-		
-		html += '</span>';
-		
-		$(this).parent().find('.pvz-wrapper').html(html);
-		
-	}
-	
-});
-
 
 //--></script>
 
@@ -1108,7 +1117,182 @@ $('select.address-pvz-code').change(function(event){
 
 			}
 		});
-		$('input[name=\'checkpackage\']').trigger('change');   
+		$('input[name=\'checkpackage\']').trigger('change');
+
+		// PVZ Autocomplete Data
+		var pvz_list_recipient = [
+			{% if (cdek_orders['pvz_list'] is not empty) %}
+			{% for pvz_info in cdek_orders['pvz_list'] %}
+			{
+				code: "{{ pvz_info['Code'] }}",
+				name: "{{ pvz_info['Name'] }}",
+				address: "{{ pvz_info['Address'] }}",
+				y: "{{ pvz_info['y'] }}",
+				x: "{{ pvz_info['x'] }}",
+				worktime: "{{ pvz_info['WorkTime'] }}",
+				phone: "{{ pvz_info['Phone'] }}",
+				label: "{{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})"
+			}{% if not loop.last %},{% endif %}
+			{% endfor %}
+			{% endif %}
+		];
+
+		var pvz_list_seller = [
+			{% if (cdek_orders['pvz_list_sell'] is not empty) %}
+			{% for pvz_info in cdek_orders['pvz_list_sell'] %}
+			{
+				code: "{{ pvz_info['Code'] }}",
+				name: "{{ pvz_info['Name'] }}",
+				address: "{{ pvz_info['Address'] }}",
+				y: "{{ pvz_info['y'] }}",
+				x: "{{ pvz_info['x'] }}",
+				worktime: "{{ pvz_info['WorkTime'] }}",
+				phone: "{{ pvz_info['Phone'] }}",
+				label: "{{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})"
+			}{% if not loop.last %},{% endif %}
+			{% endfor %}
+			{% endif %}
+		];
+
+		// Check if jQuery UI autocomplete is available
+		if (typeof $.fn.autocomplete === 'undefined') {
+			console.error('jQuery UI autocomplete is not loaded!');
+			return;
+		}
+
+		// Initialize recipient PVZ autocomplete
+		if ($('#cdek-orders-address-pvz-code').length) {
+			var $input = $('#cdek-orders-address-pvz-code');
+			$input.attr('autocomplete', 'new-password');
+
+			$input.autocomplete({
+				source: function(request, response) {
+					// Handle different autocomplete library signatures
+					var term = (typeof request === 'string' ? request : (request.term || '')).toLowerCase();
+					var results = [];
+
+					for (var i = 0; i < pvz_list_recipient.length; i++) {
+						var item = pvz_list_recipient[i];
+						// Search only in code and address
+						var searchText = (item.code + ' ' + item.address).toLowerCase();
+
+						if (searchText.indexOf(term) !== -1) {
+							results.push({
+								label: item.code + ', ' + item.address,
+								value: item.code + ', ' + item.address,
+								id: item.code,
+								pvz_code: item.code,
+								pvz_name: item.name,
+								pvz_address: item.address,
+								pvz_y: item.y,
+								pvz_x: item.x,
+								pvz_worktime: item.worktime,
+								pvz_phone: item.phone
+							});
+						}
+					}
+
+					response(results);
+				},
+				minLength: 1,
+				select: function(event, ui) {
+					// Handle different autocomplete library signatures
+					var item = ui || event;
+
+					if (!item) {
+						console.error('No item data!');
+						return false;
+					}
+
+					// Set the visible input field with the label
+					$input.val(item.label || item.value);
+
+					// Set hidden field with PVZ code
+					var code = item.pvz_code || item.id || item.value;
+					$('#cdek-orders-address-pvz-code-value').val(code);
+
+					// Update PVZ info display
+					if (item.pvz_name) {
+						var html = '<p>' + item.pvz_name;
+						if (item.pvz_x) {
+							html += ' (<a href="http://maps.google.ru/maps?q=' + item.pvz_y + ',' + item.pvz_x + '" target="_blank">на карте</a>)';
+						}
+						html += '</p><span class="help">';
+						html += '<strong>Адрес</strong>: ' + item.pvz_address + '<br />';
+						if (item.pvz_phone && item.pvz_phone != '-') {
+							html += '<strong>Телефон</strong>: ' + item.pvz_phone + '<br />';
+						}
+						if (item.pvz_worktime && item.pvz_worktime != '-') {
+							html += '<strong>Режим работы</strong>: ' + item.pvz_worktime;
+						}
+						html += '</span>';
+						$('.address-mode.pvz .pvz-wrapper').html(html);
+					}
+
+					return false; // Prevent default
+				}
+			});
+		}
+
+		// Initialize seller PVZ autocomplete
+		if ($('#cdek-orders-shipment-point').length) {
+			var $sellerInput = $('#cdek-orders-shipment-point');
+			$sellerInput.attr('autocomplete', 'new-password');
+
+			$sellerInput.autocomplete({
+				source: function(request, response) {
+					// Handle different autocomplete library signatures
+					var term = (typeof request === 'string' ? request : (request.term || '')).toLowerCase();
+					var results = [];
+
+					for (var i = 0; i < pvz_list_seller.length; i++) {
+						var item = pvz_list_seller[i];
+						// Search only in code and address
+						var searchText = (item.code + ' ' + item.address).toLowerCase();
+
+						if (searchText.indexOf(term) !== -1) {
+							results.push({
+								label: item.code + ', ' + item.address,
+								value: item.code + ', ' + item.address,
+								id: item.code,
+								pvz_code: item.code
+							});
+						}
+					}
+
+					response(results);
+				},
+				minLength: 1,
+				select: function(event, ui) {
+					// Handle different autocomplete library signatures
+					var item = ui || event;
+
+					if (!item) {
+						return false;
+					}
+
+					// Set the visible input field with the label
+					$sellerInput.val(item.label || item.value);
+
+					// Set hidden field with PVZ code
+					var code = item.pvz_code || item.id || item.value;
+					$('#cdek-orders-shipment-point-value').val(code);
+
+					return false; // Prevent default
+				}
+			});
+		}
+
+		// Set initial values if already selected
+		{% if (cdek_orders['shipment_point'] is not empty) %}
+			var selected_seller_pvz = $.grep(pvz_list_seller, function(item) {
+				return item.code == "{{ cdek_orders['shipment_point'] }}";
+			});
+			if (selected_seller_pvz.length > 0) {
+				$('#cdek-orders-shipment-point').val(selected_seller_pvz[0].label);
+			}
+		{% endif %}
+
     });
 	$('input[name=\'checkpackage\']').on('change', function() {
 		var check = $('input[name=\'checkpackage\']:checked').val();
@@ -1120,7 +1304,7 @@ $('select.address-pvz-code').change(function(event){
 			$('.full_package input').attr('disabled', 'disabled');
 			$('.full_package select').attr('disabled', 'disabled');
 		} else {
-			$('.package').css('display', 'none');	  
+			$('.package').css('display', 'none');
 			$('.package input').attr('disabled', 'disabled');
 			$('.package select').attr('disabled', 'disabled');
 			$('.full_package').css('display', 'block');

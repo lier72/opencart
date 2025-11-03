@@ -2,7 +2,8 @@
 class ControllerEventCdekshipping extends Controller {
 	public function addScripts() {
 		$this->document->addStyle('catalog/view/theme/default/stylesheet/sdek.css');
-	    $this->document->addScript('//api-maps.yandex.ru/2.1/?lang=ru_RU&ns=cdekymap');
+		$this->document->addScript('https://api-maps.yandex.ru/2.1/?apikey=55920d60-1870-44a0-8bc7-3a709e526ac0&lang=ru_RU&ns=cdekymap');
+//	    $this->document->addScript('//api-maps.yandex.ru/2.1/?lang=ru_RU&ns=cdekymap');
 	    $this->document->addScript('catalog/view/javascript/sdek.js');
 	}
 

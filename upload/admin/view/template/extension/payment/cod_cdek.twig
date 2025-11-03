@@ -159,7 +159,7 @@
 							<input class="form-control" id="cod-cdek-price-value" type="text" name="payment_cod_cdek_price[value]" value="{% if (payment_cod_cdek_price is not empty) %}{{payment_cod_cdek_price['value'] }}{% endif %}" size="3" />
 							<select class="form-control" name="payment_cod_cdek_price[mode]">
                                 {% for type,name in discount_type %}
-									<option value="{{ type }}{% if (payment_cod_cdek_price is not empty and payment_cod_cdek_price['mode'] == type) %} {{ 'selected="selected"' }}{% endif %}">{{ name }}</option>
+									<option value="{{ type }}"{% if (payment_cod_cdek_price is not empty and payment_cod_cdek_price['mode'] == type) %} {{ 'selected="selected"' }}{% endif %}">{{ name }}</option>
                                 {% endfor %}
 							</select>
                             {% if (error['payment_cod_cdek_price']['value'] is defined) %}

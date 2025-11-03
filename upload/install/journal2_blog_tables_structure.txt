@@ -1,0 +1,81 @@
+
+mysql>SELECT     TABLE_NAME,     COLUMN_NAME,     COLUMN_TYPE,     IS_NULLABLE,     COLUMN_KEY,     COLUMN_DEFAULT,     EXTRA,     COLUMN_COMMENT FROM     INFORMATION_SCHEMA.COLUMNS WHERE     TABLE_SCHEMA = 'a1627-unqs-oc'     AND TABLE_NAME LIKE '%journal2%';
++-----------------------------------------+------------------+--------------+-------------+------------+----------------+----------------+----------------+
+| TABLE_NAME                              | COLUMN_NAME      | COLUMN_TYPE  | IS_NULLABLE | COLUMN_KEY | COLUMN_DEFAULT | EXTRA          | COLUMN_COMMENT |
++-----------------------------------------+------------------+--------------+-------------+------------+----------------+----------------+----------------+
+| ocus_journal2_blog_category             | category_id      | int          | NO          | PRI        | NULL           | auto_increment |                |
+| ocus_journal2_blog_category             | image            | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category             | parent_id        | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_category             | sort_order       | int          | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category             | status           | tinyint(1)   | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category_description | category_id      | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_category_description | description      | text         | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category_description | keyword          | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category_description | language_id      | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_category_description | meta_description | text         | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category_description | meta_keywords    | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category_description | meta_title       | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category_description | name             | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_category_to_layout   | category_id      | int          | NO          | PRI        | NULL           | auto_increment |                |
+| ocus_journal2_blog_category_to_layout   | layout_id        | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_category_to_layout   | store_id         | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_category_to_store    | category_id      | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_category_to_store    | store_id         | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_comments             | author_id        | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_comments             | comment          | text         | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_comments             | comment_id       | int          | NO          | PRI        | NULL           | auto_increment |                |
+| ocus_journal2_blog_comments             | customer_id      | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_comments             | date             | datetime     | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_comments             | email            | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_comments             | name             | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_comments             | parent_id        | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_comments             | post_id          | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_comments             | status           | tinyint(1)   | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_comments             | website          | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post                 | author_id        | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_post                 | comments         | tinyint(1)   | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post                 | date_created     | datetime     | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post                 | date_updated     | datetime     | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post                 | image            | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post                 | post_id          | int          | NO          | PRI        | NULL           | auto_increment |                |
+| ocus_journal2_blog_post                 | sort_order       | int          | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post                 | status           | tinyint(1)   | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post                 | views            | int          | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_description     | description      | text         | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_description     | keyword          | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_description     | language_id      | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_post_description     | meta_description | text         | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_description     | meta_keywords    | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_description     | meta_title       | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_description     | name             | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_description     | post_id          | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_post_description     | tags             | varchar(256) | YES         |            | NULL           |                |                |
+| ocus_journal2_blog_post_to_category     | category_id      | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_post_to_category     | post_id          | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_post_to_layout       | layout_id        | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_post_to_layout       | post_id          | int          | NO          | PRI        | NULL           | auto_increment |                |
+| ocus_journal2_blog_post_to_layout       | store_id         | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_post_to_product      | post_id          | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_post_to_product      | product_id       | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_blog_post_to_store        | post_id          | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_blog_post_to_store        | store_id         | int          | YES         | MUL        | NULL           |                |                |
+| ocus_journal2_config                    | key              | varchar(64)  | NO          | PRI        | NULL           |                |                |
+| ocus_journal2_config                    | serialized       | tinyint(1)   | NO          |            | NULL           |                |                |
+| ocus_journal2_config                    | store_id         | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_config                    | value            | mediumtext   | NO          |            | NULL           |                |                |
+| ocus_journal2_modules                   | module_data      | mediumtext   | NO          |            | NULL           |                |                |
+| ocus_journal2_modules                   | module_id        | int          | NO          | PRI        | NULL           | auto_increment |                |
+| ocus_journal2_modules                   | module_type      | varchar(64)  | NO          |            | NULL           |                |                |
+| ocus_journal2_newsletter                | email            | varchar(128) | NO          | PRI        | NULL           |                |                |
+| ocus_journal2_newsletter                | store_id         | int          | NO          | MUL        | 0              |                |                |
+| ocus_journal2_newsletter                | token            | varchar(64)  | NO          |            | NULL           |                |                |
+| ocus_journal2_settings                  | category         | varchar(64)  | NO          |            | NULL           |                |                |
+| ocus_journal2_settings                  | key              | varchar(64)  | NO          | PRI        | NULL           |                |                |
+| ocus_journal2_settings                  | serialized       | tinyint(1)   | NO          |            | NULL           |                |                |
+| ocus_journal2_settings                  | theme_id         | int          | NO          | PRI        | 0              |                |                |
+| ocus_journal2_settings                  | value            | mediumtext   | NO          |            | NULL           |                |                |
+| ocus_journal2_skins                     | parent_id        | int          | NO          | MUL        | NULL           |                |                |
+| ocus_journal2_skins                     | skin_id          | int          | NO          | PRI        | NULL           | auto_increment |                |
+| ocus_journal2_skins                     | skin_name        | varchar(64)  | NO          |            | NULL           |                |                |
++-----------------------------------------+------------------+--------------+-------------+------------+----------------+----------------+----------------+
+74 rows in set (0.01 sec)

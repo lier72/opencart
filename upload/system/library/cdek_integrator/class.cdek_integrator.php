@@ -24,7 +24,7 @@ class cdek_integrator {
 
 	// api.edu.cdek.ru
 
-	const BASE_TEST_URL = 'https://integration.edu.cdek.ru/';
+	const BASE_TEST_URL = 'https://integration.cdek.ru/';
 	const AJAX_TEST_URL = 'https://api.edu.cdek.ru/';
 
 
@@ -97,8 +97,8 @@ class cdek_integrator {
 
 	public function sendData(exchange $component) {
 
-		$action = $this->base_url . $component->getMethod();
-		$parser = method_exists($component, 'getParser') ? $component->getParser() : new parser_xml();
+		$action = $this->ajax_url . $component->getMethod();
+		$parser = method_exists($component, 'getParser') ? $component->getParser() : new parser_json();
 
 		$response = $this->getURL($action, $parser, $component->getData());
 
@@ -110,6 +110,11 @@ class cdek_integrator {
 
 	protected function getURL($url, response_parser $parser, $data = array()) {
 
+		$info = $this->loadComponent('info');
+
+		$auth_data = $info->getAuthToken();
+        $headers = array('Authorization: Bearer ' . $auth_data['access_token']);
+		
 		$ch = curl_init();
 		$this->curl_url = $url;
 		$this->curl_data = $data;
@@ -117,19 +122,23 @@ class cdek_integrator {
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-		curl_setopt($ch, CURLOPT_HEADER, FALSE);
+
 		curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 
 		if (!empty($data)) {
+		    $headers[]= 'Content-Type: application/json';
 			curl_setopt($ch, CURLOPT_POST, 1);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 		}
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
 		$out = curl_exec($ch);
 		curl_close($ch);
+
 		$this->curl_success = $out;
 		$parser->setData($out);
 
+		
 		return $parser->getData();
 	}
 

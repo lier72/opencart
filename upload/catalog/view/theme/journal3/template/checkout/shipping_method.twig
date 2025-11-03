@@ -7,12 +7,17 @@
 <p><strong>{{ shipping_method.title }}</strong></p>
 {% if not shipping_method.error %}
 {% for quote in shipping_method.quote %}
+<label> {{quote.code}} </label>
 <div class="radio">
   <label> {% if quote.code == code or not code %}
     {% set code = quote.code %}
     <input type="radio" name="shipping_method" value="{{ quote.code }}" checked="checked" />
+    {{quote.code}}
+    {% if quote.code == 'cdek' %} {% include 'default/extension/shipping/cdek.twig' %} {% endif %}
     {% else %}
     <input type="radio" name="shipping_method" value="{{ quote.code }}" />
+    {% if quote.code == 'cdek' %} {% include 'default/extension/shipping/cdek.twig' %} {% endif %}
+    {{quote.code}}
     {% endif %}
     {{ quote.title }} - {{ quote.text }}</label>
 </div>

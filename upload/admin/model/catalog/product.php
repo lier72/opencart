@@ -720,4 +720,170 @@ class ModelCatalogProduct extends Model {
 
 		return $query->row['total'];
 	}
+
+	public function updateProductImagesFromFiles($model, $product_id) {
+		$result = array(
+			'success' => false,
+			'message' => '',
+			'images_found' => 0
+		);
+
+		try {
+			// Validate inputs
+			if (empty($model) || empty($product_id)) {
+				throw new Exception('Invalid input parameters');
+			}
+
+			// Valid image extensions
+			$valid_extensions = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+
+			// Get base image directory path
+			$base_image_dir = DIR_IMAGE . 'catalog/';
+
+			// Create recursive directory iterator
+			$directory = new RecursiveDirectoryIterator($base_image_dir);
+			$iterator = new RecursiveIteratorIterator($directory);
+
+			// Pattern for matching files
+			$pattern = '/^' . preg_quote($model, '/') . '_(\d+)\.(' . implode('|', $valid_extensions) . ')$/i';
+
+			// Array to store matched files
+			$matched_files = array();
+
+			// Find matching files
+			foreach ($iterator as $file) {
+				if ($file->isFile()) {
+					$filename = $file->getFilename();
+					if (preg_match($pattern, $filename, $matches)) {
+						// Get sequence number
+						$sequence = (int)$matches[1];
+
+						// Get path relative to image directory
+						$relative_path = str_replace(
+							DIR_IMAGE,
+							'',
+							$file->getPathname()
+						);
+
+						// Store in matched files array
+						$matched_files[$sequence] = $relative_path;
+					}
+				}
+			}
+
+			// Sort by sequence number
+			ksort($matched_files);
+
+			if (empty($matched_files)) {
+				throw new Exception('No matching images found for model ' . $model);
+			}
+
+			// Start transaction
+			$this->db->query("START TRANSACTION");
+
+			try {
+				// Update main product image (sequence 1)
+				if (isset($matched_files[1])) {
+					$this->db->query("UPDATE " . DB_PREFIX . "product
+								SET image = '" . $this->db->escape($matched_files[1]) . "',
+									date_modified = NOW()
+								WHERE product_id = '" . (int)$product_id . "'");
+
+					// Remove sequence 1 from array as it's handled
+					unset($matched_files[1]);
+				}
+
+				// Clear existing additional images
+				$this->db->query("DELETE FROM " . DB_PREFIX . "product_image
+							WHERE product_id = '" . (int)$product_id . "'");
+
+				// Insert additional images
+				$sort_order = 0;
+				foreach ($matched_files as $sequence => $image) {
+					$this->db->query("INSERT INTO " . DB_PREFIX . "product_image
+								SET product_id = '" . (int)$product_id . "',
+									image = '" . $this->db->escape($image) . "',
+									sort_order = '" . (int)$sort_order . "'");
+					$sort_order++;
+				}
+
+				$this->db->query("COMMIT");
+
+				$result['success'] = true;
+				$result['message'] = 'Successfully updated images';
+				$result['images_found'] = count($matched_files) + (isset($matched_files[1]) ? 1 : 0);
+
+			} catch (Exception $e) {
+				$this->db->query("ROLLBACK");
+				throw $e;
+			}
+
+		} catch (Exception $e) {
+			$result['success'] = false;
+			$result['message'] = $e->getMessage();
+		}
+
+		return $result;
+	}
+
+	public function getSimilarProducts($product_id, $name, $categories) {
+		if (empty($categories)) {
+			return array();
+		}
+
+		// Base query for products with similar names
+		$sql = "SELECT DISTINCT p.product_id, pd.name,
+			   p.weight, p.length, p.width, p.height,
+			   p.weight_class_id, p.length_class_id,
+			   p.model, p.sku
+			FROM " . DB_PREFIX . "product p
+			LEFT JOIN " . DB_PREFIX . "product_description pd
+				ON (p.product_id = pd.product_id)
+			WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "'
+			AND pd.name LIKE '%" . $this->db->escape($name) . "%'";
+
+		// Join with categories to match exact category set
+		$sql .= " AND p.product_id IN (
+		SELECT pc.product_id
+		FROM " . DB_PREFIX . "product_to_category pc
+		GROUP BY pc.product_id
+		HAVING COUNT(*) = " . count($categories) . "
+		AND SUM(CASE WHEN category_id IN (" . implode(',', array_map('intval', $categories)) . ")
+					 THEN 1 ELSE 0 END) = " . count($categories) . "
+	)";
+
+		// Don't show current product
+		$sql .= " AND p.product_id != '" . (int)$product_id . "'";
+
+		// Order by most similar name first
+		$sql .= " ORDER BY pd.name ASC";
+
+		// Limit results for performance
+		$sql .= " LIMIT 10";
+
+		$query = $this->db->query($sql);
+
+		return $query->rows;
+	}
+
+	public function copyProductDimensions($source_id, $target_id) {
+		$source = $this->getProduct($source_id);
+		$target = $this->getProduct($target_id);
+
+		if (!$source || !$target) {
+			throw new Exception('Invalid product IDs');
+		}
+
+		$this->db->query("UPDATE " . DB_PREFIX . "product SET
+		weight = '" . (float)$source['weight'] . "',
+		weight_class_id = '" . (int)$source['weight_class_id'] . "',
+		length = '" . (float)$source['length'] . "',
+		width = '" . (float)$source['width'] . "',
+		height = '" . (float)$source['height'] . "',
+		length_class_id = '" . (int)$source['length_class_id'] . "',
+		date_modified = NOW()
+		WHERE product_id = '" . (int)$target_id . "'");
+
+		return true;
+	}
 }

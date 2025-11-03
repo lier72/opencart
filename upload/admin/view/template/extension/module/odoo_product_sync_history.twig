@@ -1,0 +1,88 @@
+{{ header }}{{ column_left }}
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="pull-right">
+                <a href="{{ back }}" data-toggle="tooltip" title="{{ button_back }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+            </div>
+            <h1>{{ heading_title }}</h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="container-fluid">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="fa fa-list"></i> {{ text_sync_history }}</h3>
+            </div>
+            <div class="panel-body">
+                <div class="well">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label class="control-label">{{ entry_product }}</label>
+                                <div class="form-control-static"><a href="{{ product_info.product_url }}">{{ product_info.name }}</a></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label class="control-label">{{ entry_model }}</label>
+                                <div class="form-control-static">{{ product_info.model }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label class="control-label">{{ entry_odoo_ref }}</label>
+                                <div class="form-control-static">{{ product_info.odoo_product_id }}</div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label class="control-label">{{ entry_sync_status }}</label>
+                                <div class="form-control-static">{{ product_info.sync_status_text }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                        <tr>
+                            <td class="text-left">{{ column_date }}</td>
+                            <td class="text-left">{{ column_direction }}</td>
+                            <td class="text-left">{{ column_sync_status }}</td>
+                            <td class="text-left">{{ column_message }}</td>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% if sync_history %}
+                        {% for history in sync_history %}
+                        <tr>
+                            <td class="text-left">{{ history.created_on }}</td>
+                            <td class="text-left">{{ history.sync_direction }}</td>
+                            <td class="text-left">{{ history.status }}</td>
+                            <td class="text-left">{{ history.message }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td class="text-center" colspan="4">{{ text_no_results }}</td>
+                        </tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6 text-left">{{ pagination }}</div>
+                    <div class="col-sm-6 text-right">{{ results }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ footer }}

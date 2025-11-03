@@ -1,0 +1,712 @@
+Original 2.1 File → New 3.0 Location → Status (Not Started/In Progress/Complete)
+------
+- Copied 28/10/2025
+./odoo_menu.ocmod.xml → ./odoo_menu.ocmod.xml → [ ]
+./catalog/model/module/odoo_price_sync.php -> ./catalog/model/extension/module/odoo_price_sync.php
+./catalog/api/product.phhp → ./catalog/api/product.phhp 
+./tests/unit/model/module/OdooPriceSyncTest.php -> ./tests/unit/model/extension/module/OdooPriceSyncTest.php
+./system/storage/logs/odoo_price_sync_test.log -> Skipped
+./master/create_odoo_order.php  -> ./admin/create_odoo_order.php - [Ok]
+./master/update_product_quanity.php -> ./admin/update_product_quanity.php - [Ok]
+./master/language/russian/module/odoo_product_mapping.php -> ./admin/language/ru-ru/extension/module/odoo_product_mapping.php
+./master/language/russian/module/odoo_price_mapping.php -> ./admin/language/ru-ru/extension/module/odoo_price_mapping.php
+./master/language/russian/module/odoo_order_mapping.php -> ./admin/language/ru-ru/extension/module/odoo_order_mapping.php - [Ok]
+./master/language/russian/module/odoo_connector.php -> ./admin/language/ru-ru/extension/module/odoo_connector.php - [Ok]
+./master/language/english/module/odoo_product_mapping.php -> ./admin/language/en-gb/extension/module/odoo_product_mapping.php
+./master/language/english/module/odoo_price_mapping.php -> ./admin/language/en-gb/extension/module/odoo_price_mapping.php
+./master/language/english/module/odoo_order_mapping.php -> ./admin/language/en-gb/extension/module/odoo_order_mapping.php - [Ok]
+./master/language/english/module/odoo_connector.php -> ./admin/language/en-gb/extension/module/odoo_connector.php - [Ok]
+./master/controller/module/odoo_product_mapping.php -> ./admin/controller/extension/module/odoo_product_mapping.php
+./master/controller/module/odoo_price_mapping.php -> ./admin/controller/extension/module/odoo_price_mapping.php
+./master/controller/module/odoo_order_mapping.php -> ./admin/controller/extension/module/odoo_order_mapping.php - [Ok]
+./master/controller/module/odoo_connector.php -> ./admin/controller/extension/module/odoo_connector.php - [Ok]
+./master/controller/module/odoo_product_sync.php -> ./admin/controller/extension/module/odoo_product_sync.php
+./master/model/module/odoo_product_mapping.php      →  ./admin/model/extension/module/odoo/odoo_product_mapping.php → [ ]
+./master/model/module/odoo_price_sync.php           → ./admin/model/extension/module/odoo/odoo_price_sync.php → [ ]
+./master/model/module/odoo_connector.php            → ./admin/model/extension/module/odoo/odoo_connector.php → [Ok]
+./master/view/template/module/odoo_order_mapping.tpl -> /admin/view/template/extension/module/odoo_order_mapping.twig - [Ok]
+./master/view/template/module/odoo_product_mapping.tpl -> /admin/view/template/extension/module/odoo_product_mapping.twig
+./master/view/template/module/odoo_price_mapping_history.tpl -> /admin/view/template/extension/module/odoo_price_mapping_history.twig
+./master/view/template/module/odoo_price_mapping_list.tpl -> /admin/view/template/extension/module/odoo_price_mapping_list.twig
+./master/view/template/module/odoo_config.tpl -> /admin/view/template/extension/module/odoo_config.twig - [Ok]
+./master/view/template/module/odoo_product_sync_history.tpl -> /admin/view/template/extension/module/odoo_product_sync_history.twig
+./master/view/template/module/odoo_price_mapping_form.tpl -> /admin/view/template/extension/module/odoo_price_mapping_form.twig
+
+
+Insatlled
+Ripcord library from https://github.com/DarkaOnLine/Ripcord?tab=readme-ov-file
+as instructed in the separate autoloder composer directry
+You could use a similar approach for your Odoo connector:
+
+Create a directory structure:
+system/library/odoo_connector/
+├── composer.json
+├── composer.lock
+├── src/
+└── vendor/
+Create a composer.json:
+{
+    "name": "your/odoo-connector",
+    "require": {
+        "darkaonline/ripcord": "^0.3"
+    },
+}
+Run Composer within that directory:
+cd /Users/max/Sites/opencart/upload/system/library/odoo_connector
+composer install
+In your main connector class, you would initialize the autoloader:
+<?php
+require_once(DIR_SYSTEM . 'library/odoo_connector/vendor/autoload.php');
+This approach gives you the benefits of:
+
+Proper dependency management through Composer
+Isolated dependencies that won't conflict with other extensions
+Self-contained extension that's easier to distribute
+PSR-4 autoloading for your own classes
+
+Modified 
+./admin/create_odoo_order.php 
+ripcord:: -> Raplaced with \Ripcord\Ripcord::
+
+./admin/update_product_quanity.php
+ripcord:: -> Raplaced with \Ripcord\Ripcord::
+
+IMPORTANT!
+When connecting to test odoo location like odoo2.uniqsport.ru its important 
+to change database to odoo2.uniqsport.ru AS WELL, otherwise all the connection methods
+will use data from the database that is set in ocmod_odoo_config 
+mysql> select * from ocus_odoo_config;
++----+-----------------+----------------------------+
+| id | key             | value                      |
++----+-----------------+----------------------------+
+| 56 | url             | https://odoo2.uniqsport.ru |
+| 57 | db_name         | odoo.uniqsport.ru          |<---- WRONG
+| 58 | user            | info@uniqsport.ru          |
+| 59 | password        | MontanA                    |
+| 60 | port            | 443                        |
+| 61 | sync_batch_size | 50                         |
+| 62 | debug           | 0                          |
++----+-----------------+----------------------------+
+mysql> select * from ocus_odoo_config;
++----+-----------------+----------------------------+
+| id | key             | value                      |
++----+-----------------+----------------------------+
+| 56 | url             | https://odoo2.uniqsport.ru |
+| 57 | db_name         | odoo2.uniqsport.ru         |<---- Correct
+| 58 | user            | info@uniqsport.ru          |
+| 59 | password        | MontanA                    |
+| 60 | port            | 443                        |
+| 61 | sync_batch_size | 50                         |
+| 62 | debug           | 0                          |
++----+-----------------+----------------------------+
+
+IMPORTANT 
+token in OC2 has been changed to user_token in OC3
+So all controllers and twig files has to be updated 
+
+./master/view/template/module/odoo_config.tpl -> /admin/view/template/extension/module/odoo_config.twig - [Ok]
+./master/language/russian/module/odoo_connector.php -> ./admin/language/ru-ru/extension/module/odoo_connector.php - [Ok]
+./master/language/english/module/odoo_connector.php -> ./admin/language/en-gb/extension/module/odoo_connector.php - [Ok]
+./master/model/module/odoo_connector.php            → ./admin/model/extension/module/odoo/odoo_connector.php → [Ok]
+./master/controller/module/odoo_connector.php -> ./admin/controller/extension/module/odoo_connector.php - [Ok]
+
+---
+DATABASE SYNCHRONIZATION FIXES - 30/10/2025
+Script: ./install/syncronize_db_rbr.php
+---
+
+ISSUE 1: Out of range value for column 'cod'
+Error: "Out of range value for column 'cod' at row 1" in ocus_cdek_order table
+Cause: Columns 'cod' and 'cod_fact' were defined as float(8,4) - max value: 9999.9999
+       Data contained values of 10000.0000 which exceeded the column limit
+Fix:   Added automatic column resize after table creation (lines 204-215)
+       ALTER TABLE ocus_cdek_order
+         MODIFY COLUMN cod DECIMAL(10,4),
+         MODIFY COLUMN cod_fact DECIMAL(10,4)
+       New max value: 999,999.9999
+
+ISSUE 2: Duplicate entry for unique key
+Error: "Duplicate entry '918' for key 'ocus_odoo_client_map.odoo_client_id'"
+Cause: Tables with UNIQUE keys (not PRIMARY KEY) failed with INSERT ... ON DUPLICATE KEY UPDATE
+       Example: ocus_odoo_client_map has UNIQUE KEY on odoo_client_id
+       ON DUPLICATE KEY UPDATE only handles PRIMARY KEY conflicts
+Fix:   Added automatic detection of unique keys (lines 406-419)
+       If table has unique keys → use REPLACE INTO instead of INSERT
+       REPLACE INTO deletes conflicting row and inserts new one
+
+MYSQL PATH SETUP:
+Issue: mysql command not found in PATH
+Location: /usr/local/bin/mysql (Homebrew installation)
+Temp fix: export PATH="/usr/local/bin:$PATH"
+Permanent: Add above line to ~/.zshrc or ~/.bash_profile
+
+ISSUE 3: Missing PRIMARY KEY in created tables (ocus_odoo_config)
+Error: Duplicate rows with id=0 inserted into ocus_odoo_config
+Cause: Table was created using CREATE TABLE ... AS SELECT which DOES NOT copy:
+       ✗ PRIMARY KEY constraints
+       ✗ AUTO_INCREMENT attributes
+       ✗ UNIQUE keys, FOREIGN keys, Indexes
+       ✗ Default values
+       Used: CREATE TABLE `a1627-unqs-oc3`.`ocus_odoo_config` AS
+             SELECT * FROM `a1627-unqs-oc`.`ocus_odoo_config`;
+       Old DB: PRIMARY KEY (id), AUTO_INCREMENT
+       New DB: No PRIMARY KEY, no AUTO_INCREMENT → id defaulted to 0
+Result: REPLACE INTO could not detect duplicates, inserted new rows instead
+Fix:   Manually corrected the table structure:
+       DELETE FROM ocus_odoo_config WHERE id = 0;
+       ALTER TABLE ocus_odoo_config
+         ADD PRIMARY KEY (id),
+         MODIFY COLUMN id INT UNSIGNED NOT NULL AUTO_INCREMENT;
+
+LESSON LEARNED: Correct way to copy tables with structure:
+       Method 1 (Recommended):
+         CREATE TABLE new_db.table_name LIKE old_db.table_name;
+         INSERT INTO new_db.table_name SELECT * FROM old_db.table_name;
+
+       Method 2:
+         SHOW CREATE TABLE old_db.table_name;
+         -- Copy the output and execute in new database
+         INSERT INTO new_db.table_name SELECT * FROM old_db.table_name;
+
+Ported to OC3
+./master/controller/module/odoo_order_mapping.php -> ./admin/controller/extension/module/odoo_order_mapping.php - [Ok]
+./master/language/russian/module/odoo_order_mapping.php -> ./admin/language/ru-ru/extension/module/odoo_order_mapping.php - [Ok]
+./master/language/english/module/odoo_order_mapping.php -> ./admin/language/en-gb/extension/module/odoo_order_mapping.php - [Ok]
+./master/view/template/module/odoo_order_mapping.tpl -> /admin/view/template/extension/module/odoo_order_mapping.twig - [Ok]
+
+---
+AUTHENTICATION TOKEN FIXES - 30/10/2025
+---
+
+ISSUE: JSON Parse error in AJAX requests
+Error: "SyntaxError: JSON Parse error: Unrecognized token '<'"
+Cause: AJAX requests receiving HTML login page instead of JSON response
+       Wrong token parameter name and missing route prefix caused authentication failures
+
+ROOT CAUSE ANALYSIS:
+1. OpenCart 3.x uses 'user_token' (NOT 'token') for session authentication
+2. Admin extension routes REQUIRE full path: 'extension/module/controller_name'
+3. When authentication fails → OpenCart redirects to login page
+4. AJAX expecting JSON receives HTML → JavaScript JSON.parse() fails
+
+FILES FIXED:
+
+1. admin/view/template/extension/module/odoo_product_mapping.twig
+   ✓ Changed: token={{ token }} → user_token={{ user_token }}
+   ✓ Fixed routes:
+     - module/odoo_product_mapping → extension/module/odoo_product_mapping
+     - module/odoo_product_mapping/sync → extension/module/odoo_product_mapping/sync
+     - module/odoo_product_mapping/massSync → extension/module/odoo_product_mapping/massSync
+   Affected: Filter button, Sync button, Mass sync button
+
+2. admin/view/template/extension/module/odoo_price_mapping_history.twig
+   ✓ Changed: token={{ token }} → user_token={{ user_token }}
+   ✓ Fixed route: module/odoo_price_mapping/history → extension/module/odoo_price_mapping/history
+   Affected: Filter button
+
+3. admin/view/template/extension/module/odoo_order_mapping.twig
+   ✓ Changed: token={{ token }} → user_token={{ user_token }}
+   ✓ Fixed route: module/odoo_order_mapping → extension/module/odoo_order_mapping
+   Affected: Filter button
+
+4. admin/controller/extension/module/odoo_price_mapping.php (Line 444)
+   ✓ Fixed pagination URL: &token= → &user_token=
+
+VERIFICATION:
+All Odoo template files checked - no remaining token issues found
+All Odoo controller files checked - no remaining token issues found
+
+LESSON LEARNED:
+When migrating from OC2 to OC3:
+- Always use 'user_token' parameter (not 'token')
+- Always include 'extension/' prefix in admin module routes
+- Template variable must match controller: $data['user_token'] = $this->session->data['user_token']
+- AJAX endpoints need proper authentication or will return HTML login page instead of JSON
+
+---
+ODOO CONNECTION PROPERTY ACCESS FIX - 30/10/2025
+---
+
+ISSUE: Null connection when accessing $this->model_extension_module_odoo_connector->connection
+Error: Product sync failing with "Failed to connect to Odoo" despite successful authentication
+Cause: OpenCart's proxy/loader system doesn't properly expose public properties between models
+       Direct property access ($model->connection) returns null even after successful connection
+
+ROOT CAUSE ANALYSIS:
+1. Connection was being established successfully (UID: 43, status: true)
+2. In odoo_connector model: $this->connection was properly set
+3. When accessed from odoo_product_mapping: $this->model_extension_module_odoo_connector->connection returned NULL
+4. This is due to OpenCart's model loading/proxy system not exposing object properties properly
+
+SOLUTION: Added getConnection() getter method
+Created public getter method in odoo_connector.php:
+    public function getConnection() {
+        if (!$this->connection) {
+            $this->getConfig();
+        }
+        return $this->connection;
+    }
+
+FILES UPDATED:
+1. admin/model/extension/module/odoo_connector.php
+   ✓ Added getConnection() getter method (line 28-34)
+   ✓ Removed excessive debug logging from connectRpc()
+   ✓ Kept only error logging for authentication failures
+
+2. admin/model/extension/module/odoo_product_mapping.php
+   ✓ Changed: $this->model_extension_module_odoo_connector->connection
+   ✓ To: $this->model_extension_module_odoo_connector->getConnection()
+   ✓ Updated in 4 locations: syncProductToOdoo, createOdooProduct, updateOdooProduct, logSync
+   ✓ Removed excessive RPC call logging (kept only error logs)
+
+3. admin/model/extension/module/odoo_price_sync.php
+   ✓ Updated 2 instances: getOdooPricelistData(), getAvailableOdooPricelists()
+   ✓ Changed ->connection to ->getConnection()
+
+DEBUGGING APPROACH:
+Added comprehensive logging to trace the issue:
+- Connection establishment logging
+- Property access logging
+- RPC request/response logging
+Once issue was identified and fixed, removed excessive logging while keeping error logs
+
+VERIFICATION:
+Product sync now works correctly
+Connection properly established and accessible across all models
+All Odoo RPC calls functioning as expected
+
+LESSON LEARNED:
+When working with OpenCart models:
+- Don't rely on public property access between models
+- Always use getter methods for cross-model property access
+- OpenCart's proxy system can interfere with direct property access
+- Test property accessibility when implementing new model interactions
+
+Summary of Work Completed
+Issues Fixed Today:
+Authentication Token Issues
+Fixed JSON parse errors in AJAX requests
+Updated all templates and controllers to use user_token instead of token
+Fixed all route paths to include extension/ prefix
+Odoo Connection Property Access Issue
+Root Cause: OpenCart's proxy system doesn't expose public properties between models
+Symptom: $this->model_extension_module_odoo_connector->connection returned null despite successful authentication
+Solution: Created getConnection() getter method in odoo_connector.php
+Files Modified:
+admin/model/extension/module/odoo_connector.php
+Added getConnection() getter method
+Cleaned up excessive debug logging
+admin/model/extension/module/odoo_product_mapping.php
+Updated all 4 instances to use getConnection()
+Removed verbose RPC logging
+admin/model/extension/module/odoo_price_sync.php
+Updated 2 instances to use getConnection()
+admin/view/template/extension/module/odoo_product_mapping.twig
+Fixed token and route issues
+admin/view/template/extension/module/odoo_price_mapping_history.twig
+Fixed token and route issues
+admin/view/template/extension/module/odoo_order_mapping.twig
+Fixed token and route issues
+admin/controller/extension/module/odoo_price_mapping.php
+Fixed pagination URL token
+Key Lessons Learned:
+OpenCart 3.x models don't expose public properties properly through the proxy system
+Always use getter methods for cross-model property access
+Comprehensive logging is essential for debugging, but should be cleaned up after issue resolution
+Document all fixes for future reference
+Status: ✅ All Odoo sync functionality now working correctly!
+
+---
+ODOO PRICE MAPPING FORM FIX - 30/10/2025
+---
+
+ISSUE: Price mapping edit form not displaying selected values
+Error: Form dropdowns showed correct options but nothing was selected
+       Validation errors appeared when re-entering form after saving
+       Form claimed "Please select an Odoo pricelist!" despite values being selected in HTML
+Cause: Multiple issues:
+       1. Stored pricelist IDs in database didn't match available pricelists from Odoo API
+       2. Update method only saved is_active and pricelist_name, not the actual IDs
+       3. Cached Twig templates showing stale error messages
+
+ROOT CAUSE ANALYSIS:
+1. Database had pricelist IDs (2791, 2794, 2796, 2792) that were no longer available in Odoo
+2. getAvailableOdooPricelists() returned only active pricelists with opencart_export=true
+3. Form tried to select non-existent options → no selection appeared
+4. updatePricelistMapping() didn't update odoo_pricelist_id or opencart_customer_group_id
+5. Twig template cache stored old validation errors
+
+SOLUTION IMPLEMENTED:
+
+1. Controller: admin/controller/extension/module/odoo_price_mapping.php
+   ✓ Added detection for unavailable pricelists in getForm() (lines 525-543)
+   ✓ If stored pricelist not in available list, add it with "[NOT AVAILABLE IN ODOO]" suffix
+   ✓ Modified edit() method to pass all fields to update (lines 190-195):
+     - odoo_pricelist_id
+     - opencart_customer_group_id
+     - odoo_pricelist_name
+     - is_active
+   ✓ Added proper error variable initialization in getForm() (lines 498-508)
+   ✓ Enhanced validateForm() with field-specific error messages (lines 594-608)
+   ✓ Added debug logging for troubleshooting
+
+2. Model: admin/model/extension/module/odoo_price_sync.php
+   ✓ Updated updatePricelistMapping() to handle all fields (lines 99-157)
+   ✓ Added duplicate mapping detection before update (lines 101-120)
+   ✓ Checks UNIQUE constraint: (odoo_pricelist_id, opencart_customer_group_id, price_type)
+   ✓ Throws exception if duplicate would be created
+   ✓ Changed return behavior to re-throw exceptions for controller handling
+
+3. Template: admin/view/template/extension/module/odoo_price_mapping_form.twig
+   ✓ Fixed Twig comparison using string concatenation (~ '')
+   ✓ Changed: pricelist.pricelist_id == odoo_pricelist_id
+   ✓ To: pricelist.pricelist_id ~ '' == odoo_pricelist_id ~ ''
+   ✓ Added visual styling for unavailable pricelists (red, bold)
+   ✓ Added informative warning alert when unavailable pricelist selected (lines 38-50)
+   ✓ Improved error message clarity
+
+CACHE CLEARING:
+Issue: Old Twig templates cached with stale error messages
+Solution: Cleared template cache files
+Command: find /Users/max/Sites/storage/cache -name "*odoo_price_mapping*" -type f -delete
+
+DATABASE STATE AFTER FIX:
+All mappings updated to use valid Odoo pricelist IDs:
+mysql> SELECT id, odoo_pricelist_id, odoo_pricelist_name FROM ocus_odoo_pricelist_map;
++----+-------------------+---------------------+
+| id | odoo_pricelist_id | odoo_pricelist_name |
++----+-------------------+---------------------+
+|  1 |                 1 | RRP                 |
+|  2 |              2787 | RRP-15%             |
+|  3 |              2787 | RRP-15%             |
+|  4 |                 4 | Sportsmen           |
+|  5 |                 5 | D0+10%              |
+|  6 |                 2 | D0                  |
++----+-------------------+---------------------+
+
+Available Odoo Pricelists (from API):
+- ID 1: RRP
+- ID 2787: RRP-15%
+- ID 5: D0+10%
+- ID 4: Sportsmen
+- ID 2: D0
+
+All stored IDs now match available pricelists ✓
+
+VERIFICATION:
+✓ Edit form correctly displays selected pricelist and customer group
+✓ Dropdowns show proper selections with correct values
+✓ Form saves updates correctly to database
+✓ No false validation errors appear
+✓ System gracefully handles unavailable pricelists with clear warnings
+✓ Duplicate mapping prevention works correctly
+
+LESSON LEARNED:
+When working with dynamic dropdown data from external APIs:
+- Always handle cases where stored IDs may not exist in current API response
+- Provide clear user feedback when data is outdated/unavailable
+- Use type-safe comparisons in templates (string vs integer mismatches)
+- Clear template cache after template changes to avoid stale UI
+- Initialize ALL error variables to empty strings to prevent undefined variable issues
+- Document the relationship between database constraints and validation logic
+
+Status: ✅ Price mapping form fully functional!
+
+---
+ODOO CLIENT CLEANUP - 30/10/2025
+---
+
+ANALYSIS: OdooClient.php wrapper class
+File: system/library/odoo_connector/src/OdooClient.php
+
+PURPOSE:
+The OdooClient class was designed as a wrapper/abstraction layer around Ripcord library to:
+- Simplify Odoo XML-RPC method calls (search, read, create, write, unlink)
+- Provide automatic connection management
+- Offer cleaner API than raw Ripcord execute_kw() calls
+
+ACTUAL USAGE:
+✗ NOT being used anywhere in the codebase
+✗ No instantiation found in any PHP files
+✗ No namespace imports or references
+
+CURRENT IMPLEMENTATION:
+The actual Odoo connector uses DIRECT Ripcord calls in:
+admin/model/extension/module/odoo_connector.php (lines 60-93)
+
+Approach:
+1. Load Ripcord via Composer autoloader
+2. Create XML-RPC clients directly: \Ripcord\Ripcord::client()
+3. Authenticate and get UID
+4. Use execute_kw() method directly for all operations
+5. Return connection array with client, userId, pwd, url, db
+
+This approach is:
+✓ Working perfectly for all Odoo operations
+✓ More flexible than the wrapper
+✓ Directly documented in Odoo's official XML-RPC API docs
+✓ Allows custom execute_kw() calls without wrapper limitations
+
+DECISION: Delete OdooClient.php
+Reason: Unused code that serves no purpose and could cause confusion
+
+ACTIONS TAKEN:
+✓ Deleted: system/library/odoo_connector/src/OdooClient.php
+✓ Removed: src/ directory (now empty)
+✓ Updated: composer.json - removed PSR-4 autoload section (not needed)
+✓ Updated description to clarify this is just Ripcord library container
+
+WHAT REMAINS:
+system/library/odoo_connector/
+├── composer.json        (Ripcord dependency management)
+├── composer.lock        (Locked versions)
+└── vendor/             (Ripcord library installation)
+    └── darkaonline/ripcord/
+
+PURPOSE OF REMAINING STRUCTURE:
+- Isolates Ripcord dependency in self-contained directory
+- Prevents conflicts with other OpenCart extensions
+- Makes extension easy to distribute/install
+- Uses Composer for proper dependency management
+
+LESSON LEARNED:
+- Delete unused wrapper classes that add no value
+- Keep dependency management simple and focused
+- Direct library usage is often better than custom wrappers
+- Document what's actually being used vs what exists in codebase
+
+Status: ✅ Cleaned up unnecessary abstraction layer!
+
+TODO for 31/10/2025
+
+1 FIX admin/controller/catalog/product.php to provde price_history data for correspomding twig template
+2 Investigate why calling getConfig method from controller odoo_connector.php does not set $this->connection object and thus magnifies connection problems
+3 make modifications issue 1 modifications to ocmod.
+4 finish testing
+5 Update syncronize_db_rbr so it carefully select only tose tables that needed.
+
+---
+COMPLETED WORK - 01/11/2025
+---
+
+1. PRODUCT FORM ENHANCEMENTS (Completed by lier72)
+   Files Modified:
+   - admin/controller/catalog/product.php (+282 lines)
+   - admin/view/template/catalog/product_form.twig (+278 lines)
+   - admin/model/catalog/product.php (+166 lines)
+
+   Features Added:
+   ✓ Price history integration in product form
+     - Added price_history URL parameter to link to odoo_price_mapping/history
+     - Modified URL construction to handle pagination with pl_page parameter
+
+   ✓ Product sync history display
+     - Added pagination for sync history (10 entries per page)
+     - Implemented getTotalSyncHistoryEntries() and getProductSyncHistory() integration
+     - Gracefully handles missing odoo_product_mapping model
+     - Shows sync status, dates, and results directly in product form
+
+   ✓ AJAX product form updates
+     - Added AJAX mode detection ($is_ajax_request)
+     - Returns JSON response instead of redirect for AJAX saves
+     - Added comprehensive error logging for debugging
+
+   ✓ New product utilities:
+     a) updateImages() - Automatically update product images from files
+        - Called via AJAX from product form
+        - Finds images by product model
+        - Returns success count or error messages
+
+     b) findSimilarProducts() - Search for similar products
+        - Uses first 2 words of product name as pattern
+        - Filters by categories
+        - Returns products with weight/length unit information
+
+     c) copyDimensions() - Copy dimensions between products
+        - Copies weight, length, width, height between products
+        - Uses new model method copyProductDimensions()
+        - Sets success message in session
+
+2. ODOO CONNECTOR IMPROVEMENTS (Completed by lier72)
+   Files Modified:
+   - admin/controller/extension/module/odoo_connector.php (+58 lines)
+   - admin/model/extension/module/odoo_connector.php (+93 lines)
+
+   Issue Fixed: "getConfig() does not set $this->connection"
+
+   Root Cause: Controller methods syncOrderState() and createOdooOrder() were calling
+   getConfig() but not checking if connection was actually established before proceeding.
+
+   Solution Implemented:
+   ✓ Added connection validation after getConfig() call
+   ✓ Call getConnection() to retrieve connection object
+   ✓ Check connection['status'] before proceeding with operations
+   ✓ Return JSON error response if connection fails
+   ✓ Added detailed error logging with connection status
+
+   Before (syncOrderState):
+   ```php
+   $this->model_extension_module_odoo_connector->getConfig();
+   $json = $this->model_extension_module_odoo_connector->syncOpenCartOrderState();
+   ```
+
+   After:
+   ```php
+   $this->model_extension_module_odoo_connector->getConfig();
+   $connection = $this->model_extension_module_odoo_connector->getConnection();
+
+   if (!$connection || !isset($connection['status']) || !$connection['status']) {
+       $json = array(
+           'success' => false,
+           'errors' => array('Failed to connect to Odoo server...')
+       );
+       // ... error handling and logging
+       return;
+   }
+   $json = $this->model_extension_module_odoo_connector->syncOpenCartOrderState();
+   ```
+
+   Same pattern applied to createOdooOrder() method.
+
+   Benefits:
+   - Prevents cryptic errors when Odoo connection fails
+   - Provides clear error messages to users
+   - Improves debugging with detailed connection status logging
+   - Follows fail-fast principle
+
+3. ORDER MANAGEMENT ENHANCEMENTS (Completed by lier72)
+   Files Modified:
+   - admin/controller/sale/order.php (+4 lines)
+   - admin/language/en-gb/sale/order.php (+6 lines)
+   - admin/language/ru-ru/sale/order.php (+4 lines)
+
+   Changes:
+   ✓ Added language strings for new order functionality
+   ✓ Controller updates for better order-Odoo integration
+
+4. PHPUNIT TEST SETUP (Completed in current session)
+   Files Created:
+   - tests/bootstrap.php (26 lines) - NEW
+   - tests/TestDatabaseSetup.php (103 lines) - NEW
+   - tests/phpunit.xml (14 lines) - NEW
+   - tests/unit/model/extension/module/OdooPriceSyncTest.php (340 lines) - MODIFIED
+
+   Issue: Test suite completely non-functional
+   Errors:
+   - DIR_STORAGE constant undefined → startup.php failures
+   - Missing Config and Log class requires
+   - Wrong TestDatabaseSetup.php path (off by one directory)
+   - Model class name didn't follow OC3 conventions
+   - Database 'opencart_test' didn't exist
+   - Missing odoo_config table required by model constructor
+
+   Solutions Implemented:
+
+   A) Bootstrap Configuration (tests/bootstrap.php):
+      ✓ Added DIR_STORAGE constant pointing to /Users/max/Sites/storage/
+      ✓ Changed DIR_APPLICATION from '../master/' to '../catalog/'
+      ✓ Fixed DIR_MODIFICATION with trailing slash
+      ✓ Updated DIR_LOGS to use DIR_STORAGE
+      ✓ Added require_once for Config class (system/library/config.php)
+      ✓ Added require_once for Log class (system/library/log.php)
+
+      Database Configuration:
+      - Host: 127.0.0.1
+      - Database: opencart_test (auto-created)
+      - User: root (no password)
+      - Table Prefix: oc_test_
+
+   B) Test Database Setup (tests/TestDatabaseSetup.php):
+      ✓ Created comprehensive test database setup class
+      ✓ Creates tables: product, product_special, product_discount, odoo_config
+      ✓ Inserts test product (ID: 780, model: TEST001, price: 12000)
+      ✓ Inserts odoo_config with debug=0
+      ✓ Implements proper cleanup in clearDatabase()
+
+      odoo_config Table Structure:
+      ```sql
+      CREATE TABLE oc_test_odoo_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          key VARCHAR(255) UNIQUE NOT NULL,
+          value TEXT
+      );
+      ```
+
+   C) OdooPriceSyncTest.php Fixes:
+      ✓ Fixed require path: added one more dirname() level
+      ✓ Model path already correct: DIR_APPLICATION . 'model/extension/module/odoo_price_sync.php'
+      ✓ Model class name updated by separate fix (see below)
+
+   D) OpenCart 3 Model Standards (catalog/model/extension/module/odoo_price_sync.php):
+      ✓ Updated class name: ModelModuleOdooPriceSync → ModelExtensionModuleOdooPriceSync
+      ✓ Updated file path comment
+
+      CRITICAL: Class name MUST match directory structure in OC3
+      Pattern: catalog/model/extension/module/NAME.php → ModelExtensionModuleNAME
+
+   E) Test Database Creation:
+      ✓ Created 'opencart_test' database using mysqli
+      ✓ Command: CREATE DATABASE IF NOT EXISTS opencart_test
+
+   TEST RESULTS:
+   Before Fix:
+   - 6 errors, 0 assertions
+   - Tests couldn't even initialize
+
+   After Fix:
+   PHPUnit 8.5.41 by Sebastian Bergmann and contributors.
+   ......                                                              6 / 6 (100%)
+   Time: 910 ms, Memory: 14.00 MB
+   OK (6 tests, 31 assertions)
+
+   Tests Passing:
+   ✓ testHandleDefaultGroupPrice - Complex test with multiple price scenarios
+   ✓ testUpdateDefaultGroupPrice1 - Basic default group price update
+   ✓ testUpdateSpecialPrice - Special price when lower than default
+   ✓ testUpdateDiscountPrice - Non-default customer group pricing
+   ✓ testUpdatePriceWithoutChanges - Verify no-op updates work correctly
+   ✓ testPriceUpdateFailure - Error handling for non-existent products
+
+SUMMARY OF FILES MODIFIED TODAY (01/11/2025):
+
+By lier72 (git commit 0c2f1e9a):
+1. admin/controller/catalog/product.php (+282, -68 lines)
+2. admin/controller/extension/module/odoo_connector.php (+58 lines)
+3. admin/controller/sale/order.php (+4 lines)
+4. admin/language/en-gb/sale/order.php (+6 lines)
+5. admin/language/ru-ru/sale/order.php (+4 lines)
+6. admin/model/catalog/product.php (+166 lines)
+7. admin/model/extension/module/odoo_connector.php (+93 lines)
+8. admin/view/template/catalog/product_form.twig (+278 lines)
+9. Odoo_connector_migration.txt (+11 lines)
+
+By current session (not yet committed):
+10. catalog/model/extension/module/odoo_price_sync.php (class name fix)
+11. tests/bootstrap.php (NEW - test configuration)
+12. tests/TestDatabaseSetup.php (NEW - test database setup)
+13. tests/phpunit.xml (NEW - PHPUnit configuration)
+14. tests/unit/model/extension/module/OdooPriceSyncTest.php (path fix)
+
+Total: 14 files modified/created
+Total Lines Added: ~1,200+ lines
+Total Lines Removed: ~68 lines
+
+KEY LEARNINGS:
+1. OpenCart 3 strictly enforces class naming conventions matching directory structure
+2. Always validate Odoo connection before attempting operations
+3. Comprehensive test setup requires all constants and dependencies
+4. AJAX mode support in controllers improves UX for async operations
+5. Product form can be enhanced with utilities without breaking existing functionality
+
+TESTING INFRASTRUCTURE:
+- PHP Version: 7.3.33
+- PHP Path: /usr/local/opt/php@7.3/bin/php
+- PHPUnit Version: 8.5.41
+- PHPUnit Path: /usr/local/bin/phpunit
+- Test Database: opencart_test (separate from development)
+
+Status: ✅ All work completed successfully!
+        ✅ 6/6 PHPUnit tests passing
+        ✅ Product form enhanced with new features
+        ✅ Odoo connection validation improved
+        ✅ Test infrastructure fully operational

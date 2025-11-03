@@ -15,3 +15,9 @@ admin/config.php
 .idea/oc3.uniqsport.ru.code-workspace
 config_orig.php
 config.php
+admin/array.json
+admin/clients.json
+admin/not_found_clients.json
+admin/regions.json
+admin/new_products.json
+admin/nf_regions.json

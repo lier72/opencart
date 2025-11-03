@@ -155,13 +155,20 @@ class ModelExtensionShippingCdek extends Model
         }
 
         if (!$address['city'] && $address['zone']) {
-            $zoneNameParts = explode(' ', $address['zone']);
-            $cdekZoneData = $this->db->query("SELECT cityName FROM `" . DB_PREFIX . "cdek_city` WHERE (`regionName` LIKE '%" . $this->db->escape($zoneNameParts[0]) . "%' OR `cityName` LIKE '%" . $this->db->escape($zoneNameParts[0]) . "%') AND `center` = '1' LIMIT 1")->row;
+            $zoneNameParts = trim(str_replace(array("ская Республика", "Республика", "АО", "- Югра"), "", $address['zone']));
+            $cdekZoneData = $this->db->query("SELECT cityName FROM `" . DB_PREFIX . "cdek_city` WHERE (`regionName` LIKE '%" . $this->db->escape($zoneNameParts) . "%' OR `cityName` LIKE '%" . $this->db->escape($zoneNameParts) . "%') AND `center` = '1' LIMIT 1")->row;
+
+            if ($this->config->get('shipping_cdek_log')) {
+                $this->log->write("CDEK Info: SELECT cityName FROM `" . DB_PREFIX . "cdek_city` WHERE (`regionName` LIKE '%" . $this->db->escape($zoneNameParts) . "%' OR `cityName` LIKE '%" . $this->db->escape($zoneNameParts) . "%') AND `center` = '1' LIMIT 1");
+                $this->log->write('СДЭК INFO: zone (покупатель): ' . $zoneNameParts);
+                $this->log->write('СДЭК INFO: город (покупатель): ' . $cdekZoneData['cityName']);
+            }
             if ($cdekZoneData) {
                 $address['city'] = $cdekZoneData['cityName'];
             }
 
         }
+
 
         if ($to_data && $address['city']) {
 
@@ -1152,14 +1159,14 @@ class ModelExtensionShippingCdek extends Model
     private function ocToCdek($region_name = '')
     {
         
-        if ($region_name) {
-            $region_name = str_replace('обл.', 'область', $region_name);
-            $region_name = str_replace('АО', 'авт. округ', $region_name);
-            if (strpos($region_name, 'Республика') !== FALSE) {
+         if ($region_name) {
+//            $region_name = str_replace('обл.', 'область', $region_name);
+            $region_name = str_replace('АО', 'автономный округ', $region_name);
+/*             if (strpos($region_name, 'Республика') !== FALSE) {
                 $region_name = str_replace('Республика', '', $region_name);
                 $region_name .= " респ.";
             }
-        }
+ */        }
         
         return trim($region_name);
     }

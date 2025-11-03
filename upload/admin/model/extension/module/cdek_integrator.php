@@ -376,7 +376,8 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 				
 				$sql .= ", status_id = '" . $this->db->escape($data['status_id']) . "'";
 				// Change order status
-				$this->changeOrderStatus($data['status_id'], $dispatch_info);
+				// moved to the end of function to get updated dispatch info
+//				$this->changeOrderStatus($data['status_id'], $dispatch_info);
 			}
 			
 			if (!empty($data['reason_id'])) {
@@ -549,7 +550,13 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 				}
 				
 			}
-			
+			// Change order status after all changes in order history are done.
+            // This should give us {status_city_name},
+            // I don't think we should use $dispatch info here as it was before the changes
+            // So may be it would be better to use $data instead
+            // get updated $dispatch_info
+            $dispatch_info = $this->getDispatchInfo($order_id);
+            $this->changeOrderStatus($data['status_id'], $dispatch_info);
 		} else {
 			return FALSE;
 		}
@@ -816,7 +823,9 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 			
 			if ($order_info) {
 				
-				$comment = strtr($rule['comment'], array('{dispatch_number}' => $dispatch_info['cdek_number'], '{order_id}' => $dispatch_info['order_id']));
+                $comment = strtr($rule['comment'], array('{dispatch_number}' => $dispatch_info['cdek_number'],
+                    '{order_id}' => $dispatch_info['order_id'],
+                    '{status_city_name}' => $dispatch_info['status_city_name']));
 
 				$this->statusApi((int)$dispatch_info['order_id'], (int)$rule['order_status_id'], (int)$rule['notify'], $comment);
 			}

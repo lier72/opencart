@@ -1,0 +1,88 @@
+{{ header }}{{ column_left }}
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="pull-right">
+                <button type="submit" form="form-mapping" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+                <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+            </div>
+            <h1>{{ heading_title }}</h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="container-fluid">
+        {% if error_warning %}
+        <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        {% endif %}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_form }}</h3>
+            </div>
+            <div class="panel-body">
+                <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-mapping" class="form-horizontal">
+                    <div class="form-group required">
+                        <label class="col-sm-2 control-label" for="input-odoo-pricelist">{{ entry_odoo_pricelist }}</label>
+                        <div class="col-sm-10">
+                            <select name="odoo_pricelist_id" id="input-odoo-pricelist" class="form-control">
+                                <option value="">{{ text_select }}</option>
+                                {% for pricelist in odoo_pricelists %}
+                                <option value="{{ pricelist.pricelist_id }}"{% if pricelist.pricelist_id ~ '' == odoo_pricelist_id ~ '' %} selected="selected"{% endif %}{% if 'NOT AVAILABLE' in pricelist.pricelist_name %} style="color: #d9534f; font-weight: bold;"{% endif %}>{{ pricelist.pricelist_name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if odoo_pricelist_id %}
+                                {% set pricelist_unavailable = true %}
+                                {% for pricelist in odoo_pricelists %}
+                                    {% if pricelist.pricelist_id ~ '' == odoo_pricelist_id ~ '' and 'NOT AVAILABLE' not in pricelist.pricelist_name %}
+                                        {% set pricelist_unavailable = false %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if pricelist_unavailable %}
+                                    <div class="alert alert-warning" style="margin-top: 10px;">
+                                        <i class="fa fa-exclamation-triangle"></i> <strong>Warning:</strong> The currently selected pricelist is no longer available in Odoo (it may have been deleted, deactivated, or the opencart_export flag was disabled). You can keep this mapping, but it's recommended to select a currently available pricelist.
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                            {% if error_pricelist %}
+                            <div class="text-danger">{{ error_pricelist }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="form-group required">
+                        <label class="col-sm-2 control-label" for="input-customer-group">{{ entry_customer_group }}</label>
+                        <div class="col-sm-10">
+                            <select name="customer_group_id" id="input-customer-group" class="form-control">
+                                <option value="">{{ text_select }}</option>
+                                {% for customer_group in customer_groups %}
+                                <option value="{{ customer_group.customer_group_id }}"{% if customer_group.customer_group_id ~ '' == customer_group_id ~ '' %} selected="selected"{% endif %}>{{ customer_group.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if error_customer_group %}
+                            <div class="text-danger">{{ error_customer_group }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">{{ entry_status }}</label>
+                        <div class="col-sm-10">
+                            <label class="radio-inline">
+                                <input type="radio" name="is_active" value="1"{% if is_active %} checked="checked"{% endif %} />
+                                {{ text_active }}
+                            </label>
+                            <label class="radio-inline">
+                                <input type="radio" name="is_active" value="0"{% if not is_active %} checked="checked"{% endif %} />
+                                {{ text_inactive }}
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{{ footer }}

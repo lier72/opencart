@@ -1,0 +1,24 @@
+<div class="cdek_description">
+    {% if (period) %}
+        <div>{{ period }}</div>
+    {% endif %}
+
+    {% if (delivery_data) %}
+        <div>{{ delivery_data }}</div>
+    {% endif %}
+
+    {% if (usePvz) %}
+        <div class="sdek_pvz_info">
+            <a href="javascript:void(0);" onclick="cdekPvzClick('{{ code }}', '{{ pvzType }}');" class="btn btn-primary btn-sm">Выбрать<br/>ПВЗ</a>
+            {% set pvz_address = '' %}
+            {% if (selected_pvz[code] is defined) %}
+                {% set pvz_address = selected_pvz[code] %}
+            {% endif %}
+            <br/>
+            <span class="cdek_selectedPvzInfo" id="cdek_selectedPvzInfo_{{ code }}">{{ pvz_address }}</span>
+        </div>
+        <input type="hidden" name="need_pvz[]" value="{{ code }}">
+    {% else %}
+        <div>Доставка курьером</div>
+    {% endif %}
+</div>

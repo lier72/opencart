@@ -1,0 +1,215 @@
+{{ header }}{{ column_left }}
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="pull-right">
+                <button type="button" id="button-sync" data-toggle="tooltip" title="{{ text_sync_action }}" class="btn btn-primary"><i class="fa fa-refresh"></i> {{ button_sync }}</button>
+            </div>
+            <h1>{{ heading_title }}</h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="fa fa-list"></i> {{ text_list }}</h3>
+            </div>
+            <div class="panel-body">
+
+                <!-- Filter Form -->
+                <div class="well">
+                    <div class="row">
+                        <div class="col-sm-2">
+                            <div class="form-group">
+                                <label class="control-label" for="input-order-id">{{ entry_order_id }}</label>
+                                <input type="text" name="filter_order_id" value="{{ filter_order_id }}" placeholder="{{ entry_order_id }}" id="input-order-id" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="form-group">
+                                <label class="control-label" for="input-odoo-id">{{ entry_odoo_id }}</label>
+                                <input type="text" name="filter_odoo_id" value="{{ filter_odoo_id }}" placeholder="{{ entry_odoo_id }}" id="input-odoo-id" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="form-group">
+                                <label class="control-label" for="input-oc-status">{{ entry_oc_status }}</label>
+                                <select name="filter_oc_status" id="input-oc-status" class="form-control">
+                                    <option value="*">{{ text_all_status }}</option>
+                                    {% for status in order_statuses %}
+                                        <option value="{{ status.order_status_id }}" {% if status.order_status_id == filter_oc_status %}selected="selected"{% endif %}>{{ status.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="form-group">
+                                <label class="control-label" for="input-odoo-state">{{ entry_odoo_state }}</label>
+                                <input type="text" name="filter_odoo_state" value="{{ filter_odoo_state }}" placeholder="{{ entry_odoo_state }}" id="input-odoo-state" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="form-group">
+                                <label class="control-label" for="input-sync">{{ entry_sync }}</label>
+                                <select name="filter_sync" id="input-sync" class="form-control">
+                                    <option value="0" {% if filter_sync == '0' %}selected="selected"{% endif %}>Non-Synced</option>
+                                    <option value="1" {% if filter_sync == '1' %}selected="selected"{% endif %}>Synced</option>
+                                    <option value="2" {% if filter_sync == '2' %}selected="selected"{% endif %}>All</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-1">
+                            <div class="form-group">
+                                <label class="control-label" style="visibility: hidden;">Filter</label>
+                                <button type="button" id="button-filter" class="btn btn-primary form-control"><i class="fa fa-filter"></i> {{ button_filter }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order List Table -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                        <tr>
+                            <td class="text-left">
+                                {% if sort == 'oom.opencart_order_id' %}
+                                    <a href="{{ sort_order_id }}" class="{{ order|lower }}">{{ column_order_id }}</a>
+                                {% else %}
+                                    <a href="{{ sort_order_id }}">{{ column_order_id }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="text-left">
+                                {% if sort == 'oom.odoo_order_id' %}
+                                    <a href="{{ sort_odoo_id }}" class="{{ order|lower }}">{{ column_odoo_id }}</a>
+                                {% else %}
+                                    <a href="{{ sort_odoo_id }}">{{ column_odoo_id }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="text-left">{{ column_customer }}</td>
+                            <td class="text-left">
+                                {% if sort == 'os.name' %}
+                                    <a href="{{ sort_oc_status }}" class="{{ order|lower }}">{{ column_oc_status }}</a>
+                                {% else %}
+                                    <a href="{{ sort_oc_status }}">{{ column_oc_status }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="text-left">
+                                {% if sort == 'oom.odoo_order_state' %}
+                                    <a href="{{ sort_odoo_state }}" class="{{ order|lower }}">{{ column_odoo_state }}</a>
+                                {% else %}
+                                    <a href="{{ sort_odoo_state }}">{{ column_odoo_state }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="text-right">{{ column_total }}</td>
+                            <td class="text-left">
+                                {% if sort == 'o.date_added' %}
+                                    <a href="{{ sort_date_added }}" class="{{ order|lower }}">{{ column_date_added }}</a>
+                                {% else %}
+                                    <a href="{{ sort_date_added }}">{{ column_date_added }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="text-left">{{ column_modified }}</td>
+                            <td class="text-right">{{ column_action }}</td>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% if orders %}
+                            {% for order in orders %}
+                                <tr>
+                                    <td class="text-left">{{ order.order_id }}</td>
+                                    <td class="text-left">{{ order.odoo_order_id }}</td>
+                                    <td class="text-left">{{ order.customer }}</td>
+                                    <td class="text-left">{{ order.oc_status }}</td>
+                                    <td class="text-left">{{ order.odoo_state }}</td>
+                                    <td class="text-right">{{ order.total }}</td>
+                                    <td class="text-left">{{ order.date_added }}</td>
+                                    <td class="text-left">{{ order.modified_on }}</td>
+                                    <td class="text-right">
+                                        <a href="{{ order.view }}" data-toggle="tooltip" title="{{ button_view }}" class="btn btn-info">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td class="text-center" colspan="9">{{ text_no_results }}</td>
+                            </tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6 text-left">{{ pagination }}</div>
+                    <div class="col-sm-6 text-right">{{ results }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    $('#button-sync').on('click', function() {
+        var syncUrl = '{{ sync_url }}'.replace(/&amp;/g, '&'); // Decode URL entities
+        console.log(syncUrl);
+        $.ajax({
+            url: syncUrl,
+            type: 'POST',
+            dataType: 'json',
+            beforeSend: function() {
+                $('#button-sync').prop('disabled', true);
+                $('#content').fadeTo('slow', 0.5);
+            },
+            complete: function() {
+                $('#button-sync').prop('disabled', false);
+                $('#content').fadeTo('slow', 1);
+            },
+            success: function(json) {
+                console.log('Response: ', json);
+                if(json.error){
+                    alert(json.error);
+                }else if (json.success){
+                    alert(json.message || 'Sync completerd successfully');
+                    location.reload();
+                }
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                console.log('Error: ', xhr.statusText);
+                alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+            }
+        });
+    });
+
+    $('#button-filter').on('click', function() {
+        var url = 'index.php?route=extension/module/odoo_order_mapping&user_token={{ user_token }}';
+        var filter_order_id = $('input[name=\'filter_order_id\']').val();
+        var filter_odoo_id = $('input[name=\'filter_odoo_id\']').val();
+        var filter_oc_status = $('select[name=\'filter_oc_status\']').val();
+        var filter_odoo_state = $('input[name=\'filter_odoo_state\']').val();
+        var filter_sync = $('select[name=\'filter_sync\']').val();
+
+        if (filter_order_id) {
+            url += '&filter_order_id=' + encodeURIComponent(filter_order_id);
+        }
+        if (filter_odoo_id) {
+            url += '&filter_odoo_id=' + encodeURIComponent(filter_odoo_id);
+        }
+        if (filter_oc_status != '*') {
+            url += '&filter_oc_status=' + encodeURIComponent(filter_oc_status);
+        }
+        if (filter_odoo_state) {
+            url += '&filter_odoo_state=' + encodeURIComponent(filter_odoo_state);
+        }
+        if(filter_sync){
+            url += '&filter_sync=' + encodeURIComponent(filter_sync)
+        }
+
+        location = url;
+    });
+</script>
+{{ footer }}

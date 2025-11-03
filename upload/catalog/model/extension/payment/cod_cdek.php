@@ -9,10 +9,11 @@ class ModelExtensionPaymentCodCdek extends Model {
 
 
 		$method_data = array();
-
-		if (!empty($this->session->data['payment_method']['code']) && $this->session->data['payment_method']['code'] == 'cod_cdek') {
-			unset($this->session->data['payment_method']['code']);
-		}
+//      Commented out to prevent unset payment method code to work with 
+// 		Journal3 checkout module that calls getMethod multiple times
+//		if (!empty($this->session->data['payment_method']['code']) && $this->session->data['payment_method']['code'] == 'cod_cdek') {
+//			unset($this->session->data['payment_method']['code']);
+//		}
 
 		if (!is_array($this->config->get('payment_cod_cdek_store')) || !in_array($this->config->get('config_store_id'), $this->config->get('payment_cod_cdek_store'))) {
 			return $method_data;

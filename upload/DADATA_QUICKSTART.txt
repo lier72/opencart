@@ -1,0 +1,126 @@
+================================================================================
+  DADATA ADDRESS AUTOCOMPLETE - QUICK START GUIDE
+================================================================================
+
+WHAT WAS ADDED:
+
+  ✓ Address autocomplete for Journal3 checkout page
+  ✓ Automatic city, postal code, and region filling
+  ✓ Works for guest and registered customers
+  ✓ Supports both payment and shipping addresses
+
+FILES CREATED/MODIFIED:
+
+  NEW FILES:
+    • catalog/view/theme/journal3/js/dadata-autocomplete.js
+    • DADATA_SETUP.md (full documentation)
+    • DADATA_QUICKSTART.txt (this file)
+
+  MODIFIED FILES:
+    • catalog/controller/journal3/checkout.php (line 88)
+
+================================================================================
+  SETUP IN 3 EASY STEPS
+================================================================================
+
+STEP 1: GET YOUR API KEY
+
+  1. Visit: https://dadata.ru
+  2. Register/Login
+  3. Get your API token (FREE: 10,000 requests/day)
+
+STEP 2: CONFIGURE THE API KEY
+
+  1. Open: catalog/view/theme/journal3/js/dadata-autocomplete.js
+  2. Find line 15:
+     apiKey: 'YOUR_DADATA_API_KEY_HERE',
+  3. Replace with your key:
+     apiKey: 'your_actual_api_key_here',
+  4. Save the file
+
+STEP 3: CLEAR CACHE
+
+  Option A (Admin Panel):
+    • Go to Dashboard → Developer Settings
+    • Click "Clear" for Theme cache and SASS cache
+
+  Option B (Manual):
+    • Delete: /Users/max/Sites/storage/cache/*
+
+================================================================================
+  TESTING
+================================================================================
+
+1. Visit checkout page:
+   http://localhost/~max/oc3.uniqsport.ru/checkout/checkout
+
+2. Start typing in the "Address" field (at least 3 characters)
+
+3. You should see address suggestions appear
+
+4. Click a suggestion to auto-fill all fields
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+NOT WORKING?
+
+  1. Open browser console (F12)
+  2. Look for: "DaData Autocomplete: Initializing..."
+  3. Check for errors or warnings
+  4. Verify API key is correct (no quotes removed)
+  5. Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)
+
+STILL NOT WORKING?
+
+  • Check: DADATA_SETUP.md for detailed troubleshooting
+  • Verify: JavaScript file is loading (view page source)
+  • Confirm: Internet connection is working
+  • Test: Visit https://dadata.ru/api/ to check API status
+
+================================================================================
+  CUSTOMIZATION
+================================================================================
+
+CHANGE MINIMUM TYPING CHARACTERS:
+  • Edit line 89 in dadata-autocomplete.js
+  • Change: if (query.length >= 3) to another number
+
+CHANGE TYPING DELAY:
+  • Edit line 68 in dadata-autocomplete.js
+  • Change: var doneTypingInterval = 300; to higher value
+
+CHANGE NUMBER OF SUGGESTIONS:
+  • Edit line 240 in dadata-autocomplete.js
+  • Change: count: 10 to desired number
+
+================================================================================
+  IMPORTANT NOTES
+================================================================================
+
+✓ API key is required - get it from dadata.ru
+✓ Free tier allows 10,000 requests per day
+✓ Each keystroke (after 3 chars) = 1 API request
+✓ Works only with Russian addresses
+✓ Requires internet connection
+
+================================================================================
+  SUPPORT
+================================================================================
+
+For detailed documentation, see: DADATA_SETUP.md
+
+DaData Documentation: https://dadata.ru/api/
+DaData Support: support@dadata.ru
+
+================================================================================
+  VERSION INFO
+================================================================================
+
+Version: 1.0
+Date: 2025-10-23
+Tested with: OpenCart 3.0.3.6 + Journal3 Theme
+Developer: Claude Code
+
+================================================================================

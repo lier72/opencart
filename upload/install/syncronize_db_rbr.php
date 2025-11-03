@@ -4,15 +4,36 @@
  * User: max
  * Date: 12/07/24
  * Time: 13:23
+ *
+ * Database Synchronization Script for OpenCart 2 to OpenCart 3 Migration
+ *
+ * USAGE MODES:
+ * 1. Full Database Transfer: Transfers all tables and data
+ *    php syncronize_db_rbr.php full
+ *
+ * 2. Essential Tables Transfer: Only transfers order, customer, shipment, payment and CDEK data
+ *    php syncronize_db_rbr.php essential
  */
+
+// Determine mode from command line argument
+$mode = isset($argv[1]) ? strtolower($argv[1]) : 'essential';
+
+if (!in_array($mode, ['full', 'essential'])) {
+    die("Invalid mode. Use 'full' or 'essential'\nUsage: php syncronize_db_rbr.php [full|essential]\n");
+}
+
+echo "\n========================================\n";
+echo "Database Synchronization Mode: " . strtoupper($mode) . "\n";
+echo "========================================\n\n";
+
 // Read current config
 
 define('OLD_DB_DATABASE', 'a1627-unqs-oc');
-define('OLD_DB_USERNAME', 'a1627-unqs-oc');
-//define('OLD_DB_USERNAME', 'root');
+// define('OLD_DB_USERNAME', 'a1627-unqs-oc');
+define('OLD_DB_USERNAME', 'root');
 define('OLD_DB_PREFIX', 'ocus_');
-define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
-//define('OLD_DB_PASSWORD','');
+// define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
+define('OLD_DB_PASSWORD','');
 //$drop_tables = true;
 
 
@@ -33,6 +54,144 @@ define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
         echo "Failed to connect to MySQL: " . $old_db -> connect_error;
         exit();
     }
+// Function to create and populate tables from OpenCart 2.1 that don't exist in OpenCart 3.0
+function create_and_populate_missing_tables($old_db, $new_db, $new_db_nf_tables, $exception_tables) {
+    foreach ($new_db_nf_tables as $table) {
+        if (!in_array($table, $exception_tables)) {
+            // Get the create table statement from old database
+            $result = $old_db->query("SHOW CREATE TABLE " . $table);
+            if ($result && $row = $result->fetch_assoc()) {
+                $create_table_sql = $row['Create Table'];
+                
+                // Create the table in new database
+                try {
+                    $new_db->query($create_table_sql) or die("Error creating table " . $table . ": " . mysqli_error($new_db));
+                    echo "Created table $table successfully\n";
+                    
+                    // Get column information with complete column details
+                    $result = $old_db->query("SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_TYPE 
+                        FROM INFORMATION_SCHEMA.COLUMNS 
+                        WHERE TABLE_SCHEMA = '" . OLD_DB_DATABASE . "' 
+                        AND TABLE_NAME = '" . $table . "'
+                        ORDER BY ORDINAL_POSITION");
+                    
+                    if ($result->num_rows > 0) {
+                        // Get data from old table
+                        $sql_old = "SELECT * FROM `" . OLD_DB_DATABASE . "`." . $table;
+                        $data_result = $old_db->query($sql_old);
+                        
+                        if ($data_result) {
+                            while ($row_data = $data_result->fetch_assoc()) {
+                                $columns = array();
+                                $values = array();
+                                
+                                // Reset column info result pointer
+                                $result->data_seek(0);
+                                
+                                while ($col = $result->fetch_assoc()) {
+                                    $col_name = $col['COLUMN_NAME'];
+                                    $col_type = $col['DATA_TYPE'];
+                                    $is_nullable = $col['IS_NULLABLE'];
+                                    $value = $row_data[$col_name];
+                                    
+                                    $columns[] = "`" . $col_name . "`";
+                                    
+                                    // Handle different data types
+                                    if ($value === null && $is_nullable === 'YES') {
+                                        $values[] = "NULL";
+                                    } else if (strstr($col_name, "date")) {
+                                        if ($value === '0000-00-00 00:00:00' || $value === '0000-00-00') {
+                                            $values[] = strstr($col_name, "date_end") ? "NULL" : "'1970-01-01 00:00:01'";
+                                        } else {
+                                            $values[] = "'" . $old_db->real_escape_string($value) . "'";
+                                        }
+                                    } else if (in_array($col_type, ['tinyint', 'smallint', 'mediumint', 'int', 'bigint'])) {
+                                        // Force numeric values for integer columns
+                                        $values[] = is_numeric($value) ? $value : 0;
+                                    } else if ($col_type === 'decimal' || $col_type === 'float' || $col_type === 'double') {
+                                        // Handle numeric types
+                                        $values[] = is_numeric($value) ? $value : 0.0;
+                                    } else {
+                                        // String types (varchar, text, etc)
+                                        $values[] = "'" . $old_db->real_escape_string($value) . "'";
+                                    }
+                                }
+                                
+                                // Construct and execute insert statement
+                                $sql = "INSERT INTO " . $table . " (" . implode(", ", $columns) . ") VALUES (" . implode(", ", $values) . ")";
+                                try {
+                                    $new_db->query($sql) or die("Error inserting into " . $table . ": " . mysqli_error($new_db) . "\nQuery: " . $sql);
+                                } catch (Exception $e) {
+                                    echo "Error inserting row in $table: " . $e->getMessage() . "\n";
+                                    continue;
+                                }
+                            }
+                            echo "Populated table $table successfully\n";
+                        }
+                    }
+                } catch (Exception $e) {
+                    echo "Error processing table $table: " . $e->getMessage() . "\n";
+                    continue;
+                }
+            }
+        } else {
+            echo "Skipping table $table (in exception list)\n";
+        }
+    }
+}
+
+// Define essential tables for "essential" mode
+// These tables contain order, customer, shipment, payment and CDEK data
+$essential_tables = array(
+    // Customer related tables
+    'ocus_customer',
+    'ocus_customer_activity',
+    'ocus_customer_affiliate',
+    'ocus_customer_group',
+    'ocus_customer_group_description',
+    'ocus_customer_ip',
+    'ocus_customer_login',
+    'ocus_customer_reward',
+    'ocus_customer_transaction',
+    'ocus_customer_wishlist',
+    'ocus_address',
+
+    // Order related tables
+    'ocus_order',
+    'ocus_order_history',
+    'ocus_order_option',
+    'ocus_order_product',
+    'ocus_order_status',
+    'ocus_order_total',
+    'ocus_order_to_sdek',
+    'ocus_odoo_order_map',
+
+
+    // CDEK shipping tables (excluding cdek_city)
+    'ocus_cdek_dispatch',
+    'ocus_cdek_order',
+    'ocus_cdek_order_add_service',
+    'ocus_cdek_order_call_history_delay',
+    'ocus_cdek_order_call_history_good',
+    'ocus_cdek_order_delay_history',
+    'ocus_cdek_order_package',
+    'ocus_cdek_order_package_item',
+    'ocus_cdek_order_reason',
+    'ocus_cdek_order_status_history',
+
+    // Payment related tables
+    'ocus_voucher',
+    'ocus_voucher_theme',
+    'ocus_voucher_theme_description',
+    'ocus_coupon',
+    'ocus_coupon_category',
+    'ocus_coupon_history',
+    'ocus_coupon_product',
+
+    // Cart tables
+    'ocus_cart',
+);
+
 // the idea is to store table names from to databases
 // Compare them and then store copmuted data in the new mapping table
 // Identical tables will be transfered to new databse wihout modifications
@@ -43,13 +202,15 @@ define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
     $data_transformed_tables = array();
     $new_db_nf_tables = array();
     $exception_tables = array('ocus_extension',
+	'ocus_extension_install',
+	'ocus_extension_path',
         'ocus_gcrdev_sitemap',
         'ocus_google_base_category',
         'ocus_google_base_category_to_category',
-        'ocus_information',
-        'ocus_information_description',
-        'ocus_information_to_layout',
-        'ocus_information_to_store',
+//        'ocus_information',
+//        'ocus_information_description',
+//        'ocus_information_to_layout',
+//        'ocus_information_to_store',
         'ocus_layout',
         'ocus_setting',
         'ocus_url_alias',
@@ -58,8 +219,31 @@ define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
         'ocus_language',
         'ocus_currency',
         'ocus_modification',
-        'ocus_module'
-        );
+        'ocus_module',
+    	'ocus_cdek_city',
+        'ocus_journal2_blog_category',
+        'ocus_journal2_blog_category_description',
+        'ocus_journal2_blog_category_to_layout',
+        'ocus_journal2_blog_category_to_store',
+        'ocus_journal2_blog_comments',
+        'ocus_journal2_blog_post',
+        'ocus_journal2_blog_post_description',
+        'ocus_journal2_blog_post_to_category',
+        'ocus_journal2_blog_post_to_layout',
+        'ocus_journal2_blog_post_to_product',
+        'ocus_journal2_blog_post_to_store',
+        'ocus_journal2_config',
+        'ocus_journal2_modules',
+        'ocus_journal2_newsletter',
+        'ocus_journal2_settings',
+        'ocus_journal2_skins',
+       );
+
+    // In essential mode, add all non-essential tables to exception list
+    if ($mode === 'essential') {
+        echo "Essential mode: Only transferring essential tables\n";
+        echo "Essential tables count: " . count($essential_tables) . "\n\n";
+    }
 
     $result = $old_db->query("SHOW TABLES") or die("Error SHOW TABLES " . mysqli_error($old_db));
     while($row = mysqli_fetch_array($result)){
@@ -109,6 +293,22 @@ define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
 //    print_r($new_db_nf_tables);
 //    file_put_contents("new_db_nf_tables.json",json_encode($new_db_nf_tables));
 
+// Create and populate tables that exist in OC2 but not in OC3
+create_and_populate_missing_tables($old_db, $new_db, $new_db_nf_tables, $exception_tables);
+
+// Fix CDEK order table column sizes to accommodate larger COD values
+echo "\nChecking and fixing ocus_cdek_order column sizes...\n";
+$result = $new_db->query("SHOW TABLES LIKE 'ocus_cdek_order'");
+if ($result && $result->num_rows > 0) {
+    $new_db->query("ALTER TABLE ocus_cdek_order
+        MODIFY COLUMN cod DECIMAL(10,4) DEFAULT 0.0000,
+        MODIFY COLUMN cod_fact DECIMAL(10,4) DEFAULT 0.0000")
+        or die("Error modifying ocus_cdek_order columns: " . mysqli_error($new_db));
+    echo "Successfully updated cod and cod_fact columns to DECIMAL(10,4)\n";
+} else {
+    echo "Table ocus_cdek_order not found, skipping column modification\n";
+}
+
 //    echo "oc3 tables that need data transformation  \n";
 //    print_r($data_transformed_tables);
 //    file_put_contents("data_transformed_tables.json",json_encode($data_transformed_tables));
@@ -125,26 +325,34 @@ define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
 //    $new_db->query($sql) or die("Error replacing into ocus_api " . mysqli_error($new_db));
 
 /*  {"table":"ocus_banner_image","nf_old_table_fields":[],"nf_new_table_fields":{"2":"language_id","3":"title"}},*/
+if ($mode === 'full') {
+    echo "Processing banner_image table (full mode only)...\n";
     $start = microtime(true);
-    $sql_odldb = "SELECT a.banner_image_id, a.banner_id, b.language_id, b.title, a.link, a.image, a.sort_order  FROM `".OLD_DB_DATABASE."`.ocus_banner_image a 
+    $sql_odldb = "SELECT a.banner_image_id, a.banner_id, b.language_id, b.title, a.link, a.image, a.sort_order  FROM `".OLD_DB_DATABASE."`.ocus_banner_image a
       LEFT JOIN `".OLD_DB_DATABASE."`.ocus_banner_image_description b ON a.banner_image_id = b.banner_image_id";
     $result=$old_db->query($sql_odldb) or die("Error replacing into ocus_banner_image " . mysqli_error($old_db));
     while($row = $result->fetch_assoc()){
         $sql = "INSERT INTO ocus_banner_image SET `banner_image_id`=".$row['banner_image_id'].", `banner_id`=".$row['banner_id'].", `language_id`=".$row['language_id']."
-        , `title`='".$row['title']."', `link`='".$row['link']."', `image`='".$row['image']."', `sort_order`=".$row['sort_order']." ON DUPLICATE KEY UPDATE 
+        , `title`='".$row['title']."', `link`='".$row['link']."', `image`='".$row['image']."', `sort_order`=".$row['sort_order']." ON DUPLICATE KEY UPDATE
         `banner_image_id`=".$row['banner_image_id'].", `banner_id`=".$row['banner_id'].", `language_id`=".$row['language_id']."
         , `title`='".$row['title']."', `link`='".$row['link']."', `image`='".$row['image']."', `sort_order`=".$row['sort_order'];
 //        print_r($sql); echo"\n";
 //        $new_db->query($sql) or die("Error replacing into ocus_banner_image " . mysqli_error($new_db));
     }
     $time_elapsed_secs=microtime(true)-$start;
-    echo "Time elapsed for banner_image table: " . $time_elapsed_secs;
+    echo "Time elapsed for banner_image table: " . $time_elapsed_secs . "\n";
+} else {
+    echo "Skipping banner_image table (essential mode)\n";
+}
 
 
 /*  {"table":"ocus_cart","nf_old_table_fields":[],"nf_new_table_fields":{"1":"api_id"}},*/
-    $sql_odldb = "SELECT `cart_id`, `customer_id`, `session_id`, `product_id`, `recurring_id`, `option`, `quantity`, `date_added` FROM `".OLD_DB_DATABASE."`.ocus_cart";
-    $result=$old_db->query($sql_odldb) or die("Error replacing into ocus_cart " . mysqli_error($old_db));
-    while($row = $result->fetch_assoc()){
+// Cart table is in essential_tables, so process in both modes
+
+echo "Processing cart table...\n";
+$sql_odldb = "SELECT `cart_id`, `customer_id`, `session_id`, `product_id`, `recurring_id`, `option`, `quantity`, `date_added` FROM `".OLD_DB_DATABASE."`.ocus_cart";
+$result=$old_db->query($sql_odldb) or die("Error replacing into ocus_cart " . mysqli_error($old_db));
+while($row = $result->fetch_assoc()){
     $sql = "INSERT INTO ocus_cart SET `cart_id`=".$row['cart_id'].", `api_id`= 0, `customer_id`=".$row['customer_id'].
         ", `session_id`='".$row['session_id']."', `product_id`='".$row['product_id']."', `recurring_id`='".$row['recurring_id'].
         "', `option`='".$row['option']."', `quantity`=".$row['quantity'].", `date_added`='".$row['date_added']."' ON DUPLICATE KEY UPDATE 
@@ -153,7 +361,8 @@ define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
         ", `option`='".$row['option']."', `quantity`=".$row['quantity'].", `date_added`='".$row['date_added']."'";
 //        print_r($sql); echo"\n";
     $new_db->query($sql) or die("Error replacing into ocus_cart " . mysqli_error($new_db));
-    }
+}
+echo "Cart table processed successfully.\n";
 
 /*  {"table":"ocus_custom_field","nf_old_table_fields":[],"nf_new_table_fields":{"3":"validation"}},
   {"table":"ocus_customer","nf_old_table_fields":[],"nf_new_table_fields":{"3":"language_id","20":"code"}},*/
@@ -216,6 +425,12 @@ define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
 //$identical_tables = array_slice($identical_tables,0,1);
 //$identical_tables = array('ocus_zone');
 foreach ($identical_tables as $table){
+    // In essential mode, skip tables not in essential_tables list
+    if ($mode === 'essential' && !in_array($table, $essential_tables)) {
+        echo "Skipping table $table (not in essential tables list)\n";
+        continue;
+    }
+
     if(!in_array($table, $exception_tables)){
         $result = $new_db->query("SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA ='"
             .DB_DATABASE."' AND TABLE_NAME = '". $table ."'");
@@ -281,6 +496,20 @@ foreach ($identical_tables as $table){
                 //removing ending commas
                 $sql=substr($sql,0, -2).substr($on_duplicate,0,-2);
 //                var_dump($sql);
+
+                // Use REPLACE INTO for tables with unique keys to avoid duplicate key errors
+                $use_replace = false;
+                $check_unique = $new_db->query("SHOW KEYS FROM " . $table . " WHERE Key_name != 'PRIMARY' AND Non_unique = 0");
+                if ($check_unique && $check_unique->num_rows > 0) {
+                    $use_replace = true;
+                }
+
+                if ($use_replace) {
+                    // Convert INSERT ... ON DUPLICATE to REPLACE INTO
+                    $sql = str_replace("INSERT INTO", "REPLACE INTO", $sql);
+                    $sql = preg_replace('/ ON DUPLICATE KEY UPDATE.*$/', '', $sql);
+                }
+
                 $new_db->query($sql) or die("\n Error replacing into " . $table . " -> " . mysqli_error($new_db));
             }
 /*               $sql = "REPLACE INTO $table ($column>List1) SELECT $columnList2  FROM `" . OLD_DB_DATABASE . "`." . $table;*/
@@ -345,14 +574,6 @@ foreach ($identical_tables as $table){
 | a1627-unqs-oc3 | ocus_customer_reward                    |
 | a1627-unqs-oc3 | ocus_customer_transaction               |
 | a1627-unqs-oc3 | ocus_customer_wishlist                  |
-| a1627-unqs-oc3 | ocus_erp_carrier_merge                  |
-| a1627-unqs-oc3 | ocus_erp_category_merge                 |
-| a1627-unqs-oc3 | ocus_erp_order_status_merge             |
-| a1627-unqs-oc3 | ocus_erp_payment_merge                  |
-| a1627-unqs-oc3 | ocus_erp_product_option_merge           |
-| a1627-unqs-oc3 | ocus_erp_product_option_value_merge     |
-| a1627-unqs-oc3 | ocus_erp_product_template_merge         |
-| a1627-unqs-oc3 | ocus_erp_product_variant_merge          |
 | a1627-unqs-oc3 | ocus_extension                          |
 | a1627-unqs-oc3 | ocus_extension_install                  |
 | a1627-unqs-oc3 | ocus_extension_path                     |
@@ -456,6 +677,364 @@ foreach ($identical_tables as $table){
 | a1627-unqs-oc3 | ocus_zone_to_geo_zone                   |
 +----------------+-----------------------------------------+
 */
+
+// Function to migrate Journal2 blog data to Journal3 blog tables
+function migrate_journal2_to_journal3_blog($old_db, $new_db) {
+    echo "\n=== Starting Journal2 to Journal3 Blog Migration ===\n";
+
+    // Check table structures and get column information for Journal3 tables
+    echo "Checking Journal3 blog table structures...\n";
+
+    // Get column defaults for journal3_blog_category_description
+    $cat_desc_cols = [];
+    $result = $new_db->query("SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '" . DB_DATABASE . "'
+        AND TABLE_NAME = 'ocus_journal3_blog_category_description'");
+    while ($row = $result->fetch_assoc()) {
+        $cat_desc_cols[$row['COLUMN_NAME']] = $row;
+    }
+
+    // Get column defaults for journal3_blog_post_description
+    $post_desc_cols = [];
+    $result = $new_db->query("SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '" . DB_DATABASE . "'
+        AND TABLE_NAME = 'ocus_journal3_blog_post_description'");
+    while ($row = $result->fetch_assoc()) {
+        $post_desc_cols[$row['COLUMN_NAME']] = $row;
+    }
+
+    // Get column defaults for journal3_blog_post
+    $post_cols = [];
+    $result = $new_db->query("SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '" . DB_DATABASE . "'
+        AND TABLE_NAME = 'ocus_journal3_blog_post'");
+    while ($row = $result->fetch_assoc()) {
+        $post_cols[$row['COLUMN_NAME']] = $row;
+    }
+
+    // Determine default values based on actual schema
+    // Check meta_robots column nullability
+    $meta_robots_value = "NULL"; // Default SQL value (not quoted)
+    if (isset($cat_desc_cols['meta_robots'])) {
+        if ($cat_desc_cols['meta_robots']['IS_NULLABLE'] == 'NO') {
+            // NOT NULL constraint - use empty string
+            $meta_robots_value = "''";
+            echo "  meta_robots: NOT NULL - using empty string\n";
+        } else {
+            // Nullable - use NULL
+            $meta_robots_value = "NULL";
+            echo "  meta_robots: NULLABLE - using NULL\n";
+        }
+    }
+
+    // Check post_data column nullability
+    $post_data_value = "'{}'"; // Default to empty JSON
+    if (isset($post_cols['post_data'])) {
+        if ($post_cols['post_data']['IS_NULLABLE'] == 'NO') {
+            // NOT NULL constraint - use empty JSON object
+            $post_data_value = "'{}'";
+            echo "  post_data: NOT NULL - using '{}'\n";
+        } else {
+            // Nullable - can use NULL if needed
+            $post_data_value = "NULL";
+            echo "  post_data: NULLABLE - using NULL\n";
+        }
+    }
+
+    echo "Schema values set: meta_robots=" . $meta_robots_value . ", post_data=" . $post_data_value . "\n";
+
+    // 1. Migrate blog categories
+    echo "Migrating blog categories...\n";
+    $sql = "SELECT category_id, image, parent_id, sort_order, status FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_category";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_category: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_category
+            (category_id, parent_id, image, status, sort_order)
+            VALUES (
+                " . $row['category_id'] . ",
+                " . ($row['parent_id'] ? $row['parent_id'] : "NULL") . ",
+                " . ($row['image'] ? "'" . $new_db->real_escape_string($row['image']) . "'" : "NULL") . ",
+                " . ($row['status'] ? $row['status'] : "0") . ",
+                " . ($row['sort_order'] ? $row['sort_order'] : "0") . "
+            )
+            ON DUPLICATE KEY UPDATE
+                parent_id = VALUES(parent_id),
+                image = VALUES(image),
+                status = VALUES(status),
+                sort_order = VALUES(sort_order)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_category: " . mysqli_error($new_db));
+    }
+    echo "Blog categories migrated successfully.\n";
+
+    // 2. Migrate blog category descriptions
+    echo "Migrating blog category descriptions...\n";
+    $sql = "SELECT category_id, description, keyword, language_id, meta_description, meta_keywords, meta_title, name
+            FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_category_description";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_category_description: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_category_description
+            (category_id, language_id, name, description, meta_title, meta_keywords, meta_robots, meta_description, keyword)
+            VALUES (
+                " . $row['category_id'] . ",
+                " . $row['language_id'] . ",
+                " . ($row['name'] ? "'" . $new_db->real_escape_string($row['name']) . "'" : "NULL") . ",
+                " . ($row['description'] ? "'" . $new_db->real_escape_string($row['description']) . "'" : "NULL") . ",
+                " . ($row['meta_title'] ? "'" . $new_db->real_escape_string($row['meta_title']) . "'" : "NULL") . ",
+                " . ($row['meta_keywords'] ? "'" . $new_db->real_escape_string($row['meta_keywords']) . "'" : "NULL") . ",
+                " . $meta_robots_value . ",
+                " . ($row['meta_description'] ? "'" . $new_db->real_escape_string($row['meta_description']) . "'" : "NULL") . ",
+                " . ($row['keyword'] ? "'" . $new_db->real_escape_string($row['keyword']) . "'" : "NULL") . "
+            )
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                description = VALUES(description),
+                meta_title = VALUES(meta_title),
+                meta_keywords = VALUES(meta_keywords),
+                meta_description = VALUES(meta_description),
+                keyword = VALUES(keyword)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_category_description: " . mysqli_error($new_db));
+    }
+    echo "Blog category descriptions migrated successfully.\n";
+
+    // 3. Migrate blog category to layout
+    echo "Migrating blog category to layout mappings...\n";
+    $sql = "SELECT category_id, layout_id, store_id FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_category_to_layout";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_category_to_layout: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_category_to_layout
+            (category_id, store_id, layout_id)
+            VALUES (
+                " . $row['category_id'] . ",
+                " . $row['store_id'] . ",
+                " . ($row['layout_id'] ? $row['layout_id'] : "NULL") . "
+            )
+            ON DUPLICATE KEY UPDATE
+                layout_id = VALUES(layout_id)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_category_to_layout: " . mysqli_error($new_db));
+    }
+    echo "Blog category to layout mappings migrated successfully.\n";
+
+    // 4. Migrate blog category to store
+    echo "Migrating blog category to store mappings...\n";
+    $sql = "SELECT DISTINCT category_id, store_id FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_category_to_store";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_category_to_store: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_category_to_store
+            (category_id, store_id)
+            VALUES (
+                " . $row['category_id'] . ",
+                " . $row['store_id'] . "
+            )
+            ON DUPLICATE KEY UPDATE
+                category_id = VALUES(category_id)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_category_to_store: " . mysqli_error($new_db));
+    }
+    echo "Blog category to store mappings migrated successfully.\n";
+
+    // 5. Migrate blog posts
+    echo "Migrating blog posts...\n";
+    $sql = "SELECT post_id, author_id, comments, date_created, date_updated, image, sort_order, status, views
+            FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_post";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_post: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $date_created = ($row['date_created'] && $row['date_created'] != '0000-00-00 00:00:00')
+            ? "'" . $row['date_created'] . "'"
+            : "'1970-01-01 00:00:01'";
+        $date_updated = ($row['date_updated'] && $row['date_updated'] != '0000-00-00 00:00:00')
+            ? "'" . $row['date_updated'] . "'"
+            : "'1970-01-01 00:00:01'";
+
+        $insert_sql = "INSERT INTO ocus_journal3_blog_post
+            (post_id, author_id, image, comments, status, sort_order, date_created, date_updated, views, post_data)
+            VALUES (
+                " . $row['post_id'] . ",
+                " . ($row['author_id'] ? $row['author_id'] : "NULL") . ",
+                " . ($row['image'] ? "'" . $new_db->real_escape_string($row['image']) . "'" : "NULL") . ",
+                " . ($row['comments'] ? $row['comments'] : "0") . ",
+                " . ($row['status'] ? $row['status'] : "0") . ",
+                " . ($row['sort_order'] ? $row['sort_order'] : "0") . ",
+                " . $date_created . ",
+                " . $date_updated . ",
+                " . ($row['views'] ? $row['views'] : "0") . ",
+                " . $post_data_value . "
+            )
+            ON DUPLICATE KEY UPDATE
+                author_id = VALUES(author_id),
+                image = VALUES(image),
+                comments = VALUES(comments),
+                status = VALUES(status),
+                sort_order = VALUES(sort_order),
+                date_created = VALUES(date_created),
+                date_updated = VALUES(date_updated),
+                views = VALUES(views)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_post: " . mysqli_error($new_db));
+    }
+    echo "Blog posts migrated successfully.\n";
+
+    // 6. Migrate blog post descriptions
+    echo "Migrating blog post descriptions...\n";
+    $sql = "SELECT post_id, description, keyword, language_id, meta_description, meta_keywords, meta_title, name, tags
+            FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_post_description";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_post_description: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_post_description
+            (post_id, language_id, name, description, meta_title, meta_keywords, meta_robots, meta_description, keyword, tags)
+            VALUES (
+                " . $row['post_id'] . ",
+                " . $row['language_id'] . ",
+                " . ($row['name'] ? "'" . $new_db->real_escape_string($row['name']) . "'" : "NULL") . ",
+                " . ($row['description'] ? "'" . $new_db->real_escape_string($row['description']) . "'" : "NULL") . ",
+                " . ($row['meta_title'] ? "'" . $new_db->real_escape_string($row['meta_title']) . "'" : "NULL") . ",
+                " . ($row['meta_keywords'] ? "'" . $new_db->real_escape_string($row['meta_keywords']) . "'" : "NULL") . ",
+                " . $meta_robots_value . ",
+                " . ($row['meta_description'] ? "'" . $new_db->real_escape_string($row['meta_description']) . "'" : "NULL") . ",
+                " . ($row['keyword'] ? "'" . $new_db->real_escape_string($row['keyword']) . "'" : "NULL") . ",
+                " . ($row['tags'] ? "'" . $new_db->real_escape_string($row['tags']) . "'" : "NULL") . "
+            )
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                description = VALUES(description),
+                meta_title = VALUES(meta_title),
+                meta_keywords = VALUES(meta_keywords),
+                meta_description = VALUES(meta_description),
+                keyword = VALUES(keyword),
+                tags = VALUES(tags)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_post_description: " . mysqli_error($new_db));
+    }
+    echo "Blog post descriptions migrated successfully.\n";
+
+    // 7. Migrate blog post to category
+    echo "Migrating blog post to category mappings...\n";
+    $sql = "SELECT category_id, post_id FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_post_to_category";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_post_to_category: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_post_to_category
+            (post_id, category_id)
+            VALUES (
+                " . $row['post_id'] . ",
+                " . $row['category_id'] . "
+            )
+            ON DUPLICATE KEY UPDATE
+                post_id = VALUES(post_id)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_post_to_category: " . mysqli_error($new_db));
+    }
+    echo "Blog post to category mappings migrated successfully.\n";
+
+    // 8. Migrate blog post to layout
+    echo "Migrating blog post to layout mappings...\n";
+    $sql = "SELECT post_id, layout_id, store_id FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_post_to_layout";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_post_to_layout: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_post_to_layout
+            (post_id, store_id, layout_id)
+            VALUES (
+                " . $row['post_id'] . ",
+                " . $row['store_id'] . ",
+                " . ($row['layout_id'] ? $row['layout_id'] : "NULL") . "
+            )
+            ON DUPLICATE KEY UPDATE
+                layout_id = VALUES(layout_id)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_post_to_layout: " . mysqli_error($new_db));
+    }
+    echo "Blog post to layout mappings migrated successfully.\n";
+
+    // 9. Migrate blog post to product
+    echo "Migrating blog post to product mappings...\n";
+    $sql = "SELECT post_id, product_id FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_post_to_product";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_post_to_product: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_post_to_product
+            (post_id, product_id)
+            VALUES (
+                " . $row['post_id'] . ",
+                " . $row['product_id'] . "
+            )
+            ON DUPLICATE KEY UPDATE
+                post_id = VALUES(post_id)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_post_to_product: " . mysqli_error($new_db));
+    }
+    echo "Blog post to product mappings migrated successfully.\n";
+
+    // 10. Migrate blog post to store
+    echo "Migrating blog post to store mappings...\n";
+    $sql = "SELECT DISTINCT post_id, store_id FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_post_to_store";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_post_to_store: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $insert_sql = "INSERT INTO ocus_journal3_blog_post_to_store
+            (post_id, store_id)
+            VALUES (
+                " . $row['post_id'] . ",
+                " . $row['store_id'] . "
+            )
+            ON DUPLICATE KEY UPDATE
+                post_id = VALUES(post_id)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_post_to_store: " . mysqli_error($new_db));
+    }
+    echo "Blog post to store mappings migrated successfully.\n";
+
+    // 11. Migrate blog comments
+    echo "Migrating blog comments...\n";
+    $sql = "SELECT comment_id, author_id, comment, customer_id, date, email, name, parent_id, post_id, status, website
+            FROM `" . OLD_DB_DATABASE . "`.ocus_journal2_blog_comments";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_journal2_blog_comments: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        $date = ($row['date'] && $row['date'] != '0000-00-00 00:00:00')
+            ? "'" . $row['date'] . "'"
+            : "'1970-01-01 00:00:01'";
+
+        $insert_sql = "INSERT INTO ocus_journal3_blog_comments
+            (comment_id, parent_id, post_id, customer_id, author_id, name, email, website, comment, status, date)
+            VALUES (
+                " . $row['comment_id'] . ",
+                " . ($row['parent_id'] ? $row['parent_id'] : "NULL") . ",
+                " . ($row['post_id'] ? $row['post_id'] : "NULL") . ",
+                " . ($row['customer_id'] ? $row['customer_id'] : "NULL") . ",
+                " . ($row['author_id'] ? $row['author_id'] : "NULL") . ",
+                " . ($row['name'] ? "'" . $new_db->real_escape_string($row['name']) . "'" : "NULL") . ",
+                " . ($row['email'] ? "'" . $new_db->real_escape_string($row['email']) . "'" : "NULL") . ",
+                " . ($row['website'] ? "'" . $new_db->real_escape_string($row['website']) . "'" : "NULL") . ",
+                " . ($row['comment'] ? "'" . $new_db->real_escape_string($row['comment']) . "'" : "NULL") . ",
+                " . ($row['status'] ? $row['status'] : "0") . ",
+                " . $date . "
+            )
+            ON DUPLICATE KEY UPDATE
+                parent_id = VALUES(parent_id),
+                post_id = VALUES(post_id),
+                customer_id = VALUES(customer_id),
+                author_id = VALUES(author_id),
+                name = VALUES(name),
+                email = VALUES(email),
+                website = VALUES(website),
+                comment = VALUES(comment),
+                status = VALUES(status),
+                date = VALUES(date)";
+        $new_db->query($insert_sql) or die("Error inserting into ocus_journal3_blog_comments: " . mysqli_error($new_db));
+    }
+    echo "Blog comments migrated successfully.\n";
+
+    echo "=== Journal2 to Journal3 Blog Migration Completed ===\n\n";
+}
+
+// Execute the blog migration only in full mode
+if ($mode === 'full') {
+    migrate_journal2_to_journal3_blog($old_db, $new_db);
+} else {
+    echo "\nSkipping Journal2 to Journal3 blog migration (essential mode)\n";
+}
 
 function full_update(){
 

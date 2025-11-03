@@ -240,6 +240,10 @@ class ControllerSaleOrder extends Controller {
 
 		$data['user_token'] = $this->session->data['user_token'];
 
+		// Odoo Integration button
+		$data['button_create_odoo'] = $this->language->get('button_create_odoo');
+		$data['text_confirm_odoo'] = $this->language->get('text_confirm_odoo');
+
 		if (isset($this->error['warning'])) {
 			$data['error_warning'] = $this->error['warning'];
 		} else {

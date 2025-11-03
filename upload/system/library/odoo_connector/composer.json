@@ -1,0 +1,9 @@
+{
+    "name": "opencart/odoo-connector",
+    "description": "Odoo Connector for OpenCart - Ripcord XML-RPC Library",
+    "type": "library",
+    "require": {
+        "php": ">=7.3",
+        "darkaonline/ripcord": "^0.3"
+    }
+}

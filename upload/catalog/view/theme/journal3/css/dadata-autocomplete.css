@@ -1,0 +1,7 @@
+.dadata-suggestion-item.active {
+    background-color: #d0eaff !important;
+    color: #222;
+}
+.dadata-suggestion-item {
+    transition: background-color 0.1s;
+}

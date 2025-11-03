@@ -85,6 +85,8 @@ class ControllerJournal3Checkout extends Controller {
 
 		$this->document->addScript('catalog/view/theme/journal3/lib/he/he.js');
 		$this->document->addScript('catalog/view/theme/journal3/js/checkout.js');
+		$this->document->addScript('catalog/view/theme/journal3/js/dadata-autocomplete.js');
+		$this->document->addStyle('catalog/view/theme/journal3/css/dadata-autocomplete.css');
 
 		if (isset($this->session->data['error'])) {
 			$data['error_warning'] = $this->session->data['error'];

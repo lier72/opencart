@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Odoo Integration Menu</name>
+    <version>2.0</version>
+    <author>Max Surdu</author>
+    <link>http://uniqsport.ru</link>
+    <code>odoo_integration_menu</code>
+    <description>Adds Odoo Integration menu items to admin panel (OpenCart 3.0 compatible)</description>
+
+    <!-- Add Odoo menu to column_left controller -->
+    <file path="admin/controller/common/column_left.php">
+        <operation>
+            <search><![CDATA[// Stats]]></search>
+            <add position="before"><![CDATA[
+// Odoo Integration Menu
+$odoo = array();
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_connector')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_settings'),
+		'href'     => $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_product_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_product_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_product_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_price_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_price_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_price_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_order_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_order_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_order_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($odoo) {
+	$data['menus'][] = array(
+		'id'       => 'menu-odoo',
+		'icon'	   => 'fa-cloud-upload',
+		'name'	   => $this->language->get('text_odoo'),
+		'href'     => '',
+		'children' => $odoo
+	);
+}
+
+]]></add>
+        </operation>
+    </file>
+
+    <!-- Add language strings to column_left language file -->
+    <file path="admin/language/en-gb/common/column_left.php">
+        <operation>
+            <search><![CDATA[$_['text_reports']]]></search>
+            <add position="before"><![CDATA[// Odoo Integration
+$_['text_odoo']                  = 'Odoo Integration';
+$_['text_odoo_settings']         = 'Settings';
+$_['text_odoo_product_mapping']  = 'Product Mapping';
+$_['text_odoo_price_mapping']    = 'Price Mapping';
+$_['text_odoo_order_mapping']    = 'Order Mapping';
+]]></add>
+        </operation>
+    </file>
+
+    <!-- Add Russian language strings if the file exists -->
+    <file path="admin/language/ru-ru/common/column_left.php">
+        <operation>
+            <search><![CDATA[$_['text_reports']]]></search>
+            <add position="before"><![CDATA[// Odoo Integration
+$_['text_odoo']                  = 'Интеграция Odoo';
+$_['text_odoo_settings']         = 'Настройки';
+$_['text_odoo_product_mapping']  = 'Сопоставление товаров';
+$_['text_odoo_price_mapping']    = 'Сопоставление цен';
+$_['text_odoo_order_mapping']    = 'Сопоставление заказов';
+]]></add>
+        </operation>
+    </file>
+</modification>

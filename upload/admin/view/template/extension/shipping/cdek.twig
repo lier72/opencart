@@ -974,15 +974,26 @@
 
     $(function() {
         $("#cdek-city-from").autocomplete({
-            source: function(request,response) {
+            source: function(request, response) {
+                var searchTerm = request.term || $("#cdek-city-from").val();
+                console.log('CDEK Autocomplete: request object:', request);
+                console.log('CDEK Autocomplete: Searching for:', searchTerm);
+
+                if (!searchTerm || searchTerm.length < 1) {
+                    console.log('CDEK Autocomplete: Search term too short, skipping');
+                    response([]);
+                    return;
+                }
+
                 $.ajax({
                     url: "index.php?route=extension/module/cdek_integrator/getCityByName&user_token={{ token }}",
                     dataType: "json",
                     data: {
-                        q: function () { return $("#cdek-city-from").val() },
-                        name_startsWith: function () { return $("#cdek-city-from").val() }
+                        q: searchTerm,
+                        name_startsWith: searchTerm
                     },
                     success: function(data) {
+                        console.log('CDEK Autocomplete: Received data:', data);
                         response($.map(data, function(item) {
                             return {
                                 label: item.full_name,
@@ -990,16 +1001,23 @@
                                 id: item.code
                             }
                         }));
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('CDEK Autocomplete Error:', status, error);
+                        console.error('Response:', xhr.responseText);
+                        response([]);
                     }
                 });
             },
             minLength: 1,
             select: function(event) {
+                console.log('CDEK Autocomplete: Selected city:', event.item);
                 $('#cdek-city-from-id').parent().find('.error').remove();
                 $('#cdek-city-from-id').val(event.id);
                 $("#cdek-city-from").val(event.label);
-                $('.js.city-from').text(event.label).show();
+                $('.js.city-from').text(event.value).show();
                 $("#cdek-city-from").hide();
+                return false;
             }
         });
 

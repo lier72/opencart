@@ -130,3 +130,7 @@ $_['error_warning']              = 'Warning: Please check the form carefully for
 $_['error_permission']           = 'Warning: You do not have permission to modify orders!';
 $_['error_action']               = 'Warning: Could not complete this action!';
 $_['error_filetype']             = 'Invalid file type!';
+
+// Odoo Integration
+$_['button_create_odoo']         = 'Create in Odoo';
+$_['text_confirm_odoo']          = 'Are you sure you want to create this order in Odoo?';

@@ -575,7 +575,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$pagination->total = $order_total;
 		$pagination->page = $page;
 		$pagination->limit = $limit;
-		$pagination->text = $this->language->get('text_pagination');
+//		$pagination->text = $this->language->get('text_pagination');
 		$pagination->url = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}', 'SSL');
 
 		$rdata['pagination'] = $pagination->render();
@@ -971,7 +971,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		}		
 		
 		$rdata['cdek_orders'] = array();
-		$additional_cost_totals = array('shipping', 'cod_cdek_total');
+		$additional_cost_totals = array('shipping', 'cdek');
 
 		if (isset($this->request->post['checkpackage'])) {
 			$checkpackage = (int)$this->request->post['checkpackage'];
@@ -986,7 +986,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$order_to_sdek = $this->model_extension_module_cdek_integrator->getOrderToSdek($this->request->get['order_id']);
 
 		$order_info = $this->model_sale_order->getOrder($this->request->get['order_id']);
-
+        // We trigger COD slector if 'cod_cdek_total is present in the order ising $cod_flag
+        $cod_flag = false;
 		if ($order_info && !$this->model_extension_module_cdek_integrator->orderExists($this->request->get['order_id'])) {
 
 			$additional_cost = 0;
@@ -997,8 +998,11 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				$totals[$totals_key]['text'] = $this->currency->format($totals_value['value'], $order_info['currency_code']);
 
 				if (in_array($totals_value['code'], $additional_cost_totals)) {
-					$additional_cost += $totals_value['value'];
+					$additional_cost += round($totals_value['value']);
 				}
+				if ($totals_value['code'] == 'cdek') {
+                    $cod_flag = true;
+                }
 			}
 
 			$post_data = !empty($this->request->post['cdek_orders']) ? $this->request->post['cdek_orders'] : array();
@@ -1012,7 +1016,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			}
 
 			$exdata = array(
-				'cod'					=> isset($post_data['cod']) ? $post_data['cod'] : $this->setting['cod'],
+				'cod'					=> $cod_flag ? $cod_flag : $this->setting['cod'],
 				'currency_cod'			=> isset($post_data['currency_cod']) ? $post_data['currency_cod'] : $this->setting['currency_agreement'],
 				'currency'				=> $currency,
 				'city_id'				=> $this->setting['city_id'],
@@ -1070,7 +1074,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$exdata['recipient_telephone'] = $telephone;
 
 			if (!empty($rdata['city_id'])) {
-				$pvz_list_sell = $this->getPVZ($rdata['city_id']);
+				$pvz_list_sell = $this->getPVZSellCached($rdata['city_id']);
 			}
 
 			if (!empty($pvz_list_sell['List'])) {
@@ -1450,9 +1454,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 						$exdata['pvz_list'] = $pvz_list['List'];
 					}
 
-				}
-
-				if ($order_to_sdek['cityId']) {
+				} elseif ($order_to_sdek['cityId']) {
 					$city_info = $this->model_extension_module_cdek_integrator->getCityById((int)$order_to_sdek['cityId']);
 					$exdata += array(
 						'recipient_city_id'		=> $order_to_sdek['cityId'],
@@ -1688,7 +1690,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		}
 		
 		if (!empty($this->setting['city_id'])) {
-			$pvz_list_sell = $this->getPVZ($this->setting['city_id']);
+			$pvz_list_sell = $this->getPVZSellCached($this->setting['city_id']);
 		}
 
         if (!empty($pvz_list_sell['List'])) {
@@ -2142,7 +2144,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$pagination->total = $order_total;
 		$pagination->page = $page;
 		$pagination->limit = $limit;
-		$pagination->text = $this->language->get('text_pagination');
+//		$pagination->text = $this->language->get('text_pagination');
 		$pagination->url = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}', 'SSL');
 
 		$rdata['pagination'] = $pagination->render();
@@ -2646,7 +2648,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		}
 	}
 
-	private function renderPage($render = TRUE) {
+/* 	private function renderPage($render = TRUE) {
 
 		if ($render) {
 
@@ -2662,7 +2664,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		$this->response->setOutput($this->render());
 	}
-
+ */
 	public function dispatchPrint()
 	{
 		if (!file_exists(DIR_DOWNLOAD . 'cdek')) {
@@ -3107,11 +3109,33 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 	}
 
 	private function getPVZ($city_code) {
-		$pvz_list = $this->getPVZList();
-		return array_key_exists($city_code, $pvz_list) ? $pvz_list[$city_code] : FALSE;
+		$pvz_list = $this->getInfo()->getPVZ($city_code);
+		return is_array($pvz_list) ? $pvz_list[$city_code] : FALSE;
 	}
 
-	private function getPVZList() {
+	private function getPVZSellCached($city_code) {
+		// Cache key includes city_code to handle potential city changes
+		$cache_key = 'cdek.pvz_sell.' . $city_code;
+
+		// Try to get from cache
+		$cached_data = $this->cache->get($cache_key);
+
+		if ($cached_data !== false && $cached_data !== null) {
+			return $cached_data;
+		}
+
+		// If not in cache, fetch fresh data
+		$pvz_data = $this->getPVZ($city_code);
+
+		// Cache for 24 hours (86400 seconds)
+		if ($pvz_data !== FALSE) {
+			$this->cache->set($cache_key, $pvz_data, 86400);
+		}
+
+		return $pvz_data;
+	}
+
+/* 	private function getPVZList() {
 
 		$exdata = $this->getInfo()->getPVZData();
 
@@ -3131,7 +3155,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		}
 
 		return $exdata;
-	}
+	} */
 
 	private function getCity($cityName, $country_id, $zone_id) {
 
@@ -3388,7 +3412,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		} else {
 			$this->request->get['route'] = 'error/not_found';
-			return $this->forward($this->request->get['route']);
+			return $this->response->setOutput($this->request->get['route']);
 		}
 
 	}
@@ -3988,9 +4012,12 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		if($cityName) {
 			$cdek_cities = $this->getInfo()->getCityByName($cityName);
+		} else {
+			$this->log->write('CDEK DEBUG: No cityName provided!');
 		}
 
-		echo json_encode($cdek_cities);
+		$this->response->addHeader('Content-Type: application/json');
+		$this->response->setOutput(json_encode($cdek_cities));
 	}
 
 	public function logWrite() {
