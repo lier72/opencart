@@ -7,5 +7,38 @@
 			"path": "../../../storage"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"sqltools.connections": [
+			{
+				"mysqlOptions": {
+					"authProtocol": "default",
+					"enableSsl": "Disabled"
+				},
+				"ssh": "Disabled",
+				"previewLimit": 50,
+				"server": "localhost",
+				"port": 3306,
+				"driver": "MySQL",
+				"name": "oc-Local",
+				"database": "a1627-unqs-oc",
+				"username": "root",
+				"password": ""
+			},
+			{
+				"mysqlOptions": {
+					"authProtocol": "default",
+					"enableSsl": "Disabled"
+				},
+				"ssh": "Disabled",
+				"previewLimit": 50,
+				"server": "localhost",
+				"port": 3306,
+				"driver": "MySQL",
+				"name": "oc3-Local",
+				"database": "a1627-unqs-oc3",
+				"username": "root",
+				"password": ""
+			}
+		]
+	}
 }
