@@ -1188,4 +1188,23 @@ class ControllerApiProduct extends Controller {
         return empty($this->error);
     }
 
+    private function getProductMapping($odoo_product_id = null, $opencart_product_id = null) {
+        $sql = "SELECT opvm.*, p.model as opencart_model, pd.name as opencart_name, p.weight as weight, p.length as length, p.height as height, p.width as width 
+            FROM " . DB_PREFIX . "odoo_product_variant_map opvm
+            LEFT JOIN " . DB_PREFIX . "product p ON p.product_id = opvm.opencart_product_id 
+            LEFT JOIN " . DB_PREFIX . "product_description pd ON pd.product_id = p.product_id 
+            WHERE 1=1";
+
+        if ($odoo_product_id) {
+            $sql .= " AND opvm.odoo_product_id = '" . (int)$odoo_product_id . "'";
+        }
+
+        if ($opencart_product_id) {
+            $sql .= " AND opvm.opencart_product_id = '" . (int)$opencart_product_id . "'";
+        }
+
+        $query = $this->db->query($sql);
+        return $query->num_rows ? $query->row : false;
+    }
+
 }

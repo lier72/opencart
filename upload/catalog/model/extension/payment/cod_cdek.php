@@ -162,18 +162,21 @@ class ModelExtensionPaymentCodCdek extends Model {
 			$this->session->data['payment_method']['code'] = 'cod_cdek';
 		}
 
+		$this->load->language('extension/payment/cod_cdek');
+
 		$title_info = $this->config->get('payment_cod_cdek_title');
 
 		if (!empty($title_info[$this->config->get('config_language_id')])) {
 			$title = $title_info[$this->config->get('config_language_id')];
 		} else {
-			$this->load->language('extension/payment/cod_cdek');
 			$title = $this->language->get('text_title');
 		}
 
+		$terms = $this->language->get('text_cod_cdek');
+	
 		$method_data = array(
 			'code'       => 'cod_cdek',
-			'title'      => $title,
+			'title'      => $title . ' ' . $terms,
 			'terms'      => '',
 			'sort_order' => $this->config->get('payment_cod_cdek_sort_order')
 		);

@@ -1,7 +1,11 @@
+<p><b>{{ text_description }}</b></p>
+<div class="well well-sm">
+  <p>{{ text_payment }}</p>
+</div>
 <form action="{{ action }}" method="post" class="eirano">
     <div class="buttons">
         <div class="pull-right">
-            <input type="submit" name="m_process" value="{{ button_confirm }}" class="btn btn-primary"/>
+            <input type="submit" name="m_process" value="{{ button_confirm }}" data-loading-text="{{ text_loading }}" class="btn btn-primary"/>
         </div>
     </div>
 </form>

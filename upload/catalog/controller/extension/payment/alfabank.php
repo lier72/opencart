@@ -18,6 +18,11 @@ $this->have_template = true;
 */
 public function index()
 {
+$data['text_description'] = $this->language->get('text_description');
+$data['text_payment'] = $this->language->get('text_payment');
+$data['text_loading'] = $this->language->get('text_loading');
+$data['button_confirm'] = $this->language->get('button_confirm');
+
 $data['action'] = $this->url->link('extension/payment/alfabank/payment', '', true);
 $data['entry_alfabank_button_confirm'] = $this->language->get('entry_alfabank_button_confirm');
 return $this->get_template('extension/payment/alfabank', $data);
