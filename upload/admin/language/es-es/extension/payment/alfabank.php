@@ -1,0 +1,22 @@
+<?php
+$_['heading_title'] = 'Permite utilizar la pasarela de pago de Alfabank';
+$_['text_alfabank']  = '<img src="view/image/payment/alfabank.png" alt="Alfabank" title="Alfabank" style="width:110px;" /></a>';
+$_['text_payment']      = 'Continuar con el pago';
+$_['text_success']      = '¡Ajustes actualizan!';
+$_['text_settings']     = 'CredibanCo module settings';
+$_['status']            = 'Estado del módulo';
+$_['status_enabled']    = 'Habilitar';
+$_['status_disabled']   = 'Deshabilitar';
+$_['merchantLogin']     = 'Login-API';
+$_['merchantPassword']  = 'Contraseña';
+$_['mode']              = 'Modo de prueba';
+$_['mode_test']         = 'Habilitar';
+$_['mode_prod']         = 'Deshabilitar';
+$_['stage']             = 'Tipo de pago';
+$_['stage_one']         = 'Pagos en una etapa';
+$_['stage_two']         = 'Pagos en dos etapas';
+$_['entry_sortOrder']   = 'Orden de clasificación';
+$_['logging']           = 'Registro de solicitudes y respuestas de la pasarela';
+$_['logging_enabled']   = 'Habilitar';
+$_['logging_disabled']  = 'Deshabilitar';
+$_['entry_order_status']    = 'Estado de pago exitoso';
