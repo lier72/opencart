@@ -231,8 +231,8 @@ class ControllerProductProduct extends Controller {
 			$data['text_login'] = sprintf($this->language->get('text_login'), $this->url->link('account/login', '', true), $this->url->link('account/register', '', true));
 
 // Modification made by Maxim Surdu
-//            $data['text_dealer_price'] = $this->language->get('text_dealer_price');
-//            $data['text_price_warning'] = $this->language->get('text_price_warning');
+            $data['text_dealer_price'] = $this->language->get('text_dealer_price');
+            $data['text_price_warning'] = $this->language->get('text_price_warning');
 // End of modifications
 
 			$this->load->model('catalog/review');
@@ -281,13 +281,13 @@ class ControllerProductProduct extends Controller {
 				);
 			}
 // this is Max's addition to show retail price. Only define reatil_price when user is logged
-//			echo '$product_id =' . $product_info['product_id'] .'$price =' . $product_info['price'] . '$retail_prce =' . $product_info['retail_price'] . '<br/>';
+			//echo '$product_id =' . $product_info['product_id'] .'$price =' . $product_info['price'] . '$retail_prce =' . $product_info['retail_price'] . '<br/>';
             if ($this->customer->isLogged() && $this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id')){
 				$data['retail_price'] = $this->currency->format($this->tax->calculate($product_info['retail_price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
 			} else {
 				$data['reatil_price'] = false;
 			}
-//			echo '$data[retail_price] =' . $data['retail_price'] . '<br/>';
+			//echo '$data[retail_price] =' . $data['retail_price'] . '<br/>';
 // the end of modifications
             if (($this->config->get('config_customer_price') && $this->customer->isLogged()) || !$this->config->get('config_customer_price')) {
                 $data['price'] = $this->currency->format($this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);

@@ -30,6 +30,10 @@ $_['text_week']                = 'недели';
 $_['text_semi_month']          = 'полмесяца';
 $_['text_month']               = 'месяц';
 $_['text_year']                = 'год';
+// Dealer price  modification by Max Surdu
+$_['text_dealer_price']                       = 'Ваша дилерская цена**: ';
+$_['text_price_warning']                      = '** - дилерская цена является КОНФИДЕНЦИАЛЬНОЙ информацией. Разглашение дилерской цены является основанием для лишения статуса дилера!';
+// End of modifications
 
 // Entry
 $_['entry_qty']                = 'Количество';

@@ -64,6 +64,9 @@
                   <button type="submit" class="btn btn-primary" data-loading-text="<span>{{ button_login }}</span>"><span>{{ button_login }}</span></button>
                 </div>
               </div>
+{#                {% if journal3.is_popup %}
+                <p>{{ oasl_widget }}</p>
+              {% endif %}  #}
               {% if redirect %}
               <input type="hidden" name="redirect" value="{{ redirect }}" />
               {% endif %}
@@ -74,4 +77,94 @@
       {{ content_bottom }}</div>
     {{ column_right }}</div>
 </div>
-{{ footer }}
+      {# If this template is rendered inside Journal3 popup and login succeeded or a redirect is present,
+         close parent modal and redirect the top window so account page isn't shown inside the modal. #}
+      {% if journal3.is_popup and (redirect or success) %}
+      <script>
+      (function(){
+        // Gather redirect URL if provided by the server
+        var redirectUrl = {% if redirect %}'{{ redirect|e('js') }}'{% else %}null{% endif %};
+
+        var message = { type: 'journal3:close_and_redirect', redirect: redirectUrl };
+
+        // Send a postMessage to parent/top — safe for cross-origin. Parent footer will listen and act.
+        try { window.parent.postMessage(message, '*'); } catch (e) {}
+        try { top.postMessage(message, '*'); } catch (e) {}
+
+        // If same-origin, also try to directly close modals and redirect for immediate effect.
+        var sameOrigin = false;
+        try {
+          // Accessing parent.document will throw if cross-origin
+          void window.parent.document;
+          sameOrigin = true;
+        } catch (e) {
+          sameOrigin = false;
+        }
+
+        if (sameOrigin) {
+          try {
+            if (window.parent.jQuery) {
+              window.parent.jQuery('.modal').modal('hide');
+            }
+          } catch (e) {}
+
+          try {
+            if (window.parent.journal3) {
+              if (window.parent.journal3.modal && typeof window.parent.journal3.modal.hide === 'function') {
+                window.parent.journal3.modal.hide();
+              } else if (window.parent.journal3.modal && typeof window.parent.journal3.modal === 'function') {
+                try { window.parent.journal3.modal('hide'); } catch(e){}
+              } else if (window.parent.journal3.popup && typeof window.parent.journal3.popup.close === 'function') {
+                window.parent.journal3.popup.close();
+              }
+            }
+          } catch (e) {}
+
+          try {
+            if (redirectUrl) {
+              try { top.location.href = redirectUrl; } catch (e) { window.location = redirectUrl; }
+            } else {
+              try { if (top && top.location) top.location.reload(true); } catch(e) { window.location.reload(true); }
+            }
+          } catch (e) {}
+        }
+      })();
+      </script>
+      {% endif %}
+
+      {# Register OneAll callback so social login can notify parent to close modal and redirect.
+      {% if journal3.is_popup %}
+      <script>
+      (function(){
+        try {
+          var _oneall = window._oneall || (window._oneall = []);
+
+          _oneall.push(['social_login', 'set_event', 'on_login_redirect', function(args) {
+            // args may contain redirect info depending on OneAll setup
+            var redirectUrl = (args && args.redirect) ? args.redirect : null;
+
+            // Send safe message to parent/top (works cross-origin)
+            var message = { type: 'journal3:close_and_redirect', redirect: redirectUrl };
+            try { window.parent.postMessage(message, '*'); } catch (e) {}
+            try { top.postMessage(message, '*'); } catch (e) {}
+
+            // If same-origin, also attempt direct modal hide + redirect for immediate UX
+            try {
+              void window.parent.document; // will throw if cross-origin
+              try { if (window.parent.jQuery) window.parent.jQuery('.modal.show').modal('hide'); } catch(e) {}
+              try {
+                if (redirectUrl) { try { top.location.href = redirectUrl; } catch(e) { window.location = redirectUrl; } }
+                else { try { top.location.reload(true); } catch(e) { window.location.reload(true); } }
+              } catch(e) {}
+            } catch (e) {
+              // cross-origin — parent will handle via postMessage
+            }
+          }]);
+        } catch (e) {
+          // ignore errors
+        }
+      })();
+      </script>
+      {% endif %} #}
+
+      {{ footer }}

@@ -1481,7 +1481,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 							list(,$tariff_id, $pvz_code) = $tariff_parts;
 
 							$tariff_info = $this->getInfo()->getTariffInfo($tariff_id);
-							if ($order_to_sdek['pvz_code']) {
+							if (is_array($order_to_sdek)) {
 								$pvz_code=$order_to_sdek['pvz_code'];
 							}
 							if ($tariff_info) {

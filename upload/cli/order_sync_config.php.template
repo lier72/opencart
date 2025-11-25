@@ -1,0 +1,63 @@
+<?php
+/**
+ * Order Sync Worker Configuration Template
+ *
+ * INSTALLATION INSTRUCTIONS:
+ * 1. Copy this file to order_sync_config.php
+ * 2. Update all database credentials below
+ * 3. Keep order_sync_config.php secure and outside public web directory
+ */
+
+// OC3 Database Configuration
+define('OC3_DB_HOST', '127.0.0.1');          // Database host (IP or hostname)
+define('OC3_DB_USER', 'your_oc3_username');  // Database username
+define('OC3_DB_PASS', 'your_oc3_password');  // Database password
+define('OC3_DB_NAME', 'your_oc3_database');  // Database name
+define('OC3_DB_PREFIX', 'oc_');              // Table prefix
+define('OC3_DB_PORT', 3306);                 // Database port
+
+// OC2 Database Configuration
+define('OC2_DB_HOST', '127.0.0.1');          // Database host (can be different from OC3)
+define('OC2_DB_USER', 'your_oc2_username');  // Database username (can be different)
+define('OC2_DB_PASS', 'your_oc2_password');  // Database password (can be different)
+define('OC2_DB_NAME', 'your_oc2_database');  // Database name
+define('OC2_DB_PREFIX', 'oc_');              // Table prefix
+define('OC2_DB_PORT', 3306);                 // Database port
+
+// Worker Configuration (optional)
+define('WORKER_LOG_LEVEL', 'INFO');          // DEBUG, INFO, WARNING, ERROR
+define('WORKER_BATCH_SIZE', 10);             // Number of queue items to process per run
+define('WORKER_MAX_RETRIES', 3);             // Max retry attempts for failed syncs
+
+/**
+ * EXAMPLES:
+ *
+ * Example 1: Same server, different databases
+ * define('OC3_DB_HOST', '127.0.0.1');
+ * define('OC3_DB_USER', 'root');
+ * define('OC3_DB_PASS', '');
+ * define('OC3_DB_NAME', 'opencart3_db');
+ *
+ * define('OC2_DB_HOST', '127.0.0.1');
+ * define('OC2_DB_USER', 'root');
+ * define('OC2_DB_PASS', '');
+ * define('OC2_DB_NAME', 'opencart2_db');
+ *
+ * Example 2: Different servers, different credentials
+ * define('OC3_DB_HOST', 'oc3-server.example.com');
+ * define('OC3_DB_USER', 'oc3_sync_user');
+ * define('OC3_DB_PASS', 'strong_password_123');
+ * define('OC3_DB_NAME', 'opencart3_production');
+ *
+ * define('OC2_DB_HOST', 'oc2-server.example.com');
+ * define('OC2_DB_USER', 'oc2_sync_user');
+ * define('OC2_DB_PASS', 'different_password_456');
+ * define('OC2_DB_NAME', 'opencart2_production');
+ *
+ * Example 3: Remote database with custom port
+ * define('OC3_DB_HOST', 'db.example.com');
+ * define('OC3_DB_USER', 'sync_user');
+ * define('OC3_DB_PASS', 'secure_password');
+ * define('OC3_DB_NAME', 'oc3_db');
+ * define('OC3_DB_PORT', 3307);  // Custom port
+ */

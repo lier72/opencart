@@ -21,11 +21,31 @@
         <![CDATA[if (is_file($file)) {]]>
       </search>
       <add position="replace">
-        <![CDATA[if (defined('DIR_CATALOG') && is_file(DIR_MODIFICATION . 'admin/view/template/' . $filename . '.twig')) {	
+        <![CDATA[if (defined('DIR_CATALOG') && is_file(DIR_MODIFICATION . 'admin/view/template/' . $filename . '.twig')) {
                 $code = file_get_contents(DIR_MODIFICATION . 'admin/view/template/' . $filename . '.twig');
             } elseif (is_file(DIR_MODIFICATION . 'catalog/view/theme/' . $filename . '.twig')) {
                 $code = file_get_contents(DIR_MODIFICATION . 'catalog/view/theme/' . $filename . '.twig');
             } elseif (is_file($file)) {]]>
+      </add>
+    </operation>
+	<operation>
+      <search>
+        <![CDATA[} else {
+				throw new \Exception('Error: Could not load template ' . $file . '!');
+				exit();
+			}]]>
+      </search>
+      <add position="replace">
+        <![CDATA[} else {
+				// Fallback to default theme if file not found in current theme
+				$default_file = str_replace(DIR_TEMPLATE, DIR_APPLICATION . 'view/theme/default/template/', $file);
+				if (is_file($default_file)) {
+					$code = file_get_contents($default_file);
+				} else {
+					throw new \Exception('Error: Could not load template ' . $file . '!');
+					exit();
+				}
+			}]]>
       </add>
     </operation>
   </file> 

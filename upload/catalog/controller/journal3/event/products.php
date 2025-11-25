@@ -109,6 +109,7 @@ class ControllerJournal3EventProducts extends Controller {
 
 	private function product($product, $product_info) {
 		$data['text_tax'] = $this->language->get('text_tax');
+		$data['text_dealer_price'] = $this->language->get('text_dealer_price');
 
 		$data['button_cart'] = $this->language->get('button_cart');
 		$data['button_wishlist'] = $this->language->get('button_wishlist');
@@ -122,7 +123,20 @@ class ControllerJournal3EventProducts extends Controller {
 
 		$data['dummy_image'] = $this->journal3_image->transparent($data['image_width'], $data['image_height']);
 
-		$result = $product_info[$product['product_id']];
+		// Handle both array of products and single product
+		if (isset($product_info[$product['product_id']])) {
+			$result = $product_info[$product['product_id']];
+		} else {
+			$result = $product_info;
+		}
+
+		// Max Surdu modifications - format retail_price only if user is logged in and NOT in default customer group
+		if (isset($result['retail_price']) && (float)$result['retail_price'] && $this->customer->isLogged() && $this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id')) {
+			$product['retail_price'] = $this->currency->format($this->tax->calculate($result['retail_price'], $result['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
+		} else {
+			$product['retail_price'] = false;
+		}
+		// End of Max Surdu modifications
 
 		if ($result['image']) {
 			$image = $this->journal3_image->resize($result['image'], $data['image_width'], $data['image_height'], $data['image_resize']);

@@ -52,10 +52,21 @@
             <td>{{ text_price }}</td>
             {% for product in products %}
             <td class="{{ journal3.classes(product.classes) }}">{% if product.price %}
-              {% if not product.special %}
-              {{ product.price }}
-              {% else %} <strike>{{ product.price }}</strike> {{ product.special }}
+              {# Max Surdu modifications to show retail price as old price #}
+              {% if product.retail_price %}
+                {# If retail_price exists, show it as old price regardless of special #}
+                <strike>{{ product.retail_price }}</strike>
+                {% if product.special %}
+                  {{ product.special }}
+                {% else %}
+                  {{ product.price }}
+                {% endif %}
+              {% elseif not product.special %}
+                {{ product.price }}
+              {% else %}
+                <strike>{{ product.price }}</strike> {{ product.special }}
               {% endif %}
+              {# End of Max Surdu modifications #}
               {% endif %}</td>
             {% endfor %} </tr>
           <tr class="compare-model">

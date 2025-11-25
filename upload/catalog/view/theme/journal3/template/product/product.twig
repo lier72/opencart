@@ -258,12 +258,25 @@
                         </div>
                       {% endif %}
                       <div class="price-group">
-                        {% if not special %}
+                        {# Max Surdu modifications to show retail price and dealer price with styling #}
+                        {% if retail_price %}
+                          {# Retail price exists - show retail price as normal and dealer price with label and tooltip #}
+                          <div class="product-price retail-price">{{ retail_price }}</div>
+                          <div class="dealer-price-wrapper">
+                            <span class="dealer-label" data-toggle="tooltip-hover" data-tooltip-class="dealer-price-tooltip" data-placement="top" title="{{ text_price_warning }}">{{ text_dealer_price }}</span>
+                            {% if special %}
+                              <span class="small-price">{{ special }}</span>
+                            {% else %}
+                              <span class="small-price">{{ price }}</span>
+                            {% endif %}
+                          </div>
+                        {% elseif not special %}
                           <div class="product-price">{{ price }}</div>
                         {% else %}
                           <div class="product-price-new">{{ special }}</div>
                           <div class="product-price-old">{{ price }}</div>
                         {% endif %}
+                        {# End of Max Surdu modifications #}
                       </div>
                       {% if tax %}
                         <div class="product-tax">{{ text_tax }} {{ tax }}</div>

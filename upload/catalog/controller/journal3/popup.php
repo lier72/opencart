@@ -169,7 +169,7 @@ class ControllerJournal3Popup extends MenuController {
 		}
 
 		$this->settings['iframe'] = Arr::get($args, 'iframe');
-		$this->settings['iframe_src'] = $this->journal3_url->link('journal3/popup' . JOURNAL3_ROUTE_SEPARATOR . 'page', 'module_id=' . $this->module_id . '&popup=module');
+		$this->settings['iframe_src'] = $this->journal3_url->link('journal3/popup' . JOURNAL3_ROUTE_SEPARATOR . 'page', 'module_id=' . $this->module_id . '&popup=module', $this->journal3_request->is_https);
 
 		if ($this->settings['iframe']) {
 			$this->journal3_document->addClass('module-popup-' . $this->module_id);

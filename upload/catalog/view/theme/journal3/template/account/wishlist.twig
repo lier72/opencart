@@ -54,9 +54,18 @@
             <td class="text-center td-model">{{ product.model }}</td>
             <td class="text-center td-stock">{{ product.stock }}</td>
             <td class="text-center td-price">{% if product.price %}
-              <div class="price"> {% if not product.special %}
-                {{ product.price }}
-                {% else %} <b>{{ product.special }}</b> <s>{{ product.price }}</s> {% endif %} </div>
+              <div class="price">
+                {# Max Surdu modifications to show retail price as old price #}
+                {% if product.retail_price %}
+                  {# If retail_price exists, show it as old price regardless of special #}
+                  <b>{% if product.special %}{{ product.special }}{% else %}{{ product.price }}{% endif %}</b> <s>{{ product.retail_price }}</s>
+                {% elseif not product.special %}
+                  {{ product.price }}
+                {% else %}
+                  <b>{{ product.special }}</b> <s>{{ product.price }}</s>
+                {% endif %}
+                {# End of Max Surdu modifications #}
+              </div>
               {% endif %}</td>
             <td class="text-center td-action">
               {% if journal3.get('catalogCartStatus') %}

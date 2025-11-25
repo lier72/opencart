@@ -848,7 +848,7 @@ class ModelJournal3Filter extends Model {
 						ORDER BY pd2.priority ASC, pd2.price ASC LIMIT 1
 					) special, 
 					" . ($this->journal3_opencart->is_oc4 ? 'pw.viewed' : 'p.viewed') . " as `p.viewed`,
-					if (p.quantity, 1, 0) in_stock 			
+					if (p.quantity > 0, 1, 0) in_stock
 			";
 		} else {
 			$sql = "
@@ -884,7 +884,7 @@ class ModelJournal3Filter extends Model {
 						ORDER BY ps.priority ASC, ps.price ASC LIMIT 1
 					) special,
 					" . ($this->journal3_opencart->is_oc4 ? 'pw.viewed' : 'p.viewed') . " as `p.viewed`,
-					if (p.quantity, 1, 0) in_stock 			
+					if (p.quantity > 0, 1, 0) in_stock
 			";
 		}
 
@@ -1008,8 +1008,18 @@ class ModelJournal3Filter extends Model {
 			foreach ($filter_data['attributes'] as $attribute_id => $attribute_values) {
 				$temp = array();
 
+				// Modification to handle comma-separated attribute values (e.g., players in rackets)
+				// Attribute IDs that contain comma-separated values (e.g., attribute_id 59 for racket players)
+				$comma_separated_attribute_ids = array(59);
+
 				foreach ($attribute_values as $key => $value) {
-					$temp[] = "TRIM(pai.text) = '" . $this->db->escape($value) . "'";
+					// For attributes with comma-separated values, use LIKE to match individual values
+					if (in_array($attribute_id, $comma_separated_attribute_ids)) {
+						$temp[] = "TRIM(pai.text) LIKE '%" . $this->db->escape($value) . "%'";
+					} else {
+						// For regular attributes, use exact match
+						$temp[] = "TRIM(pai.text) = '" . $this->db->escape($value) . "'";
+					}
 				}
 
 				$sql .= " AND EXISTS (SELECT * FROM `" . DB_PREFIX . $attribute_table . "` pai WHERE p.product_id = pai.product_id AND pai.attribute_id = " . (int)$attribute_id . " AND (" . implode(' OR ', $temp) . "))";

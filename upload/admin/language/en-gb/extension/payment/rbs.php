@@ -27,6 +27,8 @@ $_['ofd_enabled']    = 'Передавать данные корзины пок�
 $_['ofd_disabled']   = 'Не передавать данные корзины покупателя';
 $_['entry_order_status'] = 'Статус заказа по завершении платежа';
 $_['entry_geoZone'] = 'Геозона';
+$_['entry_customer_group'] = 'Customer Groups';
+$_['help_customer_group'] = 'Select customer groups that can use this payment method. If none selected, payment method will be available for all groups.';
 
 $_['entry_ffdVersionFormat'] = 'Формат фискальных документов <br/ ><em>ВАЖНО! Формат версии требуется указать в личном кабинете банка и в кабинете сервиса фискализации.</em>';
 $_['entry_paymentMethod'] = 'Тип оплаты <br/ ><em>Используется в версих ФФД начиная с 1.05</em>';

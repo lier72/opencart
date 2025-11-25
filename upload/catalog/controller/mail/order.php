@@ -369,7 +369,17 @@ class ControllerMailOrder extends Controller {
 			$data['text_product'] = $this->language->get('text_product');
 			$data['text_total'] = $this->language->get('text_total');
 			$data['text_comment'] = $this->language->get('text_comment');
-			
+
+			// Added by Max in order to get more info about the order
+			$data['text_firstname'] = $this->language->get('text_firstname') . ' ' . $order_info['firstname'] . "\n";
+			$data['text_lastname'] = $this->language->get('text_lastname') . ' ' . $order_info['lastname'] . "\n";
+			$data['text_new_email'] = $this->language->get('text_new_email') . ' ' . $order_info['email'] . "\n";
+			$data['text_new_telephone'] = $this->language->get('text_new_telephone') . ' ' . $order_info['telephone'] . "\n";
+			$data['text_new_payment_method'] = $this->language->get('text_new_payment_method') . ' ' . $order_info['payment_method'] . "\n";
+			$data['text_new_shipping_method'] = $this->language->get('text_new_shipping_method') . ' ' . $order_info['shipping_method'] . "\n\n";
+			$data['text_new_shipping_address'] = $this->language->get('text_new_shipping_address') . ' ' . str_replace ("<br />", "\n", $order_info['shipping_address']) . "\n\n";
+			// End of Max's modifications
+
 			$data['order_id'] = $order_info['order_id'];
 			$data['date_added'] = date($this->language->get('date_format_short'), strtotime($order_info['date_added']));
 
@@ -402,6 +412,9 @@ class ControllerMailOrder extends Controller {
 							$value = $upload_info['name'];
 						} else {
 							$value = '';
+							$option_articol_addition = preg_match('/\([0-9,X,S,L,M]+\)/',$value,$temp_ar) ? ('_'. substr($temp_ar[0],1,strlen($temp_ar[0]) - 2 ) ) : ('_' . strtoupper($value));
+							$value= ' <'. $order_product['model'] . $option_articol_addition . '> '. chr(9) . '-' . $order_option['name'] . ' ' . (utf8_strlen($value) > 20 ? utf8_substr($value, 0, 20) . '..' : $value) . "\n";
+
 						}
 					}
 

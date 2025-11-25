@@ -1,0 +1,123 @@
+/**
+ * Custom CSS for retail and dealer price display
+ * Max Surdu modifications
+ */
+
+/* Price wrapper for flex layout */
+.price-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Retail price - normal display on the left */
+.retail-price {
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.4;
+  color: inherit;
+}
+
+/* Small price - dealer price value in blue on right */
+.small-price {
+  color: rgb(66, 139, 202) !important;
+  font-size: 22px !important;
+  font-weight: 600 !important;
+  text-align: right;
+}
+
+/* Product grid adjustments */
+.product-grid .retail-price {
+  font-size: 24px !important;
+}
+
+.product-grid .small-price {
+  font-size: 16px !important;
+}
+
+/* Product list adjustments */
+.product-list .retail-price {
+  font-size: 28px !important;
+}
+
+.product-list .small-price {
+  font-size: 18px !important;
+}
+
+/* Single product page adjustments */
+.product-info .price-group {
+  display: flex !important;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Retail price on single product page inherits product-price styling */
+.product-info .retail-price {
+  font-size: inherit;
+  font-weight: inherit;
+  font-family: inherit;
+  line-height: inherit;
+}
+
+/* Dealer price wrapper on single product page */
+.product-info .dealer-price-wrapper,
+.dealer-price-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+/* Dealer label text with tooltip */
+.product-info .dealer-label {
+  font-size: 14px !important;
+  color: rgb(66, 139, 202) !important;
+  cursor: help !important;
+  display: inline-block !important;
+  font-weight: normal !important;
+}
+
+.product-info .small-price {
+  font-size: 28px !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .retail-price {
+    font-size: 22px;
+  }
+
+  .small-price {
+    font-size: 16px;
+  }
+
+  .price-wrapper {
+    gap: 5px;
+  }
+
+  .product-info .small-price {
+    font-size: 20px;
+  }
+
+  .product-info .price-group {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .retail-price {
+    font-size: 18px;
+  }
+
+  .small-price {
+    font-size: 14px;
+  }
+
+  .product-info .small-price {
+    font-size: 18px;
+  }
+}

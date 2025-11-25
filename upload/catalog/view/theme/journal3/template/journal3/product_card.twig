@@ -70,12 +70,29 @@
 
         {% if product.price %}
           <div class="price">
-            <div>
-              {% if product.special %}
+            <div class="price-wrapper">
+              {# Max Surdu modifications to show retail price and dealer price with styling #}
+              {% if product.retail_price %}
+                {# Retail price exists - show retail price as normal and dealer price in blue on right #}
+                <span class="retail-price">{{ product.retail_price }}</span>
+                <span class="dealer-price">
+                  {% if j3.is_desktop %}
+                    <span class="dealer-label">{{ text_dealer_price|default('Dealer price') }}</span>
+                  {% endif %}
+                  {% if product.special %}
+                    <span class="small-price">{{ product.special }}</span>
+                  {% else %}
+                    <span class="small-price">{{ product.price }}</span>
+                  {% endif %}
+                </span>
+              {% elseif product.special %}
+                {# No retail price, but has special - show standard special pricing #}
                 <span class="price-new">{{ product.special }}</span> <span class="price-old">{{ product.price }}</span>
               {% else %}
-                <span class="price-normal">{{ product.price }}</span>
+                {# No retail price, no special - show normal price #}
+                <span class="product-price">{{ product.price }}</span>
               {% endif %}
+              {# End of Max Surdu modifications #}
             </div>
             {% if product.tax %}
               <span class="price-tax">{{ text_tax }}{{ product.tax }}</span>

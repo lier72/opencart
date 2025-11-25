@@ -159,6 +159,7 @@ class ModelJournal3Links extends \Journal3\Opencart\Model {
 			return null;
 		}
 
+		// Force HTTPS for information/agree links (security and privacy policy pages)
 		return array(
 			'text'  => sprintf($this->language->get('text_agree'), $this->url->link('information/information/agree', 'information_id=' . $information_id, true), $information_info['title'], $information_info['title']),
 			'error' => sprintf($this->language->get('error_agree'), $information_info['title']),

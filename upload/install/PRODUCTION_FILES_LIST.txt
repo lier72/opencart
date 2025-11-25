@@ -1,0 +1,143 @@
+===================================================================
+PRODUCTION ORDER SYNC FILES - OC2 ↔ OC3
+===================================================================
+
+IMPORTANT: MYSQL VERSION REQUIREMENTS
+-----------------------------------------------------------------
+⚠ MySQL 5.6 ONLY SUPPORTS *_mysql56.sql FILES
+⚠ MySQL 5.7+ can use either version
+
+For MySQL 5.6: Use ALL files ending with "_mysql56.sql"
+For MySQL 5.7+: Use regular files OR mysql56 files (both work)
+
+REQUIRED SQL FILES FOR MYSQL 5.6 (install/ directory):
+-----------------------------------------------------------------
+✓ order_triggers_simplified_oc3_mysql56.sql      - Order triggers for OC3
+✓ order_triggers_simplified_oc2_mysql56.sql      - Order triggers for OC2
+✓ order_history_triggers_oc3_mysql56.sql         - History triggers for OC3
+✓ order_history_triggers_oc2_mysql56.sql         - History triggers for OC2
+✓ customer_activity_triggers_oc3_mysql56.sql     - Customer activity for OC3
+✓ customer_activity_triggers_oc2_mysql56.sql     - Customer activity for OC2
+✓ odoo_order_map_triggers_oc3_mysql56.sql        - Odoo integration for OC3
+✓ odoo_order_map_triggers_oc2_mysql56.sql        - Odoo integration for OC2
+✓ order_to_sdek_triggers_oc3_mysql56.sql         - CDEK shipping for OC3
+✓ order_to_sdek_triggers_oc2_mysql56.sql         - CDEK shipping for OC2
+✓ all_triggers_mysql56.sql                       - ALL triggers in one file
+✓ drop_all_sync_triggers.sql                     - Complete uninstall
+✓ drop_related_table_triggers.sql                - Cleanup old triggers
+
+ALTERNATIVE FILES FOR MYSQL 5.7+ (install/ directory):
+-----------------------------------------------------------------
+✓ order_triggers_simplified_oc3.sql       - Order triggers for OC3
+✓ order_triggers_simplified_oc2.sql       - Order triggers for OC2
+✓ order_history_triggers_oc3.sql          - History triggers for OC3
+✓ order_history_triggers_oc2.sql          - History triggers for OC2
+✓ customer_activity_triggers_oc3.sql      - Customer activity triggers for OC3
+✓ customer_activity_triggers_oc2.sql      - Customer activity triggers for OC2
+✓ odoo_order_map_triggers_oc3.sql         - Odoo integration triggers for OC3
+✓ odoo_order_map_triggers_oc2.sql         - Odoo integration triggers for OC2
+✓ order_to_sdek_triggers_oc3.sql          - CDEK shipping triggers for OC3
+✓ order_to_sdek_triggers_oc2.sql          - CDEK shipping triggers for OC2
+
+REQUIRED PHP FILES (cli/ directory):
+-----------------------------------------------------------------
+✓ order_sync_worker.php                   - Main sync worker script
+✓ order_sync_config.php                   - Database configuration (create from template)
+✓ order_sync_config.php.template          - Configuration template
+
+DOCUMENTATION:
+-----------------------------------------------------------------
+✓ PRODUCTION_ORDER_SYNC_GUIDE.md          - Complete production guide
+✓ OPTIMIZED_SYNC_STRATEGY.md              - Technical details
+✓ ORDER_LEVEL_SYNC_IMPLEMENTED.md         - Implementation summary
+✓ PRODUCTION_FILES_LIST.txt               - This file
+
+ARCHIVED (archive_obsolete_sync_files/):
+-----------------------------------------------------------------
+○ order_related_tables_triggers_*.sql     - Old debounced triggers
+○ queue_consolidation_procedure*.sql      - Old consolidation logic
+○ DEBOUNCING_IMPLEMENTATION.md            - Old strategy docs
+○ FINAL_OPTIMIZATION_SUMMARY.md           - Old summary
+○ EVENT_SYSTEM_ANALYSIS.md                - Analysis docs
+○ apply_delayed_sync*.sql.backup          - Old delayed sync
+○ delayed_sync_strategy.sql.backup        - Old strategy
+○ fix_sync_status_enum.sql                - Migration script
+○ FEDERATED_ANALYSIS.md                   - Abandoned approach
+○ SIMPLE_SHARED_TABLES_SOLUTION.md        - Alternative approach
+
+BACKUP FILES (cli/ directory):
+-----------------------------------------------------------------
+○ order_sync_worker.php.backup_*          - Worker backups (for rollback)
+
+===================================================================
+INSTALLATION CHECKLIST FOR PRODUCTION
+===================================================================
+
+[0] Check MySQL Version:
+    □ Run: SELECT VERSION();
+    □ If version is 5.6.x, use *_mysql56.sql files
+    □ If version is 5.7+ or 8.x, use regular .sql files
+
+[1] Database Setup FOR MYSQL 5.6:
+    □ Run order_triggers_simplified_oc3_mysql56.sql on OC3 database
+    □ Run order_triggers_simplified_oc2_mysql56.sql on OC2 database
+    □ Run order_history_triggers_oc3_mysql56.sql on OC3 database
+    □ Run order_history_triggers_oc2_mysql56.sql on OC2 database
+    □ Run customer_activity_triggers_oc3_mysql56.sql on OC3 database
+    □ Run customer_activity_triggers_oc2_mysql56.sql on OC2 database
+    □ Run odoo_order_map_triggers_oc3_mysql56.sql on OC3 database
+    □ Run odoo_order_map_triggers_oc2_mysql56.sql on OC2 database
+    □ Run order_to_sdek_triggers_oc3_mysql56.sql on OC3 database
+    □ Run order_to_sdek_triggers_oc2_mysql56.sql on OC2 database
+    □ Run drop_related_table_triggers.sql to remove old triggers
+    □ Verify ocus_order_sync_queue table exists in both databases
+
+[1] Database Setup FOR MYSQL 5.7+:
+    □ Run order_triggers_simplified_oc3.sql on OC3 database
+    □ Run order_triggers_simplified_oc2.sql on OC2 database
+    □ Run order_history_triggers_oc3.sql on OC3 database
+    □ Run order_history_triggers_oc2.sql on OC2 database
+    □ Run customer_activity_triggers_oc3.sql on OC3 database
+    □ Run customer_activity_triggers_oc2.sql on OC2 database
+    □ Run odoo_order_map_triggers_oc3.sql on OC3 database
+    □ Run odoo_order_map_triggers_oc2.sql on OC2 database
+    □ Run order_to_sdek_triggers_oc3.sql on OC3 database
+    □ Run order_to_sdek_triggers_oc2.sql on OC2 database
+    □ Run drop_related_table_triggers.sql to remove old triggers
+    □ Verify ocus_order_sync_queue table exists in both databases
+
+[2] Worker Setup:
+    □ Upload order_sync_worker.php to cli/ directory
+    □ Copy order_sync_config.php.template to order_sync_config.php
+    □ Edit order_sync_config.php with your database credentials:
+      - OC3_DB_HOST, OC3_DB_USER, OC3_DB_PASS, OC3_DB_NAME
+      - OC2_DB_HOST, OC2_DB_USER, OC2_DB_PASS, OC2_DB_NAME
+      - Each database can have DIFFERENT credentials
+    □ Set correct permissions: chmod +x cli/order_sync_worker.php
+    □ Test worker: php cli/order_sync_worker.php
+
+[3] Cron Job (optional but recommended):
+    □ Add to crontab: */5 * * * * php /path/to/cli/order_sync_worker.php
+
+[4] Verification:
+    □ Create test order in OC2
+    □ Check queue: Should have ~26 entries (not 773!)
+    □ Run worker manually
+    □ Verify order synced to OC3 with all products/totals
+    □ Check reverse sync: Should be 0 entries in OC3 queue
+
+===================================================================
+PERFORMANCE METRICS
+===================================================================
+
+Before Optimization:
+  - Queue entries: 773 per order
+  - Worker runs: 40+
+  - Sync time: ~5 minutes
+
+After Optimization:
+  - Queue entries: 26 per order (96.6% reduction!)
+  - Worker runs: 1-2
+  - Sync time: <1 second
+
+===================================================================

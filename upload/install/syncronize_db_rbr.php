@@ -13,13 +13,16 @@
  *
  * 2. Essential Tables Transfer: Only transfers order, customer, shipment, payment and CDEK data
  *    php syncronize_db_rbr.php essential
+ *
+ * 3. SEO URL Migration Only: Transfers only SEO URLs from url_alias to seo_url
+ *    php syncronize_db_rbr.php seo
  */
 
 // Determine mode from command line argument
 $mode = isset($argv[1]) ? strtolower($argv[1]) : 'essential';
 
-if (!in_array($mode, ['full', 'essential'])) {
-    die("Invalid mode. Use 'full' or 'essential'\nUsage: php syncronize_db_rbr.php [full|essential]\n");
+if (!in_array($mode, ['full', 'essential', 'seo'])) {
+    die("Invalid mode. Use 'full', 'essential', or 'seo'\nUsage: php syncronize_db_rbr.php [full|essential|seo]\n");
 }
 
 echo "\n========================================\n";
@@ -29,12 +32,12 @@ echo "========================================\n\n";
 // Read current config
 
 define('OLD_DB_DATABASE', 'a1627-unqs-oc');
-// define('OLD_DB_USERNAME', 'a1627-unqs-oc');
-define('OLD_DB_USERNAME', 'root');
+define('OLD_DB_USERNAME', 'a1627-unqs-oc');
+//define('OLD_DB_USERNAME', 'root');
 define('OLD_DB_PREFIX', 'ocus_');
-// define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
-define('OLD_DB_PASSWORD','');
-//$drop_tables = true;
+define('OLD_DB_PASSWORD','StsZmRVqnWcXF2XA');
+//define('OLD_DB_PASSWORD','');
+$drop_tables = true;
 
 
 // Configuration
@@ -190,6 +193,10 @@ $essential_tables = array(
 
     // Cart tables
     'ocus_cart',
+
+    // Product pricing tables
+    'ocus_product_special',
+    'ocus_product_discount',
 );
 
 // the idea is to store table names from to databases
@@ -237,26 +244,33 @@ $essential_tables = array(
         'ocus_journal2_newsletter',
         'ocus_journal2_settings',
         'ocus_journal2_skins',
+        'ocus_event',
        );
 
     // In essential mode, add all non-essential tables to exception list
     if ($mode === 'essential') {
         echo "Essential mode: Only transferring essential tables\n";
         echo "Essential tables count: " . count($essential_tables) . "\n\n";
+    } elseif ($mode === 'seo') {
+        echo "SEO mode: Skipping all table transfers, will only migrate SEO URLs\n\n";
     }
 
-    $result = $old_db->query("SHOW TABLES") or die("Error SHOW TABLES " . mysqli_error($old_db));
-    while($row = mysqli_fetch_array($result)){
-        array_push($old_tables, $row[0]);
-    }
-//    print_r( $old_tables);
+    // Skip table analysis in SEO-only mode
+    if ($mode !== 'seo') {
+        $result = $old_db->query("SHOW TABLES") or die("Error SHOW TABLES " . mysqli_error($old_db));
+        while($row = mysqli_fetch_array($result)){
+            array_push($old_tables, $row[0]);
+        }
+    //    print_r( $old_tables);
 
-    $result = $new_db->query("SHOW TABLES") or die("Error SHOW TABLES " . mysqli_error($new_db));
-    while($row=mysqli_fetch_array($result)){
-    array_push($new_tables, $row[0]);
+        $result = $new_db->query("SHOW TABLES") or die("Error SHOW TABLES " . mysqli_error($new_db));
+        while($row=mysqli_fetch_array($result)){
+        array_push($new_tables, $row[0]);
+        }
     }
 //    print_r( $new_tables);
 // Look if the table has different structure
+    if ($mode !== 'seo') {
     foreach ($old_tables as $table){
 //        print_r($table); echo "\n";
         if (is_int(array_search($table, $new_tables))){
@@ -293,20 +307,23 @@ $essential_tables = array(
 //    print_r($new_db_nf_tables);
 //    file_put_contents("new_db_nf_tables.json",json_encode($new_db_nf_tables));
 
-// Create and populate tables that exist in OC2 but not in OC3
-create_and_populate_missing_tables($old_db, $new_db, $new_db_nf_tables, $exception_tables);
+    // Create and populate tables that exist in OC2 but not in OC3
+    create_and_populate_missing_tables($old_db, $new_db, $new_db_nf_tables, $exception_tables);
+    } // End of if ($mode !== 'seo')
 
-// Fix CDEK order table column sizes to accommodate larger COD values
-echo "\nChecking and fixing ocus_cdek_order column sizes...\n";
-$result = $new_db->query("SHOW TABLES LIKE 'ocus_cdek_order'");
-if ($result && $result->num_rows > 0) {
-    $new_db->query("ALTER TABLE ocus_cdek_order
-        MODIFY COLUMN cod DECIMAL(10,4) DEFAULT 0.0000,
-        MODIFY COLUMN cod_fact DECIMAL(10,4) DEFAULT 0.0000")
-        or die("Error modifying ocus_cdek_order columns: " . mysqli_error($new_db));
-    echo "Successfully updated cod and cod_fact columns to DECIMAL(10,4)\n";
-} else {
-    echo "Table ocus_cdek_order not found, skipping column modification\n";
+// Fix CDEK order table column sizes to accommodate larger COD values (skip in SEO mode)
+if ($mode !== 'seo') {
+    echo "\nChecking and fixing ocus_cdek_order column sizes...\n";
+    $result = $new_db->query("SHOW TABLES LIKE 'ocus_cdek_order'");
+    if ($result && $result->num_rows > 0) {
+        $new_db->query("ALTER TABLE ocus_cdek_order
+            MODIFY COLUMN cod DECIMAL(10,4) DEFAULT 0.0000,
+            MODIFY COLUMN cod_fact DECIMAL(10,4) DEFAULT 0.0000")
+            or die("Error modifying ocus_cdek_order columns: " . mysqli_error($new_db));
+        echo "Successfully updated cod and cod_fact columns to DECIMAL(10,4)\n";
+    } else {
+        echo "Table ocus_cdek_order not found, skipping column modification\n";
+    }
 }
 
 //    echo "oc3 tables that need data transformation  \n";
@@ -325,7 +342,7 @@ if ($result && $result->num_rows > 0) {
 //    $new_db->query($sql) or die("Error replacing into ocus_api " . mysqli_error($new_db));
 
 /*  {"table":"ocus_banner_image","nf_old_table_fields":[],"nf_new_table_fields":{"2":"language_id","3":"title"}},*/
-if ($mode === 'full') {
+if ($mode !== 'seo' && $mode === 'full') {
     echo "Processing banner_image table (full mode only)...\n";
     $start = microtime(true);
     $sql_odldb = "SELECT a.banner_image_id, a.banner_id, b.language_id, b.title, a.link, a.image, a.sort_order  FROM `".OLD_DB_DATABASE."`.ocus_banner_image a
@@ -341,14 +358,15 @@ if ($mode === 'full') {
     }
     $time_elapsed_secs=microtime(true)-$start;
     echo "Time elapsed for banner_image table: " . $time_elapsed_secs . "\n";
-} else {
+} elseif ($mode !== 'seo') {
     echo "Skipping banner_image table (essential mode)\n";
 }
 
 
 /*  {"table":"ocus_cart","nf_old_table_fields":[],"nf_new_table_fields":{"1":"api_id"}},*/
-// Cart table is in essential_tables, so process in both modes
+// Cart table is in essential_tables, so process in both modes (skip in SEO mode)
 
+if ($mode !== 'seo') {
 echo "Processing cart table...\n";
 $sql_odldb = "SELECT `cart_id`, `customer_id`, `session_id`, `product_id`, `recurring_id`, `option`, `quantity`, `date_added` FROM `".OLD_DB_DATABASE."`.ocus_cart";
 $result=$old_db->query($sql_odldb) or die("Error replacing into ocus_cart " . mysqli_error($old_db));
@@ -363,9 +381,11 @@ while($row = $result->fetch_assoc()){
     $new_db->query($sql) or die("Error replacing into ocus_cart " . mysqli_error($new_db));
 }
 echo "Cart table processed successfully.\n";
+} // End of if ($mode !== 'seo') for cart
 
 /*  {"table":"ocus_custom_field","nf_old_table_fields":[],"nf_new_table_fields":{"3":"validation"}},
   {"table":"ocus_customer","nf_old_table_fields":[],"nf_new_table_fields":{"3":"language_id","20":"code"}},*/
+if ($mode !== 'seo') {
 /*    $sql = "REPLACE INTO ocus_customer (`customer_id`,`customer_group_id`, `store_id`, `language_id`,
   `firstname`, `lastname` , `email` , `telephone` , `fax` , `password` , `salt` , `cart`, `wishlist`, `newsletter`, `address_id` ,
   `custom_field`,  `ip`, `status`, `safe`, `token`, `code`, `date_added`, `approved`) SELECT 
@@ -411,19 +431,119 @@ echo "Cart table processed successfully.\n";
 //    print_r($sql); echo "\n";
         $new_db->query($sql) or die("\n Error replacing into ocus_customer_activity " . mysqli_error($new_db));
     }
+} // End of if ($mode !== 'seo') for customer data
 /*
 {"table":"ocus_event","nf_old_table_fields":[],"nf_new_table_fields":{"4":"status","5":"sort_order"}},
 */
-//    $sql = "REPLACE INTO ocus_event (`event_id`,`code`, `trigger`, `action`, `status`, `sort_order`) SELECT
-//            `event_id`,`code`, `trigger`, `action`, 0, 0 FROM `".OLD_DB_DATABASE."`.ocus_event" ;
-//    print_r($sql);
-//    $new_db->query($sql) or die("\n Error replacing into ocus_event " . mysqli_error($new_db));
+// Event table migration - only in full mode
+if ($mode !== 'seo' && $mode === 'full') {
+    echo "Processing event table migration...\n";
+
+    // First, migrate existing OC2 events with new fields
+    $sql_odldb = "SELECT `event_id`, `code`, `trigger`, `action` FROM `".OLD_DB_DATABASE."`.ocus_event";
+    $result = $old_db->query($sql_odldb) or die("Error selecting from ocus_event: " . mysqli_error($old_db));
+
+    while($row = $result->fetch_assoc()) {
+        // Convert trigger format from path/to/method to path/to.method if needed
+        $trigger = $row['trigger'];
+        if (strpos($trigger, '.') === false) {
+            $parts = explode('/', $trigger);
+            if (count($parts) >= 2) {
+                $string_1 = implode('/', array_slice($parts, 0, -2));
+                $string_2 = implode('/', array_slice($parts, -2));
+                $trigger = $string_1 . '.' . $string_2;
+            }
+        }
+
+        $sql = "INSERT INTO ocus_event SET `event_id`=" . $row['event_id'] .
+            ", `code`='" . $new_db->real_escape_string($row['code']) .
+            "', `trigger`='" . $new_db->real_escape_string($trigger) .
+            "', `action`='" . $new_db->real_escape_string($row['action']) .
+            "', `status`=1, `sort_order`=0 ON DUPLICATE KEY UPDATE " .
+            "`code`='" . $new_db->real_escape_string($row['code']) .
+            "', `trigger`='" . $new_db->real_escape_string($trigger) .
+            "', `action`='" . $new_db->real_escape_string($row['action']) .
+            "', `status`=1, `sort_order`=0";
+
+        $new_db->query($sql) or die("\n Error inserting into ocus_event: " . mysqli_error($new_db));
+    }
+
+    // Add missing default OC3 events (from upgrade_8.php)
+    $oc3_events = array(
+        array('code' => 'activity_customer_add', 'trigger' => 'catalog/model/account/customer.addCustomer/after', 'action' => 'event/activity.addCustomer'),
+        array('code' => 'activity_customer_edit', 'trigger' => 'catalog/model/account/customer.editCustomer/after', 'action' => 'event/activity.editCustomer'),
+        array('code' => 'activity_customer_password', 'trigger' => 'catalog/model/account/customer.editPassword/after', 'action' => 'event/activity.editPassword'),
+        array('code' => 'activity_customer_forgotten', 'trigger' => 'catalog/model/account/customer.addToken/after', 'action' => 'event/activity.forgotten'),
+        array('code' => 'activity_transaction', 'trigger' => 'catalog/model/account/customer.addTransaction/after', 'action' => 'event/activity.addTransaction'),
+        array('code' => 'activity_customer_login', 'trigger' => 'catalog/model/account/customer.deleteLoginAttempts/after', 'action' => 'event/activity.login'),
+        array('code' => 'activity_address_add', 'trigger' => 'catalog/model/account/address.addAddress/after', 'action' => 'event/activity.addAddress'),
+        array('code' => 'activity_address_edit', 'trigger' => 'catalog/model/account/address.editAddress/after', 'action' => 'event/activity.editAddress'),
+        array('code' => 'activity_address_delete', 'trigger' => 'catalog/model/account/address.deleteAddress/after', 'action' => 'event/activity.deleteAddress'),
+        array('code' => 'activity_affiliate_add', 'trigger' => 'catalog/model/account/customer.addAffiliate/after', 'action' => 'event/activity.addAffiliate'),
+        array('code' => 'activity_affiliate_edit', 'trigger' => 'catalog/model/account/customer.editAffiliate/after', 'action' => 'event/activity.editAffiliate'),
+        array('code' => 'activity_order_add', 'trigger' => 'catalog/model/checkout/order.addHistory/before', 'action' => 'event/activity.addHistory'),
+        array('code' => 'activity_return_add', 'trigger' => 'catalog/model/account/returns.addReturn/after', 'action' => 'event/activity.addReturn'),
+        array('code' => 'mail_transaction', 'trigger' => 'catalog/model/account/customer.addTransaction/after', 'action' => 'mail/transaction'),
+        array('code' => 'mail_forgotten', 'trigger' => 'catalog/model/account/customer.addToken/after', 'action' => 'mail/forgotten'),
+        array('code' => 'mail_customer_add', 'trigger' => 'catalog/model/account/customer.addCustomer/after', 'action' => 'mail/register'),
+        array('code' => 'mail_customer_alert', 'trigger' => 'catalog/model/account/customer.addCustomer/after', 'action' => 'mail/register.alert'),
+        array('code' => 'mail_affiliate_add', 'trigger' => 'catalog/model/account/customer.addAffiliate/after', 'action' => 'mail/affiliate'),
+        array('code' => 'mail_affiliate_alert', 'trigger' => 'catalog/model/account/customer.addAffiliate/after', 'action' => 'mail/affiliate.alert'),
+        array('code' => 'mail_order_add', 'trigger' => 'catalog/model/checkout/order.addHistory/before', 'action' => 'mail/order'),
+        array('code' => 'mail_order_alert', 'trigger' => 'catalog/model/checkout/order.addHistory/before', 'action' => 'mail/order.alert'),
+        array('code' => 'statistics_review_add', 'trigger' => 'catalog/model/catalog/review.addReview/after', 'action' => 'event/statistics.addReview'),
+        array('code' => 'statistics_return_add', 'trigger' => 'catalog/model/account/returns.addReturn/after', 'action' => 'event/statistics.addReturn'),
+        array('code' => 'statistics_order_history', 'trigger' => 'catalog/model/checkout/order.addHistory/after', 'action' => 'event/statistics.addHistory'),
+        array('code' => 'admin_mail_affiliate_approve', 'trigger' => 'admin/model/customer/customer_approval.approveAffiliate/after', 'action' => 'mail/affiliate.approve'),
+        array('code' => 'admin_mail_affiliate_deny', 'trigger' => 'admin/model/customer/customer_approval.denyAffiliate/after', 'action' => 'mail/affiliate.deny'),
+        array('code' => 'admin_mail_customer_approve', 'trigger' => 'admin/model/customer/customer_approval.approveCustomer/after', 'action' => 'mail/customer.approve'),
+        array('code' => 'admin_mail_customer_deny', 'trigger' => 'admin/model/customer/customer_approval.denyCustomer/after', 'action' => 'mail/customer.deny'),
+        array('code' => 'admin_mail_reward', 'trigger' => 'admin/model/customer/customer.addReward/after', 'action' => 'mail/reward'),
+        array('code' => 'admin_mail_transaction', 'trigger' => 'admin/model/customer/customer.addTransaction/after', 'action' => 'mail/transaction'),
+        array('code' => 'admin_mail_return', 'trigger' => 'admin/model/sale/return.addReturn/after', 'action' => 'mail/returns'),
+        array('code' => 'admin_mail_forgotten', 'trigger' => 'admin/model/user/user.addToken/after', 'action' => 'mail/forgotten'),
+        array('code' => 'admin_currency_add', 'trigger' => 'admin/model/currency.addCurrency/after', 'action' => 'event/currency'),
+        array('code' => 'admin_currency_edit', 'trigger' => 'admin/model/currency.editCurrency/after', 'action' => 'event/currency'),
+        array('code' => 'admin_setting', 'trigger' => 'admin/model/setting/setting.editSetting/after', 'action' => 'event/currency'),
+    );
+
+    $events_added = 0;
+    foreach ($oc3_events as $event) {
+        // Check if event already exists
+        $check = $new_db->query("SELECT * FROM ocus_event WHERE `code` = '" . $new_db->real_escape_string($event['code']) . "'");
+
+        if (!$check || $check->num_rows == 0) {
+            $sql = "INSERT INTO ocus_event SET " .
+                "`code` = '" . $new_db->real_escape_string($event['code']) . "', " .
+                "`trigger` = '" . $new_db->real_escape_string($event['trigger']) . "', " .
+                "`action` = '" . $new_db->real_escape_string($event['action']) . "', " .
+                "`status` = 1, `sort_order` = 0";
+
+            $new_db->query($sql) or die("\n Error adding OC3 event: " . mysqli_error($new_db));
+            $events_added++;
+        }
+    }
+
+    // Update specific event triggers (from upgrade_8.php line 266)
+    $new_db->query("UPDATE ocus_event SET `trigger` = 'admin/model/sale/returns.addHistory/after' WHERE `code` = 'admin_mail_return'");
+
+    // Remove obsolete events (from upgrade_8.php line 269)
+    $new_db->query("DELETE FROM ocus_event WHERE `action` = 'extension/extension/promotion.getList'");
+
+    // Rename subscription to mail_subscription if exists (from upgrade_8.php line 272)
+    $new_db->query("UPDATE ocus_event SET `code` = 'mail_subscription' WHERE `code` = 'subscription'");
+
+    echo "Event table migrated successfully. Added $events_added new OC3 events.\n";
+} elseif ($mode !== 'seo') {
+    echo "Skipping event table migration (essential mode)\n";
+}
 
 // Absolutely no reson to transfer MODIFIACTIONS from OC2 to OC3
 /*  {"table":"ocus_modification","nf_old_table_fields":[],"nf_new_table_fields": {"1":"extension_install_id","10":"extension_download_id"}}]
 */
 //$identical_tables = array_slice($identical_tables,0,1);
 //$identical_tables = array('ocus_zone');
+if ($mode !== 'seo') {
 foreach ($identical_tables as $table){
     // In essential mode, skip tables not in essential_tables list
     if ($mode === 'essential' && !in_array($table, $essential_tables)) {
@@ -520,6 +640,7 @@ foreach ($identical_tables as $table){
         }
     }
 }
+} // End of if ($mode !== 'seo') for identical tables
 
 
 /*
@@ -1030,10 +1151,119 @@ function migrate_journal2_to_journal3_blog($old_db, $new_db) {
 }
 
 // Execute the blog migration only in full mode
-if ($mode === 'full') {
+if ($mode !== 'seo' && $mode === 'full') {
     migrate_journal2_to_journal3_blog($old_db, $new_db);
-} else {
+} elseif ($mode !== 'seo') {
     echo "\nSkipping Journal2 to Journal3 blog migration (essential mode)\n";
+}
+
+// Function to migrate SEO URLs from OC2 url_alias to OC3 seo_url
+function migrate_seo_urls($old_db, $new_db) {
+    echo "\n=== Starting SEO URL Migration (OC2 url_alias -> OC3 seo_url) ===\n";
+
+    // Get the default language_id from OC3
+    $lang_result = $new_db->query("SELECT language_id FROM ocus_language ORDER BY sort_order LIMIT 1");
+    if (!$lang_result || $lang_result->num_rows == 0) {
+        echo "ERROR: No language found in OC3 database. Cannot migrate SEO URLs.\n";
+        return;
+    }
+    $lang_row = $lang_result->fetch_assoc();
+    $language_id = $lang_row['language_id'];
+    echo "Using language_id: $language_id\n";
+
+    // Get the default store_id (0 for default store)
+    $store_id = 0;
+    echo "Using store_id: $store_id\n";
+
+    // Count existing URLs
+    $count_result = $old_db->query("SELECT COUNT(*) as total FROM `" . OLD_DB_DATABASE . "`.ocus_url_alias");
+    $count_row = $count_result->fetch_assoc();
+    $total_urls = $count_row['total'];
+    echo "Found $total_urls URLs to migrate from OC2 url_alias table.\n";
+
+    // Analyze URL types
+    echo "\nAnalyzing URL types...\n";
+    $type_result = $old_db->query("
+        SELECT
+            SUBSTRING_INDEX(query, '=', 1) as query_type,
+            COUNT(*) as count
+        FROM `" . OLD_DB_DATABASE . "`.ocus_url_alias
+        GROUP BY query_type
+        ORDER BY count DESC
+    ");
+
+    echo "URL Distribution:\n";
+    while ($type_row = $type_result->fetch_assoc()) {
+        echo "  " . $type_row['query_type'] . ": " . $type_row['count'] . " URLs\n";
+    }
+
+    // Start migration
+    echo "\nStarting URL migration...\n";
+    $sql = "SELECT url_alias_id, query, keyword FROM `" . OLD_DB_DATABASE . "`.ocus_url_alias ORDER BY url_alias_id";
+    $result = $old_db->query($sql) or die("Error selecting from ocus_url_alias: " . mysqli_error($old_db));
+
+    $migrated = 0;
+    $skipped = 0;
+    $errors = 0;
+
+    while($row = $result->fetch_assoc()) {
+        // Skip empty keywords (typically for common/home)
+        if (empty($row['keyword'])) {
+            $skipped++;
+            continue;
+        }
+
+        $query = $new_db->real_escape_string($row['query']);
+        $keyword = $new_db->real_escape_string($row['keyword']);
+
+        // Insert into seo_url table with store_id and language_id
+        $insert_sql = "INSERT INTO ocus_seo_url
+            (store_id, language_id, query, keyword)
+            VALUES (
+                $store_id,
+                $language_id,
+                '$query',
+                '$keyword'
+            )
+            ON DUPLICATE KEY UPDATE
+                keyword = VALUES(keyword)";
+
+        if ($new_db->query($insert_sql)) {
+            $migrated++;
+            if ($migrated % 100 == 0) {
+                echo "  Migrated $migrated URLs...\n";
+            }
+        } else {
+            $errors++;
+            echo "  ERROR migrating URL (query: $query, keyword: $keyword): " . $new_db->error . "\n";
+        }
+    }
+
+    echo "\n=== SEO URL Migration Summary ===\n";
+    echo "Total URLs in OC2: $total_urls\n";
+    echo "Successfully migrated: $migrated\n";
+    echo "Skipped (empty keywords): $skipped\n";
+    echo "Errors: $errors\n";
+
+    // Verify migration
+    $verify_result = $new_db->query("SELECT COUNT(*) as total FROM ocus_seo_url");
+    $verify_row = $verify_result->fetch_assoc();
+    echo "Total URLs in OC3 after migration: " . $verify_row['total'] . "\n";
+
+    echo "=== SEO URL Migration Completed ===\n\n";
+}
+
+// Execute the SEO URL migration
+// In SEO mode: only run this migration
+// In full/essential modes: also run this migration (SEO URLs are essential)
+if ($mode === 'seo') {
+    echo "\n========================================\n";
+    echo "SEO Mode: Running ONLY SEO URL Migration\n";
+    echo "========================================\n\n";
+    migrate_seo_urls($old_db, $new_db);
+} else {
+    // Run SEO migration as part of full/essential sync
+    migrate_seo_urls($old_db, $new_db);
 }
 
 function full_update(){

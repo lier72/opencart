@@ -32,8 +32,8 @@ class ModelJournal3Information extends Model {
 						'information_id' => $row['information_id'],
 						'title'          => $row['title'],
 						'link'           => [
-							'href'  => $this->journal3_url->link('information/information', 'information_id=' . $row['information_id']),
-							'agree' => $this->journal3_url->link('information/information' . JOURNAL3_ROUTE_SEPARATOR . ($this->journal3_opencart->is_oc4 ? 'info' : 'agree'), 'information_id=' . $row['information_id']),
+							'href'  => $this->journal3_url->link('information/information', 'information_id=' . $row['information_id'], true),
+							'agree' => $this->journal3_url->link('information/information' . JOURNAL3_ROUTE_SEPARATOR . ($this->journal3_opencart->is_oc4 ? 'info' : 'agree'), 'information_id=' . $row['information_id'], true),
 						],
 					];
 				}

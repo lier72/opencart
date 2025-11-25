@@ -30,6 +30,10 @@ $_['text_week']                = 'week';
 $_['text_semi_month']          = 'half-month';
 $_['text_month']               = 'month';
 $_['text_year']                = 'year';
+// Dealer price  modification by Max Surdu
+$_['text_dealer_price']        = 'Dealer price**: ';
+$_['text_price_warning']       = '** - dealer price is CONFIDENTIAL information. The panalty for dealer price disclosure could be a dealership recall!';
+// End of modifications
 
 // Entry
 $_['entry_qty']                = 'Qty';
