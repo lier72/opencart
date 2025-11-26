@@ -2,7 +2,7 @@
 
 define('RBSPAYMENT_PAYMENT_NAME', 'Alfa Bank');
 
-define('RBSPAYMENT_PROD_URL' , 'https://pay.alfabank.ru/payment/rest/');
+define('RBSPAYMENT_PROD_URL' , 'https://payment.alfabank.ru/payment/rest/');
 define('RBSPAYMENT_TEST_URL' , 'https://alfa.rbsuat.com/payment/rest/');
 define('RBSPAYMENT_PROD_URL_ALTERNATIVE_DOMAIN' , 'https://payment.alfabank.ru/');
 define('RBSPAYMENT_PROD_URL_ALT_PREFIX' , 'r-');
@@ -186,6 +186,9 @@ return json_encode($error);
 }
 $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 curl_close($ch);
+if ($this->logging) {
+$this->logger($action_address,'test', serialize($data), $response);
+}
 return substr($response, $header_size);
 }
 /**

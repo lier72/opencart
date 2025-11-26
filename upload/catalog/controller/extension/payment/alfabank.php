@@ -85,15 +85,15 @@ $product_data = array(
 'value' => $product['quantity'],
 'measure' => $this->method_library->getDefaultMeasurement(),
 ),
-'itemAmount' => $product_amount * 100,
+'itemAmount' => (int)round($product_amount * 100),
 'itemCode' => $product['product_id'] . "_" . $product['cart_id'], //fix by PLUG-1740, PLUG-2620
 'tax' => array(
 'taxType' => $tax_type,
 ),
-'itemPrice' => round($product['price'] + $product_taxSum, 2) * 100,
+'itemPrice' => (int)round((round($product['price'] + $product_taxSum, 2)) * 100),
 );
 if ($tax_type != "0" && $product_taxSum != "0") {
-$product_data['tax']['taxSum'] = $product_taxSum * 100;
+$product_data['tax']['taxSum'] = (int)round($product_taxSum * 100);
 }
 $attributes = array();
 $attributes[] = array(
@@ -110,12 +110,12 @@ $orderBundle['cartItems']['items'][] = $product_data;
 if (isset($this->session->data['shipping_method']['cost']) && $this->session->data['shipping_method']['cost'] > 0) {
 $delivery['positionId'] = 'delivery';
 $delivery['name'] = $this->session->data['shipping_method']['title'];
-$delivery['itemAmount'] = $this->session->data['shipping_method']['cost'] * 100;
+$delivery['itemAmount'] = (int)round($this->session->data['shipping_method']['cost'] * 100);
 $delivery['quantity']['value'] = 1;
 $delivery['quantity']['measure'] = $this->method_library->getDefaultMeasurement(); //todo?
 $delivery['itemCode'] = $this->session->data['shipping_method']['code'];
 $delivery['tax']['taxType'] = $this->config->get('payment_alfabank_taxType');
-$delivery['itemPrice'] = $this->session->data['shipping_method']['cost'] * 100;
+$delivery['itemPrice'] = (int)round($this->session->data['shipping_method']['cost'] * 100);
 $attributes = array();
 $attributes[] = array(
 "name" => "paymentMethod",
@@ -133,7 +133,7 @@ foreach ($this->session->data['vouchers'] as $key => $voucher) {
 $itemVoucher = array(
 'positionId' => 'voucher_' . $key,
 'name' => $voucher['description'],
-'itemAmount' => $voucher['amount'] * 100,
+'itemAmount' => (int)round($voucher['amount'] * 100),
 'quantity' => array(
 'value' => 1,
 'measure' => $this->method_library->getDefaultMeasurement(),
@@ -142,7 +142,7 @@ $itemVoucher = array(
 'tax' => array(
 'taxType' => $this->config->get('payment_alfabank_taxType'),
 ),
-'itemPrice' => $voucher['amount'] * 100
+'itemPrice' => (int)round($voucher['amount'] * 100)
 );
 $attributes = array();
 $attributes[] = array(
@@ -319,6 +319,7 @@ die('Illegal Access');
 $this->initializeGatewayLibrary();
 $response = $this->method_library->_getGatewayOrderStatus($order_id);
 $response = json_decode($response, true);
+
 $ex = explode("_", $response['orderNumber']);
 $order_number = $ex[0];
 $this->load->model('checkout/order');

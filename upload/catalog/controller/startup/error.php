@@ -31,7 +31,10 @@ class ControllerStartupError extends Controller {
 		}
 	
 		if ($this->config->get('config_error_display')) {
-			echo '<b>' . $error . '</b>: ' . $message . ' in <b>' . $file . '</b> on line <b>' . $line . '</b>';
+			// Don't output errors after headers have been sent to avoid "headers already sent" warnings
+			if (!headers_sent()) {
+				echo '<b>' . $error . '</b>: ' . $message . ' in <b>' . $file . '</b> on line <b>' . $line . '</b>';
+			}
 		}
 	
 		if ($this->config->get('config_error_log')) {

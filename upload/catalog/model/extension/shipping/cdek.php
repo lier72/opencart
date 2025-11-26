@@ -663,9 +663,9 @@ class ModelExtensionShippingCdek extends Model
                                                 continue;
                                             }
                                             if (!empty($shipping_info['total_sum'])) {
-                                                $price = $shipping_price = ($this->config->get('config_currency') == 'RUB') ? $shipping_info['total_sum'] : $this->currency->convert($shipping_info['total_sum'], 'RUB', $this->config->get('config_currency'));
+                                                $price = $shipping_price = round(($this->config->get('config_currency') == 'RUB') ? $shipping_info['total_sum'] : $this->currency->convert($shipping_info['total_sum'], 'RUB', $this->config->get('config_currency')));
                                             } elseif (!empty($shipping_info['delivery_sum'])) {
-                                                $price = $shipping_price = ($this->config->get('config_currency') == 'RUB') ? $shipping_info['delivery_sum'] : $this->currency->convert($shipping_info['delivery_sum'], 'RUB', $this->config->get('config_currency'));
+                                                $price = $shipping_price = round(($this->config->get('config_currency') == 'RUB') ? $shipping_info['delivery_sum'] : $this->currency->convert($shipping_info['delivery_sum'], 'RUB', $this->config->get('config_currency')));
                                             }
 
                                             $customer_tariff_info = $tariff_list[$shipping_info['tariffId']];
@@ -702,6 +702,9 @@ class ModelExtensionShippingCdek extends Model
                                                 }
 
                                             }
+
+                                            // Round to whole rubles (50 kopecks rounds up to 1 ruble)
+                                            $price = round($price);
 
                                             if (!empty($customer_tariff_info['title'][$this->config->get('config_language_id')])) {
                                                 $description = $customer_tariff_info['title'][$this->config->get('config_language_id')];
@@ -880,7 +883,7 @@ class ModelExtensionShippingCdek extends Model
             }
 
             if (!empty($empty_info['cost'])) {
-                $price = (float)$empty_info['cost'];
+                $price = round((float)$empty_info['cost']);
             } else {
                 $price = 0;
             }
