@@ -442,21 +442,21 @@ class ControllerMailOrder extends Controller {
 						$value = $order_option['value'];
 					} else {
 						$upload_info = $this->model_tool_upload->getUploadByCode($order_option['value']);
-	
+
 						if ($upload_info) {
 							$value = $upload_info['name'];
 						} else {
 							$value = '';
-							$option_articol_addition = preg_match('/\([0-9,X,S,L,M]+\)/',$value,$temp_ar) ? ('_'. substr($temp_ar[0],1,strlen($temp_ar[0]) - 2 ) ) : ('_' . strtoupper($value));
-							$value= ' <'. $order_product['model'] . $option_articol_addition . '> '. chr(9) . '-' . $order_option['name'] . ' ' . (utf8_strlen($value) > 20 ? utf8_substr($value, 0, 20) . '..' : $value) . "\n";
-
 						}
 					}
 
+					// Extract option value to create product model code (e.g., MODEL_42 or MODEL_XL)
+					$option_articol_addition = preg_match('/\([0-9,X,S,L,M]+\)/', $value, $temp_ar) ? ('_'. substr($temp_ar[0], 1, strlen($temp_ar[0]) - 2)) : ('_' . strtoupper($value));
+
 					$option_data[] = array(
 						'name'  => $order_option['name'],
-						'value' => (utf8_strlen($value) > 20 ? utf8_substr($value, 0, 20) . '..' : $value)
-					);					
+						'value' => '<' . $order_product['model'] . $option_articol_addition . '> - ' . $order_option['name'] . ' ' . (utf8_strlen($value) > 20 ? utf8_substr($value, 0, 20) . '..' : $value)
+					);
 				}
 					
 				$data['products'][] = array(

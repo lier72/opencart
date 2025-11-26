@@ -14,10 +14,10 @@
 {{ text_product }}
 
 {% for product in products %}
-{{ product.quantity }}x {{ product.name }} ({{ product.model }}) {{ product.total }}
-{% if option %}
+<{{ product.model }}> {{ product.quantity }}x {{ product.name }} {{ product.total }}
+{% if product.option %}
 {% for option in product.option %}
-	- {{ option.name }} {{ option.value }}
+	{{ option.value }}
 {% endfor %}
 {% endif %}
 {% endfor %} 
