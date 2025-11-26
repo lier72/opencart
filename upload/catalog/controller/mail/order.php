@@ -140,16 +140,16 @@ class ControllerMailOrder extends Controller {
 		);
 
 		$replace = array(
-			'firstname' => $order_info['payment_firstname'],
-			'lastname'  => $order_info['payment_lastname'],
-			'company'   => $order_info['payment_company'],
-			'address_1' => $order_info['payment_address_1'],
-			'address_2' => $order_info['payment_address_2'],
-			'city'      => $order_info['payment_city'],
-			'postcode'  => $order_info['payment_postcode'],
-			'zone'      => $order_info['payment_zone'],
-			'zone_code' => $order_info['payment_zone_code'],
-			'country'   => $order_info['payment_country']
+			$order_info['payment_firstname'],
+			$order_info['payment_lastname'],
+			$order_info['payment_company'],
+			$order_info['payment_address_1'],
+			$order_info['payment_address_2'],
+			$order_info['payment_city'],
+			$order_info['payment_postcode'],
+			$order_info['payment_zone'],
+			$order_info['payment_zone_code'],
+			$order_info['payment_country']
 		);
 
 		$data['payment_address'] = str_replace(array("\r\n", "\r", "\n"), '<br />', preg_replace(array("/\s\s+/", "/\r\r+/", "/\n\n+/"), '<br />', trim(str_replace($find, $replace, $format))));
@@ -174,16 +174,16 @@ class ControllerMailOrder extends Controller {
 		);
 
 		$replace = array(
-			'firstname' => $order_info['shipping_firstname'],
-			'lastname'  => $order_info['shipping_lastname'],
-			'company'   => $order_info['shipping_company'],
-			'address_1' => $order_info['shipping_address_1'],
-			'address_2' => $order_info['shipping_address_2'],
-			'city'      => $order_info['shipping_city'],
-			'postcode'  => $order_info['shipping_postcode'],
-			'zone'      => $order_info['shipping_zone'],
-			'zone_code' => $order_info['shipping_zone_code'],
-			'country'   => $order_info['shipping_country']
+			$order_info['shipping_firstname'],
+			$order_info['shipping_lastname'],
+			$order_info['shipping_company'],
+			$order_info['shipping_address_1'],
+			$order_info['shipping_address_2'],
+			$order_info['shipping_city'],
+			$order_info['shipping_postcode'],
+			$order_info['shipping_zone'],
+			$order_info['shipping_zone_code'],
+			$order_info['shipping_country']
 		);
 
 		$data['shipping_address'] = str_replace(array("\r\n", "\r", "\n"), '<br />', preg_replace(array("/\s\s+/", "/\r\r+/", "/\n\n+/"), '<br />', trim(str_replace($find, $replace, $format))));
@@ -371,12 +371,12 @@ class ControllerMailOrder extends Controller {
 			$data['text_comment'] = $this->language->get('text_comment');
 
 			// Added by Max in order to get more info about the order
-			$data['text_firstname'] = $this->language->get('text_firstname') . ' ' . $order_info['firstname'] . "\n";
-			$data['text_lastname'] = $this->language->get('text_lastname') . ' ' . $order_info['lastname'] . "\n";
-			$data['text_new_email'] = $this->language->get('text_new_email') . ' ' . $order_info['email'] . "\n";
-			$data['text_new_telephone'] = $this->language->get('text_new_telephone') . ' ' . $order_info['telephone'] . "\n";
-			$data['text_new_payment_method'] = $this->language->get('text_new_payment_method') . ' ' . $order_info['payment_method'] . "\n";
-			$data['text_new_shipping_method'] = $this->language->get('text_new_shipping_method') . ' ' . $order_info['shipping_method'] . "\n\n";
+			$data['text_firstname'] = $this->language->get('text_firstname') . ' ' . $order_info['firstname'] ;
+			$data['text_lastname'] = $this->language->get('text_lastname') . ' ' . $order_info['lastname'] ;
+			$data['text_new_email'] = $this->language->get('text_new_email') . ' ' . $order_info['email'] ;
+			$data['text_new_telephone'] = $this->language->get('text_new_telephone') . ' ' . $order_info['telephone'];
+			$data['text_new_payment_method'] = $this->language->get('text_new_payment_method') . ' ' . $order_info['payment_method'] ;
+			$data['text_new_shipping_method'] = $this->language->get('text_new_shipping_method') . ' ' . $order_info['shipping_method'] ;
 			// Build shipping address format
 			if ($order_info['shipping_address_format']) {
 				$format = $order_info['shipping_address_format'];
@@ -398,21 +398,21 @@ class ControllerMailOrder extends Controller {
 			);
 
 			$replace = array(
-				'firstname' => $order_info['shipping_firstname'],
-				'lastname'  => $order_info['shipping_lastname'],
-				'company'   => $order_info['shipping_company'],
-				'address_1' => $order_info['shipping_address_1'],
-				'address_2' => $order_info['shipping_address_2'],
-				'city'      => $order_info['shipping_city'],
-				'postcode'  => $order_info['shipping_postcode'],
-				'zone'      => $order_info['shipping_zone'],
-				'zone_code' => $order_info['shipping_zone_code'],
-				'country'   => $order_info['shipping_country']
+				$order_info['shipping_firstname'],
+				$order_info['shipping_lastname'],
+				$order_info['shipping_company'],
+				$order_info['shipping_address_1'],
+				$order_info['shipping_address_2'],
+				$order_info['shipping_city'],
+				$order_info['shipping_postcode'],
+				$order_info['shipping_zone'],
+				$order_info['shipping_zone_code'],
+				$order_info['shipping_country']
 			);
 
 			$shipping_address = str_replace(array("\r\n", "\r", "\n"), '<br />', preg_replace(array("/\s\s+/", "/\r\r+/", "/\n\n+/"), '<br />', trim(str_replace($find, $replace, $format))));
 
-			$data['text_new_shipping_address'] = $this->language->get('text_new_shipping_address') . ' ' . str_replace ("<br />", "\n", $shipping_address) . "\n\n";
+			$data['text_new_shipping_address'] = $this->language->get('text_new_shipping_address') . "\n" . str_replace ("<br />", "\n", $shipping_address) . "\n\n";
 			// End of Max's modifications
 
 			$data['order_id'] = $order_info['order_id'];

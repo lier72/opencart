@@ -1,12 +1,12 @@
 <?php
 // Text
 $_['text_subject']      = '%s - Заказ %s';
-$_['text_received']     = 'Вы получили заказ.';
+$_['text_received']     = 'Вы получили заказ в магазине NEW UNIQSPORT.RU';
 $_['text_order_id']     = '№ заказа:';
 $_['text_date_added']   = 'Дата заказа:';
 $_['text_order_status'] = 'Состояние заказа:';
 $_['text_product']      = 'Товары';
-$_['text_total']        = 'Итого';
+$_['text_total']        = 'Заказ итого:';
 $_['text_comment']      = 'Комментарий к Вашему заказу:';
 // Added by Max in order to get more info about the order
 $_['text_firstname'] = 'Имя:';

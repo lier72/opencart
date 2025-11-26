@@ -187,7 +187,7 @@ return json_encode($error);
 $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 curl_close($ch);
 if ($this->logging) {
-$this->logger($action_address,'test', serialize($data), $response);
+$this->logger($action_address,' test', serialize($data), $response);
 }
 return substr($response, $header_size);
 }
