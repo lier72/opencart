@@ -70,6 +70,16 @@ class ControllerExtensionShippingFlat extends Controller {
 
 		$data['geo_zones'] = $this->model_localisation_geo_zone->getGeoZones();
 
+		// Load customer groups
+		$this->load->model('customer/customer_group');
+		$data['customer_groups'] = $this->model_customer_customer_group->getCustomerGroups();
+
+		if (isset($this->request->post['shipping_flat_customer_group_id'])) {
+			$data['shipping_flat_customer_group_id'] = $this->request->post['shipping_flat_customer_group_id'];
+		} else {
+			$data['shipping_flat_customer_group_id'] = $this->config->get('shipping_flat_customer_group_id');
+		}
+
 		if (isset($this->request->post['shipping_flat_status'])) {
 			$data['shipping_flat_status'] = $this->request->post['shipping_flat_status'];
 		} else {
