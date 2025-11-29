@@ -109,19 +109,21 @@ class ModelExtensionModuleOdooProductMapping extends Model {
     }
 
     private function getOpenCartProduct($product_id) {
-        $product_query = $this->db->query("SELECT p.product_id, p.price, p.model, p.ean, 
-            pd.name, pd.description, pd.meta_title, pd.meta_description, 
+        $product_query = $this->db->query("SELECT p.product_id, p.price, p.model, p.ean,
+            pd.name, pd.description, pd.meta_title, pd.meta_description,
             pd.meta_keyword, pd.tag,
-            ua.keyword as seo_keyword,
-            GROUP_CONCAT(ptc.category_id) as category_ids 
-        FROM " . DB_PREFIX . "product p 
-        LEFT JOIN " . DB_PREFIX . "product_description pd 
-            ON (p.product_id = pd.product_id) 
-        LEFT JOIN " . DB_PREFIX . "url_alias ua
-        ON (ua.query = CONCAT('product_id=', p.product_id))
+            su.keyword as seo_keyword,
+            GROUP_CONCAT(ptc.category_id) as category_ids
+        FROM " . DB_PREFIX . "product p
+        LEFT JOIN " . DB_PREFIX . "product_description pd
+            ON (p.product_id = pd.product_id)
+        LEFT JOIN " . DB_PREFIX . "seo_url su
+            ON (su.query = CONCAT('product_id=', p.product_id)
+                AND su.store_id = '0'
+                AND su.language_id = '" . (int)$this->config->get('config_language_id') . "')
         LEFT JOIN " . DB_PREFIX . "product_to_category ptc
-        ON (p.product_id = ptc.product_id)        
-        WHERE p.product_id = '" . (int)$product_id . "' 
+            ON (p.product_id = ptc.product_id)
+        WHERE p.product_id = '" . (int)$product_id . "'
             AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
 
         if ($product_query->num_rows) {
@@ -136,7 +138,7 @@ class ModelExtensionModuleOdooProductMapping extends Model {
                 'model'            => $product_query->row['model'],
                 'ean'              => $product_query->row['ean'],
                 'price'            => $product_query->row['price'],
-                'keyword'          => $product_query->row['seo_keyword'],  // Added SEO keyword
+                'keyword'          => $product_query->row['seo_keyword'],  // SEO keyword from seo_url table
                 'category_ids'     => $product_query->row['category_ids'] ? $product_query->row['category_ids'] : ''
 
             );

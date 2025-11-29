@@ -234,13 +234,13 @@ class ControllerApiProduct extends Controller {
 
         // Validate SEO URL if present
         if (isset($data['oc_seo_url'])) {
-            if (utf8_strlen($data['oc_seo_url']) > 255) {
+            if (utf8_strlen($data['oc_seo_url']) > 768) {
                 $this->error['oc_seo_url'] = $this->language->get('error_seo_url_length');
             }
 
-            // Check if SEO URL is unique
-            $query = $this->db->query("SELECT COUNT(*) as total FROM " . DB_PREFIX . "url_alias 
-            WHERE keyword = '" . $this->db->escape($data['oc_seo_url']) . "' 
+            // Check if SEO URL is unique across all stores and languages
+            $query = $this->db->query("SELECT COUNT(*) as total FROM " . DB_PREFIX . "seo_url
+            WHERE keyword = '" . $this->db->escape($data['oc_seo_url']) . "'
             AND query != 'product_id=" . (int)$this->request->get['product_id'] . "'");
 
             if ($query->row['total'] > 0) {
@@ -280,9 +280,8 @@ class ControllerApiProduct extends Controller {
         $this->log->write("API Product Create - Starting product creation process");
 
         // Load admin models with different class names
-        require_once(DIR_SYSTEM . '../master/model/catalog/product.php');
-        require_once(DIR_SYSTEM . '../master/model/catalog/manufacturer.php');
-        require_once (DIR_SYSTEM . '../master/model/module/odoo_product_mapping.php');
+        require_once(DIR_SYSTEM . '../admin/model/catalog/product.php');
+        require_once(DIR_SYSTEM . '../admin/model/catalog/manufacturer.php');
 
         // Create class aliases to avoid conflicts
         if (!class_exists('ModelCatalogProductAdmin')) {
@@ -291,15 +290,11 @@ class ControllerApiProduct extends Controller {
         if (!class_exists('ModelCatalogManufacturerAdmin')) {
             class_alias('ModelCatalogManufacturer', 'ModelCatalogManufacturerAdmin');
         }
-        if (!class_exists('ModelModuleOdooProductMappingAdmin')) {
-            class_alias('ModelModuleOdooProductMapping', 'ModelModuleOdooProductMappingAdmin');
-        }
 
 
         // Instantiate admin models
         $this->adminProduct = new ModelCatalogProductAdmin($this->registry);
         $this->adminManufacturer = new ModelCatalogManufacturerAdmin($this->registry);
-        $this->adminOdooProductMapping = new ModelModuleOdooProductMappingAdmin($this->registry);
 
         // Get default language
         $this->default_language_id = $this->config->get('config_language_id');
@@ -473,12 +468,13 @@ class ControllerApiProduct extends Controller {
             $product_data['manufacturer_id'] = $manufacturer_id;
         }
 
-        // Handle SEO URL
+        // Handle SEO URL - OC3 uses product_seo_url array with [store_id][language_id] structure
         if (isset($data['oc_seo_url']) && !empty($data['oc_seo_url'])) {
-            $product_data['keyword'] = $data['oc_seo_url'];
+            // Create SEO URL for default store (0) and default language
+            $product_data['product_seo_url'][0][$this->default_language_id] = $data['oc_seo_url'];
         } else if (isset($data['default_code'])) {
             // If no SEO URL provided, use default_code as fallback
-            $product_data['keyword'] = strtolower($data['default_code']);
+            $product_data['product_seo_url'][0][$this->default_language_id] = strtolower($data['default_code']);
         }
 
         // Handle categories if provided
@@ -582,13 +578,24 @@ class ControllerApiProduct extends Controller {
 
             // Handle SEO URL update if provided
             if (isset($data['oc_seo_url']) && !empty($data['oc_seo_url'])) {
-                // Delete existing URL alias
-                $this->db->query("DELETE FROM " . DB_PREFIX . "url_alias 
+                // Get Russian language ID
+                $language_query = $this->db->query("SELECT language_id FROM " . DB_PREFIX .
+                    "language WHERE code = 'ru' AND status = '1'");
+
+                if (!$language_query->num_rows) {
+                    throw new Exception('Russian language not found or not active');
+                }
+                $ru_language_id = $language_query->row['language_id'];
+
+                // Delete existing SEO URLs for all stores and languages
+                $this->db->query("DELETE FROM " . DB_PREFIX . "seo_url
                 WHERE query = 'product_id=" . (int)$product_id . "'");
 
-                // Insert new URL alias
-                $this->db->query("INSERT INTO " . DB_PREFIX . "url_alias 
-                SET query = 'product_id=" . (int)$product_id . "', 
+                // Insert new SEO URL for default store (0) and Russian language
+                $this->db->query("INSERT INTO " . DB_PREFIX . "seo_url
+                SET store_id = '0',
+                    language_id = '" . (int)$ru_language_id . "',
+                    query = 'product_id=" . (int)$product_id . "',
                     keyword = '" . $this->db->escape($data['oc_seo_url']) . "'");
 
                 $this->log->write("API Product Edit - Updated SEO URL to: " . $data['oc_seo_url']);
@@ -848,7 +855,7 @@ class ControllerApiProduct extends Controller {
      * @return mixed
      */
     public function getProduct($product_id) {
-        $query = $this->db->query("SELECT DISTINCT *, (SELECT keyword FROM " . DB_PREFIX . "url_alias WHERE query = 'product_id=" . (int)$product_id . "') AS keyword FROM " . DB_PREFIX . "product p LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) WHERE p.product_id = '" . (int)$product_id . "' AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+        $query = $this->db->query("SELECT DISTINCT *, (SELECT keyword FROM " . DB_PREFIX . "seo_url WHERE query = 'product_id=" . (int)$product_id . "' AND store_id = '0' AND language_id = '" . (int)$this->config->get('config_language_id') . "' LIMIT 1) AS keyword FROM " . DB_PREFIX . "product p LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) WHERE p.product_id = '" . (int)$product_id . "' AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
         return $query->row;
     }
 
@@ -882,7 +889,7 @@ class ControllerApiProduct extends Controller {
             }
 
             // Get customer group mapping
-            $customer_group_id = $this->model_module_odoo_price_sync->getOpenCartGroupId($price_data['pricelist_id']);
+            $customer_group_id = $this->model_extension_module_odoo_price_sync->getOpenCartGroupId($price_data['pricelist_id']);
             if ($this->debug) $this->log->write("Found customer group ID: " . $customer_group_id);
             if (!$customer_group_id) {
                 throw new Exception(sprintf('No mapping found for pricelist ID: %s (%s)',
@@ -900,7 +907,7 @@ class ControllerApiProduct extends Controller {
             $result['customer_group']['name'] = $customer_group_query->row['name'];
 
             // Get current price
-            $current_price = $this->model_module_odoo_price_sync->getActualProductPrice($product_id, $customer_group_id);
+            $current_price = $this->model_extension_module_odoo_price_sync->getActualProductPrice($product_id, $customer_group_id);
             $result['customer_group']['old_price'] = $current_price['price'];
 
             if ($this->debug) $this->log->write("Current price info: " . print_r($current_price, true));
@@ -926,7 +933,7 @@ class ControllerApiProduct extends Controller {
                 return $result;
             }
 
-            $update_result = $this->model_module_odoo_price_sync->updateProductPrices(
+            $update_result = $this->model_extension_module_odoo_price_sync->updateProductPrices(
                 $product_id,
                 $customer_group_id,
                 $price_data['price']
@@ -953,7 +960,7 @@ class ControllerApiProduct extends Controller {
             $result['error'] = $e->getMessage();
 
             // Log individual price sync error
-            $this->model_module_odoo_price_sync->logPriceSync([
+            $this->model_extension_module_odoo_price_sync->logPriceSync([
                 'product_id' => $product_id,
                 'customer_group_id' => $result['customer_group']['id'],
                 'old_price' => $result['customer_group']['old_price'],
@@ -998,7 +1005,7 @@ class ControllerApiProduct extends Controller {
                 throw new Exception('Product ID not provided');
             }
 
-            $this->load->model('module/odoo_price_sync');
+            $this->load->model('extension/module/odoo_price_sync');
             $this->load->model('catalog/product');
 
             // Verify product exists

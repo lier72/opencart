@@ -245,6 +245,8 @@ $essential_tables = array(
         'ocus_journal2_settings',
         'ocus_journal2_skins',
         'ocus_event',
+        'ocus_order_sync_queue',
+        'ocus_order_sync_log',
        );
 
     // In essential mode, add all non-essential tables to exception list
