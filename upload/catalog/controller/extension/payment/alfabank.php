@@ -461,4 +461,56 @@ return $taxRates[$rate] ?? $this->config->get('payment_alfabank_taxType');
 private function cleanPhoneNumber($telephone) {
 return substr(preg_replace('/\D+/', '', $telephone), 0, 15);
 }
+
+public function cron() {
+$debug = true;
+// orderStatus - По значению этого параметра определяется состояние заказа в платёжной системе.
+// Список возможных значений:
+// 0 - Заказ зарегистрирован, но не оплачен;
+// 1 - Предавторизованная сумма захолдирована (для двухстадийных платежей);
+// 2 - Проведена полная авторизация суммы заказа;
+// 3 - Авторизация отменена;
+// 4 - По транзакции была проведена операция возврата;
+// 5 - Инициирована авторизация через ACS банка-эмитента;
+// 6 - Авторизация отклонена.
+// -1 - There was an Error Status that has been set to eliminate the necessity to check errorCode once more
+
+$order_in_payment_states = array(-1, 0, 5);
+$this->load->model('extension/payment/alfabank');
+// Get the list of all payments
+$result = $this->model_extension_payment_alfabank->get_alfabank_current_payment_list();
+foreach ($result as $item) {
+if (in_array($item['status_deposited'], $order_in_payment_states)) {
+$check = $this->model_extension_payment_alfabank->check_payment_status($item['gateway_order_reference']);
+switch($check['orderStatus']) {
+case 1: // Предавторизованная сумма захолдирована (для двухстадийных платежей);
+case 2: // Проведена полная авторизация суммы заказа;
+$this->model_extension_payment_alfabank->update_opencart_order_history($item['order_id'], $check);
+if ($this->config->get('payment_alfabank_logging'))
+$this->log->write(sprintf("Alfabank cron: Order # %s payment status: %s ActionStatus %s - ",
+$item['order_id'],
+$check['orderStatus'],
+$check['actionCode'],
+$check['actionCodeDescription']));
+break;
+default:
+// Other statuses (0, 3, 4, 5, 6) - no action needed yet
+break;
+}
+$this->model_extension_payment_alfabank->update_alfabank_order($check);
+} else {
+if ($debug) $this->log->write(sprintf("Alfabank cron: Time (now): %s - (time of modification) %s = %s seconds",
+strval(time()),
+$item['date_updated'],
+strval(time() - strtotime($item['date_updated']))));
+// Delete old payment records after 30 minutes (1800 seconds)
+if(time() - strtotime($item['date_updated']) > 1800) {
+$this->model_extension_payment_alfabank->delete_alfabank_order($item['gateway_order_reference']);
+if ($debug) $this->log->write(sprintf("Alfabank cron: Deleted payment reference: %s for order %s",
+$item['gateway_order_reference'],
+$item['order_id']));
+}
+}
+}
+}
 }

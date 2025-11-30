@@ -87,4 +87,117 @@ return [
 public function storeGatewayOrder($data) {
 $this->db->query("INSERT INTO `" . DB_PREFIX . "alfabank_order` SET `order_id` = '" . (int)$data['order_id'] . "', `gateway_order_reference` = '" . $this->db->escape($data['gateway_order_reference']) . "', `currency` = '" . $this->db->escape($data['currency']) . "', `order_amount` = '" . (float)$data['order_amount'] . "', `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "', `status_deposited` = '" . (int)$data['status_deposited'] . "', `date_added` = NOW(), `date_updated` = NOW()");
 }
+
+public function get_alfabank_current_payment_list($order_status = array(-1,0,1,2,3,4,5,6)) {
+$array = implode(", ", $order_status);
+$res = $this->db->query("SELECT * FROM `" . DB_PREFIX . "alfabank_order` WHERE `status_deposited` IN (" . $array . ")");
+return $res->rows;
+}
+
+public function check_payment_status($orderId) {
+$order_number = $this->get_opencart_order_id($orderId);
+$this->initializeAlfabank();
+$response = $this->alfabank->_getGatewayOrderStatus($orderId);
+$response = json_decode($response, true);
+if (($response['errorCode'] == 0)) {
+if ($this->config->get('payment_alfabank_logging'))
+$this->log->write(sprintf("Alfabank check_payment_status: Order # %s payment status: %s ActionStatus %s - ",
+$order_number,
+$response['orderStatus'],
+$response['actionCode'],
+$response['actionCodeDescription']));
+} else {
+if ($this->config->get('payment_alfabank_logging'))
+$this->log->write(sprintf("Alfabank check_payment_status: Order # %s, Error %s, Description: %s" ,
+$order_number,
+$response['errorCode'],
+$response['errorMessage']
+));
+$response['orderStatus'] = -1;
+}
+return $response;
+}
+
+public function get_opencart_order_id($orderId) {
+$res = $this->db->query("SELECT `order_id` FROM " . DB_PREFIX . "alfabank_order WHERE `gateway_order_reference` = '". $this->db->escape($orderId)."'");
+return $res->row['order_id'];
+}
+
+public function update_alfabank_order($data) {
+$this->db->query("UPDATE ".DB_PREFIX."alfabank_order SET
+`date_updated` = NOW(),
+`status_deposited` = ". (int)$data['orderStatus'].",
+`order_amount_deposited` = ".(float)$data['amount']."
+WHERE `gateway_order_reference` = '".$this->db->escape($data['orderId'])."'");
+}
+
+public function delete_alfabank_order($orderId) {
+if(is_numeric($orderId)){
+$this->db->query("DELETE FROM ".DB_PREFIX."alfabank_order WHERE `order_id` = '".(int)$orderId."'");
+} else{
+$this->db->query("DELETE FROM ".DB_PREFIX."alfabank_order WHERE `gateway_order_reference` = '".$this->db->escape($orderId)."'");
+}
+}
+
+public function update_opencart_order_history($order_id, $alfabank_response) {
+if ($this->config->get('payment_alfabank_logging'))
+$this->log->write("Alfabank update_opencart_order_history: was called");
+$this->load->model('checkout/order');
+$order_info = $this->model_checkout_order->getOrder($order_id);
+$order_paid = $this->get_oc_paid_status($order_id);
+
+if ($this->config->get('payment_alfabank_logging'))
+$this->log->write(sprintf("Alfabank update_opencart_order_history: Order # %s payed in order history is : %s",
+$order_id,
+$order_paid ? 'true' : 'false'
+));
+
+if ($order_info && !$order_paid) {
+$comment = sprintf(
+"Заказ № %s Оплачен %s: %s, Сумма: %s",
+$order_id,
+($alfabank_response['amount'] - ($order_info['total'] * 100)) < 0
+? 'НЕ ПОЛНОСТЬЮ'
+: 'полностью',
+$alfabank_response['orderStatus'] == 2
+? 'Проведена полная авторизация суммы заказа'
+: 'Предавторизованная сумма захолдирована (Двухстадийный платеж!)',
+(float)($alfabank_response['amount']) / 100
+);
+$this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_alfabank_order_status_completed_id'),$comment);
+}
+}
+
+private function get_oc_paid_status($oc_order_id, $paid_statuses = array(14, 15, 22, 23)) {
+$oc_order_id = (int) $oc_order_id;
+$array = implode(", ", array_map('intval', $paid_statuses));
+$res = $this->db->query("SELECT EXISTS (SELECT 1 FROM `".DB_PREFIX."order_history` WHERE
+`order_id` = ".$oc_order_id." AND `order_status_id` IN (".$array.")) AS exists_flag");
+$status = $res->row;
+if ($this->config->get('payment_alfabank_logging'))
+$this->log->write(sprintf("Alfabank get_oc_paid_status: Order # %s has been %s ",
+$oc_order_id,
+(bool)$status['exists_flag']? 'paid':'not paid'));
+return (bool)$status['exists_flag'];
+}
+
+private function initializeAlfabank() {
+$this->library('alfabank/Alfabank');
+$this->alfabank = new Alfabank();
+$this->alfabank->token = $this->config->get('payment_alfabank_merchantToken');
+$this->alfabank->login = $this->config->get('payment_alfabank_merchantLogin');
+$this->alfabank->password = htmlspecialchars_decode($this->config->get('payment_alfabank_merchantPassword'));
+$this->alfabank->mode = $this->config->get('payment_alfabank_mode');
+$this->alfabank->logging = $this->config->get('payment_alfabank_logging');
+}
+
+private function library($library) {
+$file = DIR_SYSTEM . 'library/' . str_replace('../', '', (string)$library) . '.php';
+if (file_exists($file)) {
+include_once($file);
+} else {
+trigger_error('Error: Could not load library ' . $file . '!');
+exit();
+}
+}
 }
