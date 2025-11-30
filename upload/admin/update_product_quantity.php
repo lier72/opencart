@@ -96,7 +96,7 @@ class OpencartOdooStockModel {
             // First we look if the product has been already mapped so we spare time and electricity
             $ocprodid = $this->getOpencartProduct($item['id']);
             if ($this->debug) { echo "The product exists "; print_r($ocprodid);echo "\n"; }
-            if (!$ocprodid['opencart_product_id']) {
+            if (!$ocprodid || !$ocprodid['opencart_product_id']) {
 
                 // All odoo products with options have "_" int their "defailt_code" field,
                 // so we check OpenCart products for the options if we find the "_" in "default_code" field
@@ -193,7 +193,7 @@ class OpencartOdooStockModel {
             $result = $this->db->query($sql);
             $update_product_variant = mysqli_fetch_assoc($result);
             if($this->debug){ print_r($update_product_variant); echo "\n";}
-            if ($update_product_variant['opencart_product_id']) { //there would be an empty array if no corresponding prod found
+            if ($update_product_variant && $update_product_variant['opencart_product_id']) { //there would be an empty array if no corresponding prod found
                 if ($update_product_variant['opencart_product_option_id'] == -1) { // The product has no options
                     $sql = "UPDATE " . DB_PREFIX . "product SET quantity =" . (int)($item['qty_available'] - $item['outgoing_qty']).
                         " WHERE product_id =" . (int)$update_product_variant['opencart_product_id'] . ";";
