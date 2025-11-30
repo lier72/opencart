@@ -248,8 +248,18 @@ class Image extends Base {
 				}
 				$image->resize($this->width, $this->height, $resize_type);
 				$image->save(DIR_IMAGE . $image_new);
+
+				// Fix permissions immediately after save
+				if (is_file(DIR_IMAGE . $image_new)) {
+					chmod(DIR_IMAGE . $image_new, 0644);
+				}
 			} else {
 				copy(DIR_IMAGE . $image_old, DIR_IMAGE . $image_new);
+
+				// Fix permissions after copy
+				if (is_file(DIR_IMAGE . $image_new)) {
+					chmod(DIR_IMAGE . $image_new, 0644);
+				}
 			}
 
 			// optimise resized jpeg using jpegoptim
@@ -272,6 +282,15 @@ class Image extends Base {
 			}
 
 			$image_new = $image_cwebp;
+		}
+
+		// FINAL chmod - absolutely ensure permissions are 0644
+		// Store the JPG filename (before potential .webp)
+		$jpg_filename = strpos($image_new, '.webp') !== false ? str_replace('.webp', '', $image_new) : $image_new;
+
+		// Always chmod the JPG file
+		if (is_file(DIR_IMAGE . $jpg_filename)) {
+			chmod(DIR_IMAGE . $jpg_filename, 0644);
 		}
 
 		return $this->url($image_new);

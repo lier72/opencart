@@ -1,0 +1,61 @@
+INSTRUCTIONS: Add WebP conversion logging to identify the culprit
+================================================================
+
+File: system/library/journal3/image.php
+
+Find line 288-297 which looks like:
+
+	// convert to webp
+	if (in_array(strtolower($extension), ['jpg', 'jpeg', 'png']) && $this->journal3_request->is_webp && $convert_cwebp && $this->journal3->get('performanceCompressImagesWebpStatus')) {
+		$image_cwebp = $image_new . '.webp';
+
+		if (!is_file(DIR_IMAGE . $image_cwebp) || (filemtime(DIR_IMAGE . $image_old) > filemtime(DIR_IMAGE . $image_cwebp))) {
+			$this->convertWebp($image_new, $image_cwebp);
+		}
+
+		$image_new = $image_cwebp;
+	}
+
+REPLACE with:
+
+	// convert to webp
+	if (in_array(strtolower($extension), ['jpg', 'jpeg', 'png']) && $this->journal3_request->is_webp && $convert_cwebp && $this->journal3->get('performanceCompressImagesWebpStatus')) {
+		$image_cwebp = $image_new . '.webp';
+
+		// Log permissions BEFORE webp conversion
+		if (is_file(DIR_IMAGE . $image_new)) {
+			clearstatcache();
+			$before_webp = fileperms(DIR_IMAGE . $image_new);
+			error_log(sprintf("J3 BEFORE WEBP: %s - perms=%04o", $image_new, $before_webp & 0777));
+		}
+
+		if (!is_file(DIR_IMAGE . $image_cwebp) || (filemtime(DIR_IMAGE . $image_old) > filemtime(DIR_IMAGE . $image_cwebp))) {
+			$this->convertWebp($image_new, $image_cwebp);
+		}
+
+		// Log permissions AFTER webp conversion
+		if (is_file(DIR_IMAGE . $image_new)) {
+			clearstatcache();
+			$after_webp = fileperms(DIR_IMAGE . $image_new);
+			error_log(sprintf("J3 AFTER WEBP: %s - perms=%04o", $image_new, $after_webp & 0777));
+		}
+
+		$image_new = $image_cwebp;
+	}
+
+===================================================================
+
+WHAT THIS DOES:
+- Logs file permissions BEFORE calling convertWebp()
+- Logs file permissions AFTER calling convertWebp()
+- This will tell us if the WebP conversion is what's changing permissions from 0644 to 0600
+
+AFTER APPLYING:
+1. Upload to production
+2. Clear Journal3 cache
+3. Load a product page with images
+4. Check ~/logs/error/php74.log for entries like:
+   "J3 BEFORE WEBP: ... - perms=0644"
+   "J3 AFTER WEBP: ... - perms=0600"  <-- This would prove WebP is the culprit!
+
+===================================================================
