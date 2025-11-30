@@ -373,11 +373,7 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 			$sql  = "UPDATE `" . DB_PREFIX . "cdek_order` SET last_exchange = " . time();
 
 			if (!empty($data['status_id'])) {
-				
 				$sql .= ", status_id = '" . $this->db->escape($data['status_id']) . "'";
-				// Change order status
-				// moved to the end of function to get updated dispatch info
-//				$this->changeOrderStatus($data['status_id'], $dispatch_info);
 			}
 			
 			if (!empty($data['reason_id'])) {
@@ -555,8 +551,10 @@ class ModelExtensionModuleCdekIntegrator extends Model {
             // I don't think we should use $dispatch info here as it was before the changes
             // So may be it would be better to use $data instead
             // get updated $dispatch_info
-            $dispatch_info = $this->getDispatchInfo($order_id);
-            $this->changeOrderStatus($data['status_id'], $dispatch_info);
+            if (!empty($data['status_id'])) {
+                $dispatch_info = $this->getDispatchInfo($order_id);
+                $this->changeOrderStatus($data['status_id'], $dispatch_info);
+            }
 		} else {
 			return FALSE;
 		}
@@ -568,9 +566,10 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 	}
 	
 	public function getDispatchInfo($order_id) {
-		
+
 		$sql  = "SELECT o.*, ";
-		$sql .= "o.dispatch_number number, ";
+		$sql .= "o.dispatch_number AS number, ";
+//        $sql .= "o.cdek_number AS cdek_number, ";
 		$sql .= "d.date, ";
 		$sql .= "d.server_date, ";
 		$sql .= "d.dispatch_id, ";
@@ -585,7 +584,7 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 		$sql .= "FROM `" . DB_PREFIX . "cdek_order` o ";
 		$sql .= "INNER JOIN `" . DB_PREFIX . "cdek_dispatch` d ON (o.dispatch_id = d.dispatch_id)";
 		//$sql .= "LEFT JOIN `" . DB_PREFIX . "cdek_order_status_history` os ON (o.status_id = os.status_id)";
-		$sql .= "LEFT JOIN (SELECT * FROM `" . DB_PREFIX . "cdek_order_status_history` ORDER BY date DESC LIMIT 1) os ON (o.order_id = os.order_id AND o.status_id = os.status_id) ";
+		$sql .= "LEFT JOIN (SELECT os1.* FROM `" . DB_PREFIX . "cdek_order_status_history` os1 WHERE os1.order_id = " . (int)$order_id . " AND os1.status_id = (SELECT status_id FROM " . DB_PREFIX . "cdek_order WHERE order_id = " . (int)$order_id . ") ORDER BY os1.date DESC LIMIT 1) os ON (o.order_id = os.order_id) ";
 		$sql .= "LEFT JOIN (SELECT * FROM `" . DB_PREFIX . "cdek_order_delay_history` ORDER BY date DESC LIMIT 1) od ON (o.order_id = od.order_id AND o.delay_id = od.delay_id) ";
 		$sql .= "WHERE o.order_id = " . (int)$order_id;
 
@@ -846,7 +845,7 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 		$token = $oc->login($api_info['username'], $api_info['key']);
 
 		if (empty($token)) {
-			$this->log->write('Не удалось авторизоваться в API (проверьте, настройки Opencart)');
+			$this->log->write('Не удалось авторизоваться в OpenCart API (проверьте, настройки Opencart)');
 		}
 
 		$oc->order->setToken($token);
@@ -1222,20 +1221,21 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 
 	public function getDispatchesToSync() {
 
+
 		$filter_statuses = array(
-			4,	// Вручен
-			5,	// Не вручен, возврат
-			2	// Удален
-		);
-		
+			'DELIVERED',	// Вручен бывш 4
+			'NOT_DELIVERED',	// Не вручен, возврат 5
+			'DELETED'	// Удален 2
+			);
+
 		$sql  = "SELECT o.* ";
 		$sql .= "FROM `" . DB_PREFIX . "cdek_order` o ";
 		$sql .= "INNER JOIN `" . DB_PREFIX . "cdek_dispatch` d ON (o.dispatch_id = d.dispatch_id) ";
 		$sql .= "WHERE 1 ";
-		$sql .= "AND o.status_id NOT IN (" . implode(',', $filter_statuses) . ") ";
+		$sql .= "AND o.status_id NOT IN ('" . implode('\',\'', $filter_statuses) . "') ";
 		$sql .= "ORDER BY o.last_exchange, d.date";
-		
-		
+
+
 		return $this->db->query($sql)->rows;
 	}
 	

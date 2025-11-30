@@ -3901,10 +3901,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$orders = array();
 		foreach ($_dispatches as $key => $dispatch_info)
 		{
-			$orders[] = array(
-				'dispatch_number' => $dispatch_info['dispatch_number']
-			);
-
+			$orders[$dispatch_info['order_id']] = $dispatch_info;
 			$dispatches[$dispatch_info['dispatch_number']] = $dispatch_info;
 		}
 
@@ -3914,22 +3911,33 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		foreach($orders as $order) {
 			$component = $this->api->loadComponent('order_info');
-
+			// Following just makes the Url to call the API like 'v2/orders/<dispatch_number>'
 			$component->setMetod($order['dispatch_number']);
 
 			$info = $this->api->sendData($component);
 
 			$this->logWrite();
 
+			// Check if 'entity' exists and has 'uuid'
+			if (!isset($info['entity']) || !isset($info['entity']['uuid'])) {
+				echo "Error: Missing entity/uuid in response for order " . $order['order_id'] . " (dispatch_number: " . $order['dispatch_number'] . ")" . PHP_EOL;
+				echo "This order likely doesn't exist in CDEK API v2. Consider marking it as archived or synced manually." . PHP_EOL;
+				// Optionally: mark this order to avoid checking it again
+				// $this->model_extension_module_cdek_integrator->editDispatch($order['order_id'], ['status_id' => 'DELETED']);
+				continue;
+			}
+
 			$dispatch_number = (string)$info['entity']['uuid'];
 
-			if (isset($info['requests'][0]['errors'])){
-                echo $order->attributes()->Msg .$dispatch_number.PHP_EOL;
-                continue;
-            }
-			if(!isset($dispatches[$dispatch_number])) {
-                echo "WARNING: Not isses dispatch ".$dispatch_number.PHP_EOL;
-                continue;
+			// Check for errors in the response
+			if (isset($info['requests'][0]['errors'])) {
+				echo "Error for dispatch " . $dispatch_number . ": " . json_encode($info['requests'][0]['errors']) . PHP_EOL;
+				continue;
+			}
+
+			if (!isset($dispatches[$dispatch_number])) {
+				echo "WARNING: Not isset dispatch ".$dispatch_number.PHP_EOL;
+				continue;
 			}
 			
 			$statuses = $info['entity']['statuses'];
@@ -3941,11 +3949,11 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$dispatch = $dispatches[$dispatch_number];
 
 			if($dispatch['status_id'] == $status_id) {
-				echo "Order with dispatch ".$dispatch_number." not chenged".PHP_EOL;
+				echo "Order with dispatch ".$dispatch_number. " OpenCart No: ". $dispatch['order_id']. " not changed".PHP_EOL;
 				continue;
 			}
 
-			echo "Working with ".$dispatch_number." status ".$status_id.PHP_EOL;
+			echo "Working with ".$dispatch_number." OpenCart No:  ". $dispatch['order_id']. " status ".$status_id.PHP_EOL;
 
 			$filter_data = array(
 				$dispatch_info['order_id'] => $dispatch

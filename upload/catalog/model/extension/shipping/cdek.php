@@ -178,14 +178,15 @@ class ModelExtensionShippingCdek extends Model
                 $regions = $this->prepareRegion($to_data['name']);
             }
 
-            $cities = array($address['city']);
+            $cities = array(trim($address['city']));
             $cities[] = preg_replace('|[^a-zа-яё]|isu', ' ', $address['city']);
             $cities[] = preg_replace('|[^a-zа-яё]|isu', '-', $address['city']);
 
             foreach ($cities as $city) {
+                $city = trim(preg_replace('/\s+/', ' ', $city)); // нормализуем пробелы
                 $cdek_cities = $this->getURL($this->getInfo()->getAjaxUrl() . 'v2/location/cities?city=' . urlencode($city), new parser_json());
 
-                if (is_array($cdek_cities)) {
+                if (is_array($cdek_cities) && !empty($cdek_cities)) {
                     $address['city'] = $city;
                     break;
                 }
@@ -639,11 +640,49 @@ class ModelExtensionShippingCdek extends Model
 
                                     $this->session->data['cdek']['city'] = $city_to;
 
-                                    foreach ($pvz_list as $pvz_list_content) {
-                                        $this->session->data['cdek']['pvzlist'] = $pvz_list_content['info'];
+                                    // Store PVZ data in shared cache files (one per city, not per session)
+                                    // This is much faster - all Moscow customers share the same cache file
+                                    $cache_key_pvz = 'cdek_pvz_' . $city_to;
+                                    $cache_key_postamat = 'cdek_postamat_' . $city_to;
+
+                                    if ($this->config->get('shipping_cdek_log')) {
+                                        $this->log->write('СДЭК DEBUG: Starting PVZ cache write for city=' . $city_to);
                                     }
+
+                                    foreach ($pvz_list as $pvz_list_content) {
+                                        // Store in shared cache file (one file per city, shared by all sessions)
+                                        $cache_file = DIR_CACHE . $cache_key_pvz . '.cache';
+                                        file_put_contents($cache_file, serialize($pvz_list_content['info']));
+
+                                        // Store cache key in session (just the city_id, not the full data)
+                                        $this->session->data['cdek']['pvz_cache_key'] = $cache_key_pvz;
+
+                                        if ($this->config->get('shipping_cdek_log')) {
+                                            $size = strlen(serialize($pvz_list_content['info']));
+                                            $count = count($pvz_list_content['info']);
+                                            $this->log->write('СДЭК DEBUG: Stored ' . $count . ' PVZ items in shared cache file=' . $cache_file . ', size=' . number_format($size) . ' bytes');
+                                        }
+                                    }
+
                                     foreach ($postamat_list as $postamat_list_content) {
-                                        $this->session->data['cdek']['postamatlist'] = $postamat_list_content['info'];
+                                        // Store in shared cache file (one file per city, shared by all sessions)
+                                        $cache_file = DIR_CACHE . $cache_key_postamat . '.cache';
+                                        file_put_contents($cache_file, serialize($postamat_list_content['info']));
+
+                                        // Store cache key in session (just the city_id, not the full data)
+                                        $this->session->data['cdek']['postamat_cache_key'] = $cache_key_postamat;
+
+                                        if ($this->config->get('shipping_cdek_log')) {
+                                            $size = strlen(serialize($postamat_list_content['info']));
+                                            $count = count($postamat_list_content['info']);
+                                            $this->log->write('СДЭК DEBUG: Stored ' . $count . ' POSTAMAT items in shared cache file=' . $cache_file . ', size=' . number_format($size) . ' bytes');
+                                        }
+                                    }
+
+                                    if ($this->config->get('shipping_cdek_log')) {
+                                        $total_session_size = strlen(serialize($this->session->data));
+                                        $this->log->write('СДЭК DEBUG: Total session size after cache write=' . number_format($total_session_size) . ' bytes');
+                                        $this->log->write('СДЭК DEBUG: Starting tariff loop, results count=' . count($results));
                                     }
 
                                     $sub_total = $this->cart->getSubTotal();
@@ -805,6 +844,10 @@ class ModelExtensionShippingCdek extends Model
                                             }
 
                                             $cod = !isset($shipping_info['delivery_sum']) || ((float)$shipping_info['delivery_sum'] && $total >= (float)$shipping_info['delivery_sum']);
+
+                                            if ($this->config->get('shipping_cdek_log')) {
+                                                $this->log->write('СДЭК DEBUG: Processing ' . count($names) . ' shipping options for tariff ' . $shipping_info['tariffId']);
+                                            }
 
                                             foreach ($names as $key => $description) {
 
@@ -974,11 +1017,18 @@ class ModelExtensionShippingCdek extends Model
 
         $pvz_list_data = $this->getURL($this->getInfo()->getAjaxUrl() . 'v2/deliverypoints?city_code=' . $city_id . '&type=' . $type, new parser_json());
 
+        if ($this->config->get('shipping_cdek_log')) {
+            $this->log->write('СДЭК DEBUG: getPVZList received ' . count($pvz_list_data) . ' PVZ locations for type ' . $type);
+        }
+
         if (isset($pvz_list_data)) {
 
             $use_limit = $this->config->get('shipping_cdek_weight_limit');
             $full_info = array();
+            $processed_count = 0;
+
             foreach ($pvz_list_data as $pvz_info) {
+                $processed_count++;
                 if (empty($pvz_info['location']['city']) || empty($pvz_info['location']['address'])) {
                     continue;
                 }
@@ -1025,9 +1075,18 @@ class ModelExtensionShippingCdek extends Model
                     'info' => $full_info
                 );
             }
+
+            if ($this->config->get('shipping_cdek_log')) {
+                $this->log->write('СДЭК DEBUG: Processed ' . $processed_count . ' PVZ entries, creating merged list');
+            }
+
             $pvz_list_tmp = array();
 
             foreach ($pvz_list as $pvz_info) $pvz_list_tmp[] = $pvz_info['address'];
+
+            if ($this->config->get('shipping_cdek_log')) {
+                $this->log->write('СДЭК DEBUG: Merging ' . count($pvz_list_tmp) . ' PVZ addresses');
+            }
 
             $pvz_list = array(
                 'MRG' => array(
@@ -1036,6 +1095,10 @@ class ModelExtensionShippingCdek extends Model
                     'info' => $full_info
                 )
             );
+
+            if ($this->config->get('shipping_cdek_log')) {
+                $this->log->write('СДЭК DEBUG: getPVZList completed for type ' . $type);
+            }
 
         } elseif (!empty($pvz_list_data['ErrorCode'])) {
 

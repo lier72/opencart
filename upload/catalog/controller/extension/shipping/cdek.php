@@ -42,14 +42,31 @@ class ControllerExtensionShippingCdek extends Controller {
 
 		$tariff_type = $this->request->post['tariff_type'];
 
-		if(!isset($this->session->data['cdek']) || !isset($this->session->data['cdek']['pvzlist']) || !$this->session->data['cdek']['pvzlist']) {
-			$json['message'] = 'Нет списка пвз';
-			$this->jsonRespone(false, 'Нет списка пвз');
-		}	
+		// Read PVZ data from shared cache files (using cache key from session)
 		if ($tariff_type == 'PVZ') {
-			$this->jsonRespone(true, 'Список пунктов выдачи', $this->session->data['cdek']['pvzlist']);
+			$cache_key = isset($this->session->data['cdek']['pvz_cache_key']) ?
+						 $this->session->data['cdek']['pvz_cache_key'] :
+						 'cdek_pvz_' . $this->session->data['cdek']['city'];
+			$cache_file = DIR_CACHE . $cache_key . '.cache';
+
+			if (file_exists($cache_file)) {
+				$pvz_list = unserialize(file_get_contents($cache_file));
+				$this->jsonRespone(true, 'Список пунктов выдачи', $pvz_list);
+			} else {
+				$this->jsonRespone(false, 'Нет списка пвз в кеше');
+			}
 		} elseif ($tariff_type == 'POSTAMAT') {
-			$this->jsonRespone(true, 'Список пунктов выдачи', $this->session->data['cdek']['postamatlist']);
+			$cache_key = isset($this->session->data['cdek']['postamat_cache_key']) ?
+						 $this->session->data['cdek']['postamat_cache_key'] :
+						 'cdek_postamat_' . $this->session->data['cdek']['city'];
+			$cache_file = DIR_CACHE . $cache_key . '.cache';
+
+			if (file_exists($cache_file)) {
+				$postamat_list = unserialize(file_get_contents($cache_file));
+				$this->jsonRespone(true, 'Список пунктов выдачи', $postamat_list);
+			} else {
+				$this->jsonRespone(false, 'Нет списка постаматов в кеше');
+			}
 		} else {
 			$this->jsonRespone(true, 'Список пунктов выдачи', array());
 		}
@@ -76,27 +93,48 @@ class ControllerExtensionShippingCdek extends Controller {
 
 		$pvz_code = $this->request->post['pvz_code'];
 
-		if(!isset($this->session->data['cdek']) || !isset($this->session->data['cdek']['pvzlist']) || !$this->session->data['cdek']['pvzlist']) {
-			$this->jsonRespone(false, 'Нет списка пвз');
-		}	
+		// Read PVZ data from shared cache files (using cache key from session)
+		$pvz_cache_key = isset($this->session->data['cdek']['pvz_cache_key']) ?
+						 $this->session->data['cdek']['pvz_cache_key'] :
+						 'cdek_pvz_' . $this->session->data['cdek']['city'];
+		$postamat_cache_key = isset($this->session->data['cdek']['postamat_cache_key']) ?
+							  $this->session->data['cdek']['postamat_cache_key'] :
+							  'cdek_postamat_' . $this->session->data['cdek']['city'];
+
+		$pvz_cache_file = DIR_CACHE . $pvz_cache_key . '.cache';
+		$postamat_cache_file = DIR_CACHE . $postamat_cache_key . '.cache';
+
+		if (!file_exists($pvz_cache_file) && !file_exists($postamat_cache_file)) {
+			$this->jsonRespone(false, 'Нет списка пвз в кеше');
+		}
 
 		$this->session->data['cdek']['pvz'] = $pvz_code;
 
 		$pvz_info = '';
 		$pvz_address = '';
-		if (!empty($this->session->data['cdek']['pvzlist'])) {
-			foreach ($this->session->data['cdek']['pvzlist'] as $pvz) {
-				if($pvz['Code'] == $pvz_code) {
-					$pvz_info = $pvz['Address'].' Телефон: '.$pvz['Phone'];
-					$pvz_address = $pvz['Address'];
+
+		// Search in PVZ cache
+		if (file_exists($pvz_cache_file)) {
+			$pvz_list = unserialize(file_get_contents($pvz_cache_file));
+			if (!empty($pvz_list)) {
+				foreach ($pvz_list as $pvz) {
+					if($pvz['Code'] == $pvz_code) {
+						$pvz_info = $pvz['Address'].' Телефон: '.$pvz['Phone'];
+						$pvz_address = $pvz['Address'];
+					}
 				}
 			}
 		}
-		if (!empty($this->session->data['cdek']['postamatlist'])) {
-			foreach ($this->session->data['cdek']['postamatlist'] as $pvz) {
-				if($pvz['Code'] == $pvz_code) {
-					$pvz_info = $pvz['Address'].' Телефон: '.$pvz['Phone'];
-					$pvz_address = $pvz['Address'];
+
+		// Search in POSTAMAT cache
+		if (file_exists($postamat_cache_file)) {
+			$postamat_list = unserialize(file_get_contents($postamat_cache_file));
+			if (!empty($postamat_list)) {
+				foreach ($postamat_list as $pvz) {
+					if($pvz['Code'] == $pvz_code) {
+						$pvz_info = $pvz['Address'].' Телефон: '.$pvz['Phone'];
+						$pvz_address = $pvz['Address'];
+					}
 				}
 			}
 		}

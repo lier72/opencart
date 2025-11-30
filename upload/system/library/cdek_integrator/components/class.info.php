@@ -170,12 +170,12 @@ class info extends cdek_integrator {
 			),
             '366' => array(
                 'title'		=> 'Посылка (Д-П)',
-                'mode_id'	=> 6,
+                'mode_id'	=> 5,
                 'im'		=> 1
             ),
             '368' => array(
                 'title'		=> 'Посылка (С-П)',
-                'mode_id'	=> 7,
+                'mode_id'	=> 6,
                 'im'		=> 1
 			),
             '378' => array(
