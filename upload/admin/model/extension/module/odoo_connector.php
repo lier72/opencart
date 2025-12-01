@@ -571,6 +571,29 @@ class ModelExtensionModuleOdooConnector extends Model {
             'errors' => array()
         );
 
+        // Ensure connection is initialized
+        if (!$this->connection || !is_array($this->connection)) {
+            if ($debug) $this->log->write('Model odoo_connector syncOpenCartOrderState: Connection not set, calling getConfig()');
+            $this->getConfig();
+        }
+
+        // Check if connection exists after getConfig
+        if (!$this->connection || !is_array($this->connection)) {
+            $json['errors'][] = 'Odoo connection not initialized. Please check configuration.';
+            $this->log->write('Model odoo_connector syncOpenCartOrderState: ERROR - Connection still not initialized after getConfig()');
+            return $json;
+        }
+
+        // Check if connection is successful
+        if (!isset($this->connection['status']) || !$this->connection['status']) {
+            $json['errors'][] = 'Failed to connect to Odoo server. Please check if Odoo is running and accessible.';
+            if (isset($this->connection['error'])) {
+                $json['errors'][] = $this->connection['error'];
+            }
+            $this->log->write('Model odoo_connector syncOpenCartOrderState: ERROR - Odoo connection failed');
+            return $json;
+        }
+
         $odoo_ids = array();
 
         $oc_cdek_delivery_statuses = array(1, 2, 10, 18);
@@ -588,63 +611,60 @@ class ModelExtensionModuleOdooConnector extends Model {
             array_push($odoo_ids, (int) $row['odoo_order_id']);
         }
 
-        $odoo_connect = $this->connection;
+        // Connection already validated above, safe to use directly
+        $models = $this->connection['client'];
+        $db_name = $this->connection['db'];
+        $uid = $this->connection['userId'];
+        $password = $this->connection['pwd'];
+        $odoo_order_ids = $models->execute_kw($db_name, $uid, $password,
+            'sale.order', 'read',
+            array($odoo_ids), // take ids form SQL request to get only those odoo_order_ids that have not sync statuses
+            array('fields' => array('state', 'message_partner_ids', 'invoice_status', 'delivery_count', 'invoice_ids', 'picking_ids')
+            )
+        );
+        if (isset($odoo_order_ids['faultCode'])) {
+            throw new Exception ($odoo_order_ids['faultString']);
+        }
 
-        // Request order statuses of Odoo in $oodoo_ids
-        if ($odoo_connect['status']) {
-            $models = $odoo_connect['client'];
-            $db_name = $odoo_connect['db'];
-            $uid = $odoo_connect['userId'];
-            $password = $odoo_connect['pwd'];
-            $odoo_order_ids = $models->execute_kw($db_name, $uid, $password,
-                'sale.order', 'read',
-                array($odoo_ids), // take ids form SQL request to get only those odoo_order_ids that have not sync statuses
-                array('fields' => array('state', 'message_partner_ids', 'invoice_status', 'delivery_count', 'invoice_ids', 'picking_ids')
-                )
-            );
-            if (isset($odoo_order_ids['faultCode'])) {
-                throw new Exception ($odoo_order_ids['faultString']);
+        // Iterate through odoo order IDs
+        foreach ($odoo_order_ids as $odoo_order_id) {
+            //todo  Rewrite this Function in Obejct Oriented method like Polymorfism
+
+            // Select mapping order state with the last opencart order state from opencart order history
+            // So we check if we need to update either order status if there was change
+            $sql = "SELECT a.opencart_order_id AS opencart_order_id, a.odoo_order_state AS odoo_order_state, a.opencart_order_state
+                    AS opencart_order_state, DATE(a.modified_on) < DATE(NOW()) AS is_old, b.order_status_id AS oc_order_status_history_id, b.comment AS `comment`, c.name AS `name` FROM " . DB_PREFIX . "odoo_order_map AS a
+                    LEFT JOIN " . DB_PREFIX . "order_history AS b ON a.opencart_order_id=b.order_id
+                    LEFT JOIN " . DB_PREFIX . "order_status AS c ON b.order_status_id = c.order_status_id
+                    WHERE a.odoo_order_id =" . $odoo_order_id['id'] . " ORDER BY b.date_added DESC LIMIT 1";
+            $res = $this->db->query($sql) or die("Error selecting order ids from order_map! \n" . mysqli_error($this->db));
+            $mapping_order_id = $res->row;
+            // oc_order_id,
+            // odoo_order_state,
+            // oc_order_status_id,
+            // is_old
+            // oc_order_status_history_id,
+            // comment,
+            // name
+            $opencart_order_id = $mapping_order_id['opencart_order_id'];
+
+            // Get OpenCart status from `order` Table to check against mappiing table order IDs
+            $sql = "SELECT order_status_id FROM " . DB_PREFIX . "order WHERE order_id =" . $opencart_order_id;
+            $res = $this->db->query($sql) or die("Error selecting order sate from ocus_order! \n" . mysqli_error($this->db));
+            $opencart_order = $res->row;
+            $oc_order_state = $opencart_order['order_status_id'];
+
+            if ($debug){
+                echo "<p> OC order id <b>"; print_r($opencart_order_id); echo "</b>, ";
+                echo " OC order status_id: "; print_r($oc_order_state); echo ", ";
+                echo " Odoo order data: "; print_r($odoo_order_id); echo ",<br/> ";
+            } else {
+                $json['updates'][] = 'OC Order '. $opencart_order_id . ' state: '.$oc_order_state;
             }
 
-            // Iterate through odoo order IDs
-            foreach ($odoo_order_ids as $odoo_order_id) {
-                //todo  Rewrite this Function in Obejct Oriented method like Polymorfism
+            // IF Opencart order is not CANCELLED
 
-                // Select mapping order state with the last opencart order state from opencart order history
-                // So we check if we need to update either order status if there was change
-                $sql = "SELECT a.opencart_order_id AS opencart_order_id, a.odoo_order_state AS odoo_order_state, a.opencart_order_state 
-                        AS opencart_order_state, DATE(a.modified_on) < DATE(NOW()) AS is_old, b.order_status_id AS oc_order_status_history_id, b.comment AS `comment`, c.name AS `name` FROM " . DB_PREFIX . "odoo_order_map AS a 
-                        LEFT JOIN " . DB_PREFIX . "order_history AS b ON a.opencart_order_id=b.order_id 
-                        LEFT JOIN " . DB_PREFIX . "order_status AS c ON b.order_status_id = c.order_status_id 
-                        WHERE a.odoo_order_id =" . $odoo_order_id['id'] . " ORDER BY b.date_added DESC LIMIT 1";
-                $res = $this->db->query($sql) or die("Error selecting order ids from order_map! \n" . mysqli_error($this->db));
-                $mapping_order_id = $res->row;
-                // oc_order_id,
-                // odoo_order_state,
-                // oc_order_status_id,
-                // is_old
-                // oc_order_status_history_id,
-                // comment,
-                // name
-                $opencart_order_id = $mapping_order_id['opencart_order_id'];
-
-                // Get OpenCart status from `order` Table to check against mappiing table order IDs
-                $sql = "SELECT order_status_id FROM " . DB_PREFIX . "order WHERE order_id =" . $opencart_order_id;
-                $res = $this->db->query($sql) or die("Error selecting order sate from ocus_order! \n" . mysqli_error($this->db));
-                $opencart_order = $res->row;
-                $oc_order_state = $opencart_order['order_status_id'];
-
-                if ($debug){
-                    echo "<p> OC order id <b>"; print_r($opencart_order_id); echo "</b>, ";
-                    echo " OC order status_id: "; print_r($oc_order_state); echo ", ";
-                    echo " Odoo order data: "; print_r($odoo_order_id); echo ",<br/> ";
-                } else {
-                    $json['updates'][] = 'OC Order '. $opencart_order_id . ' state: '.$oc_order_state;
-                }
-
-                // IF Opencart order is not CANCELLED
-
-                if (!in_array($oc_order_state, $cancel_statuses)) {
+            if (!in_array($oc_order_state, $cancel_statuses)) {
                     // Odoo Order status is  CANCELLED
                     if ($odoo_order_id['state']=='cancel'){
                         if ($debug) {
@@ -826,7 +846,6 @@ class ModelExtensionModuleOdooConnector extends Model {
                         $mapping_order_id['opencart_order_state'],strval($oc_cancelled). ", is_sync=1", $debug);
                 }
             }
-        }
         $json['success'] = true;
         $json['message'] = 'Orders were updated!';
         return $json;
