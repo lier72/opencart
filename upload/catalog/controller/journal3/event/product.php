@@ -338,16 +338,20 @@ class ControllerJournal3EventProduct extends Controller {
 		$args['journal3_product_stats_position'] = $this->journal3->get($args['stylePrefix'] . 'Stats') && !$this->journal3->is_options_popup ? $this->journal3->get($args['stylePrefix'] . 'StatsPosition') : null;
 
 		if ($args['journal3_product_stats_position']) {
-			if (self::$product_info['quantity'] > 0 && !$this->config->get('config_stock_display')) {
+// Modifications to show stock quantity only if user is logged in and not in default customer group
+			if (self::$product_info['quantity'] <= 0) {
+				$stock = self::$product_info['stock_status'];
+			} elseif ($this->config->get('config_stock_display') || ($this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id'))) {
+				$stock = self::$product_info['quantity'];
+			} else {
 				$stock = $this->journal3->get($args['stylePrefix'] . 'ProductInStockText') ?: $args['stock'];
 
 				// some third party addons for in stock status
 				if (!empty(self::$product_info['in_stock_status'])) {
 					$stock = self::$product_info['in_stock_status'];
 				}
-			} else {
-				$stock = $args['stock'];
 			}
+// End of modifications
 
 			$args['journal3_product_stock'] = $this->journal3->get($args['stylePrefix'] . 'ProductStock');
 			$args['journal3_product_stock_text'] = $this->journal3->get($args['stylePrefix'] . 'ProductStockText');

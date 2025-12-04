@@ -68,10 +68,11 @@ class ControllerJournal3Price extends Controller {
 			}
 
 			// stock status
+// Modifications to show stock quantity only if user is logged in and not in default customer group
 			if ($data['quantity'] < $quantity) {
 				$data['stock'] = $product_info['stock_status'] ?? '';
 				$data['in_stock'] = false;
-			} elseif ($this->config->get('config_stock_display')) {
+			} elseif ($this->config->get('config_stock_display') || ($this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id'))) {
 				$data['stock'] = $data['quantity'];
 			} else {
 				$data['stock'] = $this->journal3->get($popup ? 'quickviewPageStyleProductInStockText' : 'productPageStyleProductInStockText');
@@ -104,6 +105,14 @@ class ControllerJournal3Price extends Controller {
 			} else {
 				$data['price'] = false;
 			}
+
+			// retail price - Max's addition to show retail price for non-default customer groups
+			if ($this->customer->isLogged() && $this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id')) {
+				$data['retail_price'] = $this->currency->format($this->tax->calculate($product_info['retail_price'] + $options_price, $product_info['tax_class_id'], $this->config->get('config_tax')) * $quantity, $this->session->data['currency']);
+			} else {
+				$data['retail_price'] = false;
+			}
+			// end of retail price modifications
 
 			// points
 			$points = (int)$product_info['points'] + (int)$options_points;

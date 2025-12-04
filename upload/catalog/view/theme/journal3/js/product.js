@@ -123,6 +123,11 @@
 							}
 						}
 
+						// Update retail price if it exists - Max's modification
+						if (json['response']['retail_price']) {
+							$('.product-price.retail-price').html(json['response']['retail_price']);
+						}
+
 						if (json['response']['discounts']) {
 							$('.product-discount').each(function (index) {
 								$(this).html(json['response']['discounts'][index]);
