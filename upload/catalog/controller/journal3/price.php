@@ -73,7 +73,7 @@ class ControllerJournal3Price extends Controller {
 				$data['stock'] = $product_info['stock_status'] ?? '';
 				$data['in_stock'] = false;
 			} elseif ($this->config->get('config_stock_display') || ($this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id'))) {
-				$data['stock'] = $data['quantity'];
+				$data['stock'] = $this->journal3->get($popup ? 'quickviewPageStyleProductStockText' : 'productPageStyleProductStockText') . ' ' . $data['quantity'];
 			} else {
 				$data['stock'] = $this->journal3->get($popup ? 'quickviewPageStyleProductInStockText' : 'productPageStyleProductInStockText');
 

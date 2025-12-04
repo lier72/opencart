@@ -342,7 +342,7 @@ class ControllerJournal3EventProduct extends Controller {
 			if (self::$product_info['quantity'] <= 0) {
 				$stock = self::$product_info['stock_status'];
 			} elseif ($this->config->get('config_stock_display') || ($this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id'))) {
-				$stock = self::$product_info['quantity'];
+				$stock = $this->journal3->get($args['stylePrefix'] . 'ProductStockText') . self::$product_info['quantity'];
 			} else {
 				$stock = $this->journal3->get($args['stylePrefix'] . 'ProductInStockText') ?: $args['stock'];
 
