@@ -41,7 +41,7 @@ public $taxSystem;
 public $taxType;
 public $discountHelper;
 public $allowCallbacks = RBSPAYMENT_ENABLE_CALLBACK;
-public $callbackType = "STATIC";
+public $callbackType = "DYNAMIC";
 public $enable_cacert = true;
 public $cacert_path = null;
 public $enable_back_url_settings = false;
@@ -187,7 +187,7 @@ return json_encode($error);
 $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 curl_close($ch);
 if ($this->logging) {
-$this->logger($action_address,' test', serialize($data), $response);
+$this->logger($action_address,'test', serialize($data), $response);
 }
 return substr($response, $header_size);
 }
