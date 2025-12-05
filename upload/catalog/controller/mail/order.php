@@ -100,7 +100,7 @@ class ControllerMailOrder extends Controller {
 
 		$data['order_id'] = $order_info['order_id'];
 		$data['date_added'] = date($language->get('date_format_short'), strtotime($order_info['date_added']));
-		$data['payment_method'] = $order_info['payment_method'];
+		$data['payment_method'] = preg_replace('/<img\s+[^>]*\/?>/i', '', $order_info['payment_method']);
 		$data['shipping_method'] = $order_info['shipping_method'];
 		$data['email'] = $order_info['email'];
 		$data['telephone'] = $order_info['telephone'];

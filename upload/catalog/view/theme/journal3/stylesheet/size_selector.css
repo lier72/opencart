@@ -1,0 +1,200 @@
+/**
+ * Size Selector Styling - Journal3 Theme
+ * Matches Journal3's product option styling
+ */
+
+/* Main container */
+.size-selector-widget {
+    margin-bottom: 20px;
+}
+
+/* Loading state */
+.size-selector-loading {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+}
+
+/* Gender selector buttons */
+.size-gender-selector {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-gender {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.btn-gender:hover {
+    border-color: #999;
+}
+
+.btn-gender.active {
+    background: #333;
+    color: #fff;
+    border-color: #333;
+}
+
+/* Size system selector */
+.size-system-selector {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 5px;
+}
+
+.btn-system {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+    min-width: 50px;
+}
+
+.btn-system:hover {
+    background: #e5e5e5;
+}
+
+.btn-system.active {
+    background: #333;
+    color: #fff;
+    border-color: #333;
+}
+
+/* Size grid - Journal3 push-option style */
+.size-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.btn-size {
+    padding: 12px 8px;
+    border: 2px solid #ddd;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+}
+
+.btn-size:hover:not(.out-of-stock) {
+    border-color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.btn-size.selected {
+    border-color: #333;
+    background: #333;
+    color: #fff;
+}
+
+.btn-size.out-of-stock {
+    opacity: 0.4;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.btn-size.low-stock {
+    border-color: #ff9800;
+}
+
+/* Size label */
+.size-label {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* Stock indicators */
+.stock-indicator {
+    font-size: 11px;
+    margin-top: 2px;
+    display: block;
+}
+
+.btn-size.out-of-stock .stock-indicator {
+    color: #f44336;
+}
+
+.btn-size.low-stock .stock-indicator {
+    color: #ff9800;
+}
+
+.btn-size:not(.out-of-stock):not(.low-stock) .stock-indicator {
+    color: #4caf50;
+}
+
+/* Size guide link */
+.size-guide-link {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.btn-size-guide {
+    display: inline-block;
+    padding: 8px 16px;
+    color: #666;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.btn-size-guide:hover {
+    color: #333;
+    border-color: #999;
+    text-decoration: none;
+}
+
+.btn-size-guide i {
+    margin-right: 5px;
+}
+
+/* Size guide modal */
+.size-guide-modal .modal-body {
+    padding: 20px;
+}
+
+.size-guide-modal table {
+    margin-top: 15px;
+}
+
+.size-guide-modal h5 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .size-grid {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 8px;
+    }
+
+    .btn-size {
+        padding: 10px 6px;
+        font-size: 13px;
+        min-height: 45px;
+    }
+}
