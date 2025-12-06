@@ -157,6 +157,9 @@
       </table>
       {% endif %}
       <div class="buttons clearfix">
+        {% if show_payment_button %}
+        <div class="pull-left"><a href="{{ payment_url }}" class="btn btn-success"><i class="fa fa-credit-card"></i> {{ button_pay }}</a></div>
+        {% endif %}
         <div class="pull-right"><a href="{{ continue }}" class="btn btn-primary">{{ button_continue }}</a></div>
       </div>
       {{ content_bottom }}</div>

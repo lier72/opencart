@@ -325,6 +325,19 @@ class ControllerAccountOrder extends Controller {
 
 			$data['continue'] = $this->url->link('account/order', '', true);
 
+			// Check if order needs payment (alfabank)
+			$data['show_payment_button'] = false;
+			$data['payment_url'] = '';
+			$data['button_pay'] = $this->language->get('button_pay');
+
+			if (isset($order_info['payment_code']) && $order_info['payment_code'] == 'alfabank') {
+				$pending_status_id = $this->config->get('payment_alfabank_order_status_before_id');
+				if ($order_info['order_status_id'] == $pending_status_id) {
+					$data['show_payment_button'] = true;
+					$data['payment_url'] = $this->url->link('extension/payment/alfabank/repay', 'order_id=' . $order_id, true);
+				}
+			}
+
 			$data['column_left'] = $this->load->controller('common/column_left');
 			$data['column_right'] = $this->load->controller('common/column_right');
 			$data['content_top'] = $this->load->controller('common/content_top');

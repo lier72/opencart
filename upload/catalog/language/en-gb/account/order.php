@@ -33,5 +33,8 @@ $_['column_date_added']     = 'Date Added';
 $_['column_status']         = 'Status';
 $_['column_comment']        = 'Comment';
 
+// Button
+$_['button_pay']            = 'Pay Order';
+
 // Error
 $_['error_reorder']         = '%s is not currently available to be reordered.';

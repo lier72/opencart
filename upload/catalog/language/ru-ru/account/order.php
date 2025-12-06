@@ -33,6 +33,8 @@ $_['column_date_added']     = 'Добавлено';
 $_['column_status']         = 'Статус';
 $_['column_comment']        = 'Комментарий';
 
+// Button
+$_['button_pay']            = 'Оплатить заказ';
+
 // Error
 $_['error_reorder']         = '%s в данный момент не доступен....';
-

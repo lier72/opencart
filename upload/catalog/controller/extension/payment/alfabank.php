@@ -462,6 +462,295 @@ private function cleanPhoneNumber($telephone) {
 return substr(preg_replace('/\D+/', '', $telephone), 0, 15);
 }
 
+/**
+ * Re-payment method for unpaid orders from order history
+ * Works with stored order data instead of session/cart
+ */
+public function repay() {
+	if (!$this->customer->isLogged()) {
+		$this->response->redirect($this->url->link('account/login', '', true));
+		return;
+	}
+
+	if (!isset($this->request->get['order_id'])) {
+		$this->response->redirect($this->url->link('account/order', '', true));
+		return;
+	}
+
+	$order_id = (int)$this->request->get['order_id'];
+
+	$this->load->model('account/order');
+	$order_info = $this->model_account_order->getOrder($order_id);
+
+	if (!$order_info) {
+		$this->response->redirect($this->url->link('account/order', '', true));
+		return;
+	}
+
+	// Verify payment method is alfabank
+	if ($order_info['payment_code'] != 'alfabank') {
+		$this->response->redirect($this->url->link('account/order/info', 'order_id=' . $order_id, true));
+		return;
+	}
+
+	// Verify order is in pending payment status
+	$pending_status_id = $this->config->get('payment_alfabank_order_status_before_id');
+	if ($order_info['order_status_id'] != $pending_status_id) {
+		$this->session->data['error'] = $this->language->get('error_order_already_processed');
+		$this->response->redirect($this->url->link('account/order/info', 'order_id=' . $order_id, true));
+		return;
+	}
+
+	$this->initializeGatewayLibrary();
+	$this->load->model('checkout/order');
+
+	$order_number = (int)$order_info['order_id'];
+	$amount = round($order_info['total'] * $order_info['currency_value'], 2) * 100;
+	$return_url = $this->url->link('extension/payment/alfabank/comeback');
+
+	$jsonParams = array(
+		'CMS' => 'Opencart ' . VERSION,
+		'Module-Version' => 'Alfabank ' . $this->method_library->module_version,
+	);
+
+	if (!empty($order_info['email'])) {
+		$jsonParams['email'] = $order_info['email'];
+	}
+
+	if (!empty($order_info['telephone'])) {
+		$jsonParams['phone'] = $this->cleanPhoneNumber($order_info['telephone']);
+	}
+
+	if ($this->method_library->enable_back_url_settings
+		&& !empty($this->config->get('payment_alfabank_backToShopURL'))
+	) {
+		$jsonParams['backToShopUrl'] = $this->config->get('payment_alfabank_backToShopURL');
+	}
+
+	// Build order bundle from stored order data
+	if ($this->method_library->enable_cart_options && $this->method_library->send_cart) {
+		$orderBundle = array();
+		$orderBundle['customerDetails']['email'] = $order_info['email'];
+
+		if (!empty($order_info['telephone'])) {
+			$orderBundle['customerDetails']['phone'] = $this->cleanPhoneNumber($order_info['telephone']);
+		}
+
+		// Get order products from database
+		$order_products = $this->model_checkout_order->getOrderProducts($order_id);
+
+		foreach ($order_products as $product) {
+			$product_price = $product['price'];
+			$product_tax = $product['tax'];
+			$product_amount = (round($product_price + $product_tax, 2)) * $product['quantity'];
+
+			$tax_type = $this->config->get('payment_alfabank_taxType');
+			if ($product_tax > 0 && $product_price > 0) {
+				$item_rate = $product_tax / $product_price * 100;
+				$tax_type = $this->getTaxType($item_rate);
+			}
+
+			$product_data = array(
+				'positionId' => $product['order_product_id'],
+				'name' => $product['name'],
+				'quantity' => array(
+					'value' => $product['quantity'],
+					'measure' => $this->method_library->getDefaultMeasurement(),
+				),
+				'itemAmount' => (int)round($product_amount * 100),
+				'itemCode' => $product['product_id'] . "_" . $product['order_product_id'],
+				'tax' => array(
+					'taxType' => $tax_type,
+				),
+				'itemPrice' => (int)round((round($product_price + $product_tax, 2)) * 100),
+			);
+
+			if ($tax_type != "0" && $product_tax != "0") {
+				$product_data['tax']['taxSum'] = (int)round($product_tax * 100);
+			}
+
+			$attributes = array();
+			$attributes[] = array(
+				"name" => "paymentMethod",
+				"value" => $this->method_library->getPaymentMethodType()
+			);
+			$attributes[] = array(
+				"name" => "paymentObject",
+				"value" => $this->method_library->getPaymentObjectType()
+			);
+
+			$product_data['itemAttributes']['attributes'] = $attributes;
+			$orderBundle['cartItems']['items'][] = $product_data;
+		}
+
+		// Get shipping cost from order totals
+		$order_totals = $this->model_checkout_order->getOrderTotals($order_id);
+		foreach ($order_totals as $total) {
+			if ($total['code'] == 'shipping' && $total['value'] > 0) {
+				$delivery = array(
+					'positionId' => 'delivery',
+					'name' => $total['title'],
+					'itemAmount' => (int)round($total['value'] * 100),
+					'quantity' => array(
+						'value' => 1,
+						'measure' => $this->method_library->getDefaultMeasurement(),
+					),
+					'itemCode' => 'shipping',
+					'tax' => array(
+						'taxType' => $this->config->get('payment_alfabank_taxType'),
+					),
+					'itemPrice' => (int)round($total['value'] * 100),
+				);
+
+				$attributes = array();
+				$attributes[] = array(
+					"name" => "paymentMethod",
+					"value" => $this->method_library->getPaymentMethodType(true)
+				);
+				$attributes[] = array(
+					"name" => "paymentObject",
+					"value" => 4
+				);
+
+				$delivery['itemAttributes']['attributes'] = $attributes;
+				$orderBundle['cartItems']['items'][] = $delivery;
+				break;
+			}
+		}
+
+		// Get vouchers from order
+		$order_vouchers = $this->model_checkout_order->getOrderVouchers($order_id);
+		foreach ($order_vouchers as $key => $voucher) {
+			$itemVoucher = array(
+				'positionId' => 'voucher_' . $key,
+				'name' => $voucher['description'],
+				'itemAmount' => (int)round($voucher['amount'] * 100),
+				'quantity' => array(
+					'value' => 1,
+					'measure' => $this->method_library->getDefaultMeasurement(),
+				),
+				'itemCode' => 'voucher_' . $key,
+				'tax' => array(
+					'taxType' => $this->config->get('payment_alfabank_taxType'),
+				),
+				'itemPrice' => (int)round($voucher['amount'] * 100)
+			);
+
+			$attributes = array();
+			$attributes[] = array(
+				"name" => "paymentMethod",
+				"value" => $this->method_library->getPaymentMethodType(),
+			);
+			$attributes[] = array(
+				"name" => "paymentObject",
+				"value" => 1
+			);
+
+			$itemVoucher['itemAttributes']['attributes'] = $attributes;
+			$orderBundle['cartItems']['items'][] = $itemVoucher;
+		}
+
+		// Handle discount
+		if (isset($orderBundle['cartItems']['items'])) {
+			$discount = $this->method_library->discountHelper->discoverDiscount($amount, $orderBundle['cartItems']['items']);
+			if ($discount > 0) {
+				$this->method_library->discountHelper->setOrderDiscount($discount);
+				$recalculatedPositions = $this->method_library->discountHelper->normalizeItems($orderBundle['cartItems']['items']);
+				$orderBundle['cartItems']['items'] = $recalculatedPositions;
+			}
+		}
+	}
+
+	$args = array(
+		'orderNumber' => $order_number . "_" . time(),
+		'amount' => $amount,
+		'returnUrl' => $return_url,
+		'jsonParams' => json_encode($jsonParams),
+	);
+
+	if (!empty($order_info['telephone'])) {
+		$args['orderPayerData'] = json_encode(array(
+			"mobilePhone" => $this->cleanPhoneNumber($order_info['telephone'])
+		));
+	}
+
+	if ($this->method_library->callbackType == "DYNAMIC") {
+		$args['dynamicCallbackUrl'] = $this->url->link('extension/payment/alfabank/callback') . "&order_id=" . $order_number;
+	}
+
+	if (defined('RBSPAYMENT_MANDATORY_CURRENCY') && RBSPAYMENT_MANDATORY_CURRENCY === true) {
+		$currency_code = $this->method_library->get_numeric_currency_code($order_info['currency_code']);
+		if (!empty($currency_code)) {
+			$args['currency'] = $currency_code;
+		}
+	}
+
+	if (!empty($order_info['customer_id']) && $order_info['customer_id'] > 0) {
+		$client_email = !empty($order_info['email']) ? $order_info['email'] : "";
+		$args['clientId'] = md5($order_info['customer_id'] . $client_email . $order_info['store_url']);
+	}
+
+	if ($this->method_library->enable_cart_options && $this->method_library->send_cart && !empty($orderBundle)) {
+		$args['taxSystem'] = $this->method_library->taxSystem;
+		$args['orderBundle']['orderCreationDate'] = date('c');
+		$args['orderBundle'] = json_encode($orderBundle);
+	}
+
+	if (!empty($this->method_library->token)) {
+		$decoded_credentials = base64_decode($this->method_library->token);
+		list($l, $p) = explode(':', $decoded_credentials);
+		$args['userName'] = $l;
+		$args['password'] = $p;
+	} else {
+		$args['userName'] = $this->method_library->login;
+		$args['password'] = $this->method_library->password;
+	}
+
+	if ($this->method_library->mode == 'test') {
+		$action_address = $this->method_library->test_url;
+	} else {
+		$action_address = $this->method_library->prod_url;
+		if (defined('RBSPAYMENT_PROD_URL_ALTERNATIVE_DOMAIN') && defined('RBSPAYMENT_PROD_URL_ALT_PREFIX')) {
+			if (substr($this->method_library->login, 0, strlen(RBSPAYMENT_PROD_URL_ALT_PREFIX)) == RBSPAYMENT_PROD_URL_ALT_PREFIX) {
+				$pattern = '/^https:\/\/[^\/]+/';
+				$action_address = preg_replace($pattern, rtrim(RBSPAYMENT_PROD_URL_ALTERNATIVE_DOMAIN, '/'), $action_address);
+			}
+		}
+	}
+
+	$method = $this->method_library->stage == 'two' ? 'registerPreAuth.do' : 'register.do';
+	$request = http_build_query($args, '', '&');
+	$response = $this->method_library->_sendGatewayData($request, $action_address . $method);
+
+	if ($this->method_library->logging) {
+		$this->method_library->logger($action_address, $method, $request, $response);
+	}
+
+	$response = json_decode($response, true);
+
+	if (isset($response['orderId'])) {
+		$comment = "Re-payment initiated from order history";
+		$this->model_checkout_order->addOrderHistory($order_number, $this->config->get('payment_alfabank_order_status_before_id'), $comment, false);
+	}
+
+	if (isset($response['errorCode'])) {
+		$this->document->setTitle($this->language->get('error_title'));
+		$data['header'] = $this->load->controller('common/header');
+		$data['column_left'] = $this->load->controller('common/column_left');
+		$data['column_right'] = $this->load->controller('common/column_right');
+		$data['content_top'] = $this->load->controller('common/content_top');
+		$data['button_continue'] = $this->language->get('error_continue');
+		$data['heading_title'] = $this->language->get('error_title') . ' #' . $response['errorCode'];
+		$data['text_error'] = $response['errorMessage'];
+		$data['continue'] = $this->url->link('account/order/info', 'order_id=' . $order_id, true);
+		$data['content_bottom'] = $this->load->controller('common/content_bottom');
+		$data['footer'] = $this->load->controller('common/footer');
+		$this->response->setOutput($this->get_template('error/alfabank', $data));
+	} else {
+		$this->response->redirect($response['formUrl']);
+	}
+}
+
 public function cron() {
 $debug = true;
 // orderStatus - По значению этого параметра определяется состояние заказа в платёжной системе.

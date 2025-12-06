@@ -9,4 +9,5 @@ $_['text_payment']	    = 'Online payment service is carried out in accordance wi
 JSC "ALFA-BANK".<br/>
 <br/>When you click Confirm Order, you will be redirected to the bank\'s payment page';
 $_['text_loading']	    = 'Loading...';
+$_['error_order_already_processed'] = 'This order has already been processed or paid.';
 ?>
