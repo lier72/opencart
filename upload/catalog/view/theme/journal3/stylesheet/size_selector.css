@@ -17,19 +17,14 @@
 
 /* Gender selector buttons */
 .size-gender-selector {
-    margin-bottom: 15px;
     display: flex;
     gap: 10px;
 }
 
 .btn-gender {
     padding: 8px 16px;
-    border: 1px solid #ddd;
-    background: #fff;
     cursor: pointer;
-    border-radius: 3px;
     font-size: 14px;
-    transition: all 0.3s ease;
 }
 
 .btn-gender:hover {
@@ -42,136 +37,132 @@
     border-color: #333;
 }
 
+/* Grid layout for size selector: label on left spanning rows, toolbar + sizes + error on right */
+#size-selector-container .form-group.product-option-radio {
+    display: grid;
+    grid-template-columns: 25% 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 8px 16px;
+    align-items: start;
+}
+
+#size-selector-container .form-group.product-option-radio > .control-label {
+    grid-column: 1;
+    grid-row: 1 / 4;
+    align-self: start;
+}
+
+/* Toolbar row: system buttons + size guide */
+#size-selector-container .form-group.product-option-radio > .size-toolbar {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+/* Size options row */
+#size-selector-container .form-group.product-option-radio > .size-options-row {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Error message row */
+#size-selector-container .form-group.product-option-radio > .size-error {
+    grid-column: 2;
+    grid-row: 3;
+    margin-top: 5px;
+}
+
+/* Has-error state styling */
+#size-selector-container .form-group.has-error .control-label {
+    color: #a94442;
+}
+
+#size-selector-container .form-group.has-error .radio .option-wrapper {
+    border-color: #a94442;
+}
+
+/* When gender selector is present, adjust grid for 4 rows */
+#size-selector-container .form-group.product-option-radio:has(.size-gender-selector) {
+    grid-template-rows: auto auto auto auto;
+}
+
+#size-selector-container .form-group.product-option-radio:has(.size-gender-selector) > .control-label {
+    grid-row: 1 / 5;
+}
+
+#size-selector-container .form-group.product-option-radio > .size-gender-selector {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    gap: 8px;
+}
+
+#size-selector-container .form-group.product-option-radio:has(.size-gender-selector) > .size-toolbar {
+    grid-row: 2;
+}
+
+#size-selector-container .form-group.product-option-radio:has(.size-gender-selector) > .size-options-row {
+    grid-row: 3;
+}
+
+#size-selector-container .form-group.product-option-radio:has(.size-gender-selector) > .size-error {
+    grid-row: 4;
+}
+
+
+
 /* Size system selector */
 .size-system-selector {
-    margin-bottom: 15px;
     display: flex;
     gap: 5px;
 }
 
 .btn-system {
     padding: 6px 12px;
-    border: 1px solid #ddd;
-    background: #f5f5f5;
     cursor: pointer;
-    border-radius: 3px;
     font-size: 13px;
-    transition: all 0.3s ease;
     min-width: 50px;
 }
 
 .btn-system:hover {
-    background: #e5e5e5;
+    background: #f5f5f5;
 }
 
 .btn-system.active {
-    background: #333;
+    background: rgb(225,90,40);
     color: #fff;
-    border-color: #333;
-}
-
-/* Size grid - Journal3 push-option style */
-.size-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.btn-size {
-    padding: 12px 8px;
-    border: 2px solid #ddd;
-    background: #fff;
-    cursor: pointer;
-    border-radius: 3px;
-    font-size: 14px;
-    font-weight: 500;
-    text-align: center;
-    transition: all 0.3s ease;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 50px;
-}
-
-.btn-size:hover:not(.out-of-stock) {
-    border-color: #333;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.btn-size.selected {
-    border-color: #333;
-    background: #333;
-    color: #fff;
-}
-
-.btn-size.out-of-stock {
-    opacity: 0.4;
-    cursor: not-allowed;
-    text-decoration: line-through;
-}
-
-.btn-size.low-stock {
-    border-color: #ff9800;
-}
-
-/* Size label */
-.size-label {
-    font-size: 15px;
-    font-weight: 600;
-}
-
-/* Stock indicators */
-.stock-indicator {
-    font-size: 11px;
-    margin-top: 2px;
-    display: block;
-}
-
-.btn-size.out-of-stock .stock-indicator {
-    color: #f44336;
-}
-
-.btn-size.low-stock .stock-indicator {
-    color: #ff9800;
-}
-
-.btn-size:not(.out-of-stock):not(.low-stock) .stock-indicator {
-    color: #4caf50;
 }
 
 /* Size guide link */
-.size-guide-link {
-    text-align: center;
-    margin-top: 15px;
-}
-
 .btn-size-guide {
-    display: inline-block;
-    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     color: #666;
     text-decoration: none;
-    border: 1px solid #ddd;
-    border-radius: 3px;
     font-size: 13px;
-    transition: all 0.3s ease;
+    padding: 6px 10px;
 }
 
 .btn-size-guide:hover {
     color: #333;
-    border-color: #999;
-    text-decoration: none;
+    text-decoration: underline;
 }
 
-.btn-size-guide i {
-    margin-right: 5px;
+/* Size options row */
+.size-options-row {
+    margin-top: 5px;
 }
 
 /* Size guide modal */
-.size-guide-modal .modal-body {
+/* .size-guide-modal .modal-body {
     padding: 20px;
 }
 
@@ -183,10 +174,85 @@
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 15px;
+} */
+
+/* Radio button style sizes (Journal3 compatible) */
+#size-selector-container .radio {
+    display: inline-block;
+    margin: 0 5px 5px 0;
+}
+
+#size-selector-container .radio label {
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+}
+
+#size-selector-container .radio input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+
+#size-selector-container .radio .option-wrapper:hover {
+    border-color: #999;
+    background: #f9f9f9;
+}
+
+/* Selected state - using class added by JavaScript */
+#size-selector-container .radio.selected .option-wrapper {
+    border-color: #333;
+    background: #333;
+    color: #fff;
+}
+
+#size-selector-container .radio.selected .option-wrapper .option-value {
+    color: #fff;
+}
+
+/* Also keep CSS-based :checked state as fallback */
+#size-selector-container .radio input[type="radio"]:checked + .option-wrapper {
+    border-color: #333;
+    background: #333;
+    color: #fff;
+}
+
+/* Focus state for accessibility */
+#size-selector-container .radio input[type="radio"]:focus + .option-wrapper {
+    box-shadow: 0 0 0 2px rgba(51, 51, 51, 0.2);
 }
 
 /* Responsive */
 @media (max-width: 768px) {
+    /* Stack layout on mobile */
+    #size-selector-container .form-group.product-option-radio {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        gap: 8px;
+    }
+
+    #size-selector-container .form-group.product-option-radio > .control-label {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    #size-selector-container .form-group.product-option-radio > .size-toolbar {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    #size-selector-container .form-group.product-option-radio > .size-options-row {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    #size-selector-container .form-group.product-option-radio > .size-error {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
     .size-grid {
         grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
         gap: 8px;
@@ -196,5 +262,11 @@
         padding: 10px 6px;
         font-size: 13px;
         min-height: 45px;
+    }
+
+    #size-selector-container .radio .option-wrapper {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-width: 45px;
     }
 }

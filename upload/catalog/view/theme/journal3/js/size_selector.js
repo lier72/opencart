@@ -15,6 +15,8 @@
 		this.currentSizeType = null;
 		this.selectedSize = null;
 		this.sizeData = null;
+		this.conversionTables = null;
+		this.lang = {};
 		this.init();
 	};
 
@@ -22,15 +24,16 @@
 		productId: null,
 		defaultSystem: 'EU',
 		showStock: true,
-		ajaxUrl: 'index.php?route=journal3/size_selector'
+		ajaxUrl: 'index.php?route=extension/module/size_selector'
 	};
 
 	SizeSelector.prototype = {
 		init: function() {
 			var self = this;
+			// console.log('SizeSelector: Initializing for product ID:', this.productId);
 
-			// Load size data from server
 			this.loadSizeData(function() {
+				// console.log('SizeSelector: Data loaded successfully, proceeding to render.');
 				self.render();
 				self.bindEvents();
 				self.hideStandardOptions();
@@ -40,6 +43,7 @@
 		loadSizeData: function(callback) {
 			var self = this;
 
+			// console.log('SizeSelector: Loading size data from URL:', this.options.ajaxUrl, 'with data:', { product_id: this.productId });
 			$.ajax({
 				url: this.options.ajaxUrl,
 				type: 'GET',
@@ -48,220 +52,200 @@
 				},
 				dataType: 'json',
 				success: function(response) {
-				console.log("Size selector AJAX response:", response);
-					if (response.status === 'success') {
-					console.log("Success! Size data:", response.response);
-						self.sizeData = response.response;
-						self.currentSystem = response.response.default_system || self.options.defaultSystem;
+					// console.log('SizeSelector: AJAX success. Server response:', response);
 
-						// Set default gender (first available)
-						if (response.response.genders && response.response.genders.length > 0) {
-							self.currentGender = response.response.genders[0];
+					if (response.status === 'success') {
+						// console.log('SizeSelector: Response status is "success".');
+						var data = response.data;
+						self.sizeData = data;
+						self.lang = data.lang || {};
+						self.conversionTables = data.conversion_tables || null;
+						self.currentSystem = data.default_system || self.options.defaultSystem;
+
+						if (data.genders && data.genders.length > 0) {
+							self.currentGender = data.genders[0];
+							// console.log('SizeSelector: Default gender set to:', self.currentGender);
+						} else {
+							console.warn('SizeSelector: No genders found in the response data.');
 						}
 
-						// Set size type from first gender's data
-						if (self.currentGender && response.response.size_data[self.currentGender]) {
-							self.currentSizeType = response.response.size_data[self.currentGender].size_type;
+						if (self.currentGender && data.size_data[self.currentGender]) {
+							self.currentSizeType = data.size_data[self.currentGender].size_type;
+							// console.log('SizeSelector: Default size type set to:', self.currentSizeType);
+						} else {
+							console.warn('SizeSelector: No size data found for the current gender:', self.currentGender);
 						}
 
 						if (callback) callback();
 					} else {
-						console.error('Size selector: Failed to load size data');
+						// console.error('SizeSelector: Response status was not "success". Hiding element.');
 						self.$element.hide();
 					}
 				},
-				error: function() {
-					console.error('Size selector: AJAX error loading size data');
+				error: function(xhr, status, error) {
+					console.error('SizeSelector: AJAX request failed.', { status: status, error: error });
+					// console.log('SizeSelector: Full server response for debugging:', xhr.responseText);
+					self.$element.hide();
 				}
 			});
 		},
 
-	render: function() {
-		console.log('render() called, sizeData:', this.sizeData, 'currentGender:', this.currentGender);
-		
-		if (!this.sizeData || !this.currentGender) {
-			console.log('Render aborted: missing data');
-			return;
-		}
-
-		var html = '';
-		var genderData = this.sizeData.size_data[this.currentGender];
-
-		if (!genderData) {
-			console.log('Render aborted: no genderData for', this.currentGender);
-			return;
-		}
-
-		console.log('Rendering size selector for gender:', this.currentGender, 'with data:', genderData);
-
-		// Use Journal3's standard form-group structure with push-option class
-		var requiredClass = genderData.required ? ' required' : '';
-		html += '<div class="form-group' + requiredClass + ' product-option-radio push-option">';
-		
-		// Option label - remove source system from name and show current system
-		var optionLabel = genderData.option_name.replace(/\s*\([A-Z]+\)\s*$/, ''); // Remove (US), (EU), etc from end
-		html += '<label class="control-label">' + optionLabel + ' (' + this.currentSystem + ')</label>';
-		
-		// Gender tabs (if multiple genders available)
-		if (this.sizeData.genders.length > 1) {
-			html += '<div class="size-gender-selector" style="margin-bottom: 10px;">';
-			this.sizeData.genders.forEach(function(gender) {
-				var activeClass = gender === this.currentGender ? ' active' : '';
-				var genderLabel = this.getGenderLabel(gender);
-				html += '<button type="button" class="btn btn-default' + activeClass + '" data-gender="' + gender + '" style="margin-right: 5px;">';
-				html += genderLabel;
-				html += '</button>';
-			}.bind(this));
-			html += '</div>';
-		}
-
-		// Size system tabs
-		var availableSystems = this.getAvailableSystems(genderData.size_type, this.currentGender);
-		if (availableSystems.length > 1) {
-			html += '<div class="size-system-selector" style="margin-bottom: 10px;">';
-			availableSystems.forEach(function(system) {
-				var activeClass = system === this.currentSystem ? ' active' : '';
-				html += '<button type="button" class="btn btn-default btn-sm btn-system' + activeClass + '" data-system="' + system + '" style="margin-right: 3px;">';
-				html += system;
-				html += '</button>';
-			}.bind(this));
-			html += '</div>';
-		}
-
-		// Container for size options using Journal3's structure
-		// Use custom-input-option prefix to avoid conflict with original Journal3 options
-		html += '<div id="custom-input-option' + genderData.product_option_id + '">';
-		html += this.renderSizeButtons(genderData);
-		html += '</div>';
-
-		// Size guide link
-		html += '<div style="margin-top: 10px; text-align: center;">';
-		html += '<a href="#" class="btn-size-guide" data-gender="' + this.currentGender + '" data-type="' + this.currentSizeType + '" style="font-size: 12px;">';
-		html += '<i class="fa fa-ruler"></i> Таблица размеров';
-		html += '</a>';
-		html += '</div>';
-
-		html += '</div>'; // Close form-group
-
-		console.log("Setting HTML, length:", html.length);
-		this.$element.html(html);
-		console.log("After setting HTML, first 200 chars:", this.$element.html().substring(0, 200));
-	},
-
-	renderSizeButtons: function(genderData) {
-		console.log('renderSizeButtons called with:', genderData);
-		var html = '';
-		var sourceSystem = genderData.source_system;
-		var sizes = genderData.sizes;
-
-		console.log('Source system:', sourceSystem, 'Current system:', this.currentSystem);
-		console.log('Total sizes:', sizes.length);
-
-		var renderedCount = 0;
-		sizes.forEach(function(sizeItem) {
-			// Skip items with zero or negative quantity if subtract is enabled
-			if (sizeItem.subtract && sizeItem.quantity <= 0) {
-				console.log('Skipping out of stock size:', sizeItem.size);
-				return; // Skip this size
+		render: function() {
+			if (!this.sizeData || !this.currentGender) {
+				// console.warn('SizeSelector: Render aborted. Missing sizeData or currentGender.', { hasSizeData: !!this.sizeData, hasCurrentGender: !!this.currentGender });
+				return;
 			}
 
-			// Convert size to current system if needed
-			var displaySize = this.convertSize(
-				sizeItem.size,
-				sourceSystem,
-				this.currentSystem,
-				this.currentGender,
-				this.currentSizeType
-			);
+			var html = '';
+			var genderData = this.sizeData.size_data[this.currentGender];
 
-			if (!displaySize) {
-				displaySize = sizeItem.size; // Fallback to original
+			if (!genderData) {
+				// console.warn('SizeSelector: Render aborted. No size data available for the current gender:', this.currentGender);
+				return;
 			}
 
-			console.log('Rendering size:', sizeItem.size, '->', displaySize);
+			// console.log('SizeSelector: Rendering UI for gender:', this.currentGender, 'and system:', this.currentSystem);
+			var requiredClass = genderData.required ? ' required' : '';
+			html += '<div class="form-group' + requiredClass + ' product-option-radio push-option">';
 
-			// Stock status indicator (optional - only show if low stock)
-			var stockText = '';
-			if (this.sizeData.show_stock && sizeItem.subtract) {
-				if (sizeItem.quantity <= 3) {
-					stockText = ' <small style="color: #ff9800;">(' + sizeItem.quantity + ')</small>';
+			var optionLabel = genderData.option_name.replace(/\s*\([A-Z]+\)\s*$/, '');
+			html += '<label class="control-label">' + optionLabel + ' (' + this.currentSystem + ')</label>';
+
+			// Gender selector (if multiple genders)
+			if (this.sizeData.genders.length > 1) {
+				html += '<div class="size-gender-selector">';
+				this.sizeData.genders.forEach(function(gender) {
+					var activeClass = gender === this.currentGender ? ' active' : '';
+					var genderLabel = this.getGenderLabel(gender);
+					html += '<button type="button" class="btn btn-default btn-gender' + activeClass + '" data-gender="' + gender + '">';
+					html += genderLabel;
+					html += '</button>';
+				}.bind(this));
+				html += '</div>';
+			}
+
+			// Row 1: System selector + Size guide button
+			var availableSystems = this.getAvailableSystems(genderData.size_type, this.currentGender);
+			var sizeGuideText = this.lang.size_guide || 'Таблица размеров';
+
+			html += '<div class="size-toolbar">';
+
+			if (availableSystems.length > 1) {
+				html += '<div class="size-system-selector">';
+				availableSystems.forEach(function(system) {
+					var activeClass = system === this.currentSystem ? ' active' : '';
+					html += '<button type="button" class="btn btn-default btn-sm btn-system' + activeClass + '" data-system="' + system + '">';
+					html += system;
+					html += '</button>';
+				}.bind(this));
+				html += '</div>';
+			}
+
+			html += '<a href="#" class="btn-size-guide" data-gender="' + this.currentGender + '" data-type="' + this.currentSizeType + '">';
+			html += '<i class="fa fa-ruler"></i> ' + sizeGuideText;
+			html += '</a>';
+
+			html += '</div>';
+
+			// Row 2: Size buttons
+			html += '<div id="custom-input-option' + genderData.product_option_id + '" class="size-options-row">';
+			html += this.renderSizeButtons(genderData);
+			html += '</div>';
+
+			html += '</div>';
+
+			this.$element.html(html);
+		},
+
+		renderSizeButtons: function(genderData) {
+			var html = '';
+			var sourceSystem = genderData.source_system;
+			var sizes = genderData.sizes;
+
+			sizes.forEach(function(sizeItem) {
+				if (sizeItem.subtract && sizeItem.quantity <= 0) {
+					return;
 				}
-			}
 
-			// Create Journal3-style radio option
-			html += '<div class="radio">';
-			html += '<label>';
-			html += '<input type="radio" name="option[' + genderData.product_option_id + ']" ';
-			html += 'value="' + sizeItem.option_value_id + '" ';
-			html += 'title="' + displaySize + '" aria-label="' + displaySize + '" ';
-			html += 'data-size="' + displaySize + '" data-original-size="' + sizeItem.size + '" />';
-			html += '<span class="option-wrapper">';
-			html += '<span class="option-value">' + displaySize + stockText + '</span>';
-			html += '</span>';
-			html += '</label>';
-			html += '</div>';
-			
-			renderedCount++;
-		}.bind(this));
+				var displaySize = this.convertSize(
+					sizeItem.size,
+					sourceSystem,
+					this.currentSystem,
+					this.currentGender,
+					this.currentSizeType
+				);
 
-		console.log('Rendered', renderedCount, 'sizes, HTML length:', html.length);
-		return html;
-	},
-	bindEvents: function() {
-		var self = this;
-
-		// Gender selection
-		this.$element.on('click', '.btn-gender', function(e) {
-			e.preventDefault();
-			var gender = $(this).data('gender');
-			self.switchGender(gender);
-		});
-
-		// System selection
-		this.$element.on('click', '.btn-system', function(e) {
-			e.preventDefault();
-			console.log("btn-system clicked! Event:", e);
-			var system = $(this).data('system');
-			self.switchSystem(system);
-			console.log("System button clicked:", system);
-		});
-
-		// Radio button change - sync to original hidden option and trigger Journal3's price update
-		this.$element.on('change', 'input[type="radio"]', function() {
-			var $radio = $(this);
-			var optionValueId = $radio.val();
-			var optionName = $radio.attr('name'); // e.g., "option[991]"
-
-			console.log('Size selected:', optionValueId, $radio.data('size'), 'syncing to original option:', optionName);
-
-			// Find and check the corresponding radio button in the hidden original Journal3 options
-			// Use attribute selector with exact match
-			var $originalRadio = $('.product-options input[type="radio"][name="' + optionName + '"][value="' + optionValueId + '"]');
-			console.log('Found original radio:', $originalRadio.length, $originalRadio);
-
-			if ($originalRadio.length > 0) {
-				$originalRadio.prop('checked', true).trigger('change');
-				console.log('Successfully synced to original option and triggered change');
-			} else {
-				console.error('Could not find original radio button for', optionName, 'value', optionValueId);
-				// Try searching in entire document, not just .product-options
-				var $fallback = $('input[type="radio"][name="' + optionName + '"][value="' + optionValueId + '"]').not('#size-selector-container input');
-				console.log('Fallback search found:', $fallback.length, $fallback);
-				if ($fallback.length > 0) {
-					$fallback.prop('checked', true).trigger('change');
-					console.log('Successfully synced via fallback');
+				if (!displaySize) {
+					displaySize = sizeItem.size;
 				}
-			}
-		});
 
-		// Size guide
-		this.$element.on('click', '.btn-size-guide', function(e) {
-			e.preventDefault();
-			var gender = $(this).data('gender');
-			var sizeType = $(this).data('type');
-			self.showSizeGuide(gender, sizeType);
-		});
-	},
+				// var stockText = '';
+				// if (this.sizeData.show_stock && sizeItem.subtract) {
+				// 	if (sizeItem.quantity <= 3) {
+				// 		stockText = ' <small style="color: #ff9800;">(' + sizeItem.quantity + ')</small>';
+				// 	}
+				// }
+
+				html += '<div class="radio">';
+				html += '<label>';
+				html += '<input type="radio" name="option[' + genderData.product_option_id + ']" ';
+				html += 'value="' + sizeItem.option_value_id + '" ';
+				html += 'title="' + displaySize + '" aria-label="' + displaySize + '" ';
+				html += 'data-size="' + displaySize + '" data-original-size="' + sizeItem.size + '" />';
+				html += '<span class="option-wrapper">';
+				html += '<span class="option-value">' + displaySize /* + stockText */ + '</span>';
+				html += '</span>';
+				html += '</label>';
+				html += '</div>';
+			}.bind(this));
+
+			return html;
+		},
+
+		bindEvents: function() {
+			var self = this;
+
+			this.$element.on('click', '.btn-gender', function(e) {
+				e.preventDefault();
+				var gender = $(this).data('gender');
+				self.switchGender(gender);
+			});
+
+			this.$element.on('click', '.btn-system', function(e) {
+				e.preventDefault();
+				var system = $(this).data('system');
+				self.switchSystem(system);
+			});
+
+			this.$element.on('change', 'input[type="radio"]', function() {
+				var $radio = $(this);
+				var optionValueId = $radio.val();
+				var optionName = $radio.attr('name');
+
+				// Remove 'selected' class from all options and add to current
+				self.$element.find('.radio').removeClass('selected');
+				$radio.closest('.radio').addClass('selected');
+
+				// Find the original hidden radio (not inside size-selector-container)
+				var $originalRadio = $('.product-options input[type="radio"][name="' + optionName + '"][value="' + optionValueId + '"]')
+					.not('#size-selector-container input');
+
+				if ($originalRadio.length > 0) {
+					// Use triggerHandler to avoid bubbling and infinite loops
+					$originalRadio.prop('checked', true);
+					// Trigger native change event without jQuery to avoid recursion
+					$originalRadio[0].dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			});
+
+			this.$element.on('click', '.btn-size-guide', function(e) {
+				e.preventDefault();
+				var gender = $(this).data('gender');
+				var sizeType = $(this).data('type');
+				self.showSizeGuide(gender, sizeType);
+			});
+		},
+
 		switchGender: function(gender) {
 			if (gender === this.currentGender) {
 				return;
@@ -270,7 +254,6 @@
 			this.currentGender = gender;
 			this.selectedSize = null;
 
-			// Update size type
 			if (this.sizeData.size_data[gender]) {
 				this.currentSizeType = this.sizeData.size_data[gender].size_type;
 			}
@@ -279,51 +262,83 @@
 		},
 
 		switchSystem: function(system) {
-		console.log("switchSystem called:", system, "current:", this.currentSystem);
 			if (system === this.currentSystem) {
-			console.log("Already on this system, ignoring");
 				return;
 			}
 
 			this.currentSystem = system;
-		console.log("Switched to system:", system, "now rendering...");
 			this.render();
 		},
 
-	convertSize: function(value, fromSystem, toSystem, gender, sizeType) {
-		if (fromSystem === toSystem) {
-			return value;
-		}
+		convertSize: function(value, fromSystem, toSystem, gender, sizeType) {
+			if (fromSystem === toSystem) {
+				return value;
+			}
 
-		var tables = this.getConversionTables(gender, sizeType);
-		if (!tables || !tables[fromSystem] || !tables[toSystem]) {
-			return value;
-		}
+			var tables = this.getConversionTables(gender, sizeType);
+			if (!tables) {
+				// console.warn('SizeSelector: No conversion tables found for', gender, sizeType);
+				return value;
+			}
+			if (!tables[fromSystem]) {
+				// console.warn('SizeSelector: No source system', fromSystem, 'in tables:', Object.keys(tables));
+				return value;
+			}
+			if (!tables[toSystem]) {
+				// console.warn('SizeSelector: No target system', toSystem, 'in tables:', Object.keys(tables));
+				return value;
+			}
 
-		var index = tables[fromSystem].indexOf(value);
-		if (index === -1) {
-			index = tables[fromSystem].indexOf(value.toString());
-		}
-		if (index === -1) {
-			return value;
-		}
+			var index = tables[fromSystem].indexOf(value);
+			if (index === -1) {
+				index = tables[fromSystem].indexOf(value.toString());
+			}
+			if (index === -1) {
+				// Try fuzzy match for fractional sizes like "35 2/3"
+				for (var i = 0; i < tables[fromSystem].length; i++) {
+					if (tables[fromSystem][i].toString().indexOf(value) === 0 ||
+						value.toString().indexOf(tables[fromSystem][i]) === 0) {
+						index = i;
+						break;
+					}
+				}
+			}
+			if (index === -1) {
+				// console.warn('SizeSelector: Size', value, 'not found in', fromSystem, 'table');
+				return value;
+			}
 
-		return tables[toSystem][index] || value;
-	},
+			return tables[toSystem][index] || value;
+		},
 
-	getConversionTables: function(gender, sizeType) {
-		if (typeof SizeConversionTables === 'undefined') {
+		getConversionTables: function(gender, sizeType) {
+			// First try to get from database tables (v2)
+			if (this.conversionTables) {
+				var tableKey = gender + '_' + sizeType;
+				if (this.conversionTables[tableKey]) {
+					return this.conversionTables[tableKey];
+				}
+
+				// Try unisex fallback
+				var unisexKey = 'unisex_' + sizeType;
+				if (this.conversionTables[unisexKey]) {
+					return this.conversionTables[unisexKey];
+				}
+			}
+
+			// Fallback to hardcoded tables
+			if (typeof SizeConversionTables === 'undefined') {
+				return null;
+			}
+			if (sizeType === 'shoes') {
+				return (gender === 'women') ? SizeConversionTables.women_shoes : SizeConversionTables.universal_shoes;
+			} else if (sizeType === 'apparel') {
+				return SizeConversionTables.apparel;
+			}
 			return null;
-		}
-		if (sizeType === 'shoes') {
-			return (gender === 'women') ? SizeConversionTables.women_shoes : SizeConversionTables.universal_shoes;
-		} else if (sizeType === 'apparel') {
-			return SizeConversionTables.apparel;
-		}
-		return null;
-	},
+		},
 
-	getAvailableSystems: function(sizeType, gender) {
+		getAvailableSystems: function(sizeType, gender) {
 			if (sizeType === 'shoes') {
 				return ['EU', 'US', 'UK', 'mm'];
 			} else if (sizeType === 'apparel') {
@@ -334,102 +349,170 @@
 
 		getGenderLabel: function(gender) {
 			var labels = {
-				'women': '👗 Женские',
-				'universal': '👔 Универсальные',
-				'unisex': '⚡ Унисекс'
+				'women': this.lang.gender_women || 'Женские',
+				'men': this.lang.gender_men || 'Мужские',
+				'kids': this.lang.gender_kids || 'Детские',
+				'universal': this.lang.gender_universal || 'Универсальные',
+				'unisex': this.lang.gender_unisex || 'Унисекс'
 			};
 			return labels[gender] || gender;
 		},
 
-	hideStandardOptions: function() {
-		console.log('hideStandardOptions called');
-		// Hide the standard OpenCart option display for size options
-		if (!this.sizeData) {
-			console.log('No sizeData, aborting hide');
-			return;
-		}
+		hideStandardOptions: function() {
+			if (!this.sizeData) {
+				return;
+			}
 
-		Object.keys(this.sizeData.size_data).forEach(function(gender) {
-			var productOptionId = this.sizeData.size_data[gender].product_option_id;
-			console.log('Trying to hide option ID:', productOptionId);
+			var self = this;
 
-			// Hide the standard option container
-			var $target = $('#input-option' + productOptionId).closest('.form-group');
-			console.log('Found elements to hide:', $target.length, $target);
-			$target.hide();
-		}.bind(this));
-	},
+			Object.keys(this.sizeData.size_data).forEach(function(gender) {
+				var productOptionId = this.sizeData.size_data[gender].product_option_id;
+				// console.log('SizeSelector: Hiding original option group for product_option_id:', productOptionId);
+				var $originalFormGroup = $('#input-option' + productOptionId).closest('.form-group');
+				$originalFormGroup.hide();
+
+				// Store for validation observer
+				self.productOptionId = productOptionId;
+
+				// Set up MutationObserver to detect error messages
+				self.observeErrors($originalFormGroup[0], productOptionId);
+			}.bind(this));
+		},
+
+		observeErrors: function(targetNode, productOptionId) {
+			if (!targetNode) return;
+
+			var self = this;
+
+			// Create observer to watch for .text-danger being added
+			var observer = new MutationObserver(function(mutations) {
+				mutations.forEach(function(mutation) {
+					mutation.addedNodes.forEach(function(node) {
+						if (node.nodeType === 1 && $(node).hasClass('text-danger')) {
+							// Error message was added to hidden original option
+							var errorText = $(node).text();
+							self.showError(errorText);
+						}
+					});
+
+					// Also check for has-error class being added
+					if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+						var $target = $(mutation.target);
+						if ($target.hasClass('has-error')) {
+							self.$element.find('.form-group').addClass('has-error');
+						} else {
+							self.$element.find('.form-group').removeClass('has-error');
+							self.clearError();
+						}
+					}
+				});
+			});
+
+			// Observe for child additions and attribute changes
+			observer.observe(targetNode, {
+				childList: true,
+				subtree: true,
+				attributes: true,
+				attributeFilter: ['class']
+			});
+
+			// Store observer reference for cleanup
+			this.errorObserver = observer;
+		},
+
+		showError: function(message) {
+			// Remove existing error
+			this.$element.find('.size-error').remove();
+
+			// Add error message
+			this.$element.find('.form-group').addClass('has-error');
+			this.$element.find('.size-options-row').after('<div class="size-error text-danger">' + message + '</div>');
+
+			// Scroll to error
+			try {
+				$('html, body').animate({
+					scrollTop: this.$element.offset().top - $('header').height() - 20
+				}, 'slow');
+			} catch (e) {}
+		},
+
+		clearError: function() {
+			this.$element.find('.form-group').removeClass('has-error');
+			this.$element.find('.size-error').remove();
+		},
+
 		showSizeGuide: function(gender, sizeType) {
 			var self = this;
 
 			$.ajax({
-				url: 'index.php?route=journal3/size_selector/getSizeGuide',
+				url: 'index.php?route=extension/module/size_selector/getSizeGuide',
 				type: 'GET',
 				data: {
 					gender: gender,
 					size_type: sizeType,
-					category_id: 0 // TODO: Get from product
+					category_id: 0
 				},
 				dataType: 'json',
 				success: function(response) {
 					if (response.status === 'success') {
-						self.renderSizeGuideModal(response.response);
+						self.renderSizeGuideModal(response.data);
 					}
 				}
 			});
 		},
 
 		renderSizeGuideModal: function(data) {
+			var genderLabel = this.getGenderLabel(data.gender);
+			var sizeTypeLabel = data.size_type === 'shoes' ? 'обуви' : 'одежды';
+			var modalTitle = 'Таблица размеров ' + sizeTypeLabel + ' (' + genderLabel + ')';
+
 			var modalHtml = '<div class="modal fade size-guide-modal" tabindex="-1" role="dialog">';
 			modalHtml += '<div class="modal-dialog modal-lg" role="document">';
 			modalHtml += '<div class="modal-content">';
 			modalHtml += '<div class="modal-header">';
 			modalHtml += '<button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>';
-			modalHtml += '<h4 class="modal-title">Таблица размеров</h4>';
+			modalHtml += '<h4 class="modal-title">' + modalTitle + '</h4>';
 			modalHtml += '</div>';
 			modalHtml += '<div class="modal-body">';
 
-			// Size conversion tables for shoes
-			if (data.size_tables) {
+			if (data.size_type === 'apparel' && data.measurements) {
+				modalHtml += this.renderMeasurementsTable(data.measurements, data.gender, data.size_tables);
+			}
+
+			if (data.size_type === 'shoes' && data.size_tables) {
 				modalHtml += this.renderSizeTable(data.size_tables, data.gender);
 			}
 
-			// Measurements for apparel
-			if (data.measurements) {
-				modalHtml += this.renderMeasurementsTable(data.measurements, data.gender);
-			}
-
-			// Custom guide content
-			if (data.guide_content) {
+/* 			if (data.guide_content) {
 				modalHtml += '<div class="guide-content">' + data.guide_content + '</div>';
-			}
+			} */
 
 			modalHtml += '</div>';
 			modalHtml += '</div></div></div>';
 
-			// Remove existing modal if any
 			$('.size-guide-modal').remove();
-
-			// Append and show
 			$('body').append(modalHtml);
 			$('.size-guide-modal').modal('show');
 		},
 
 		renderSizeTable: function(tables, gender) {
+			var lang = this.lang;
+			var title = lang.size_chart_shoes || 'Соответствие размеров обуви';
+			var mmLabel = lang.millimeters || 'Миллиметры';
+			var hint = lang.recommendation || 'Если вы сомневаетесь в своем размере, рекомендуем измерить стельку обуви, которая подходит вам идеально и сравнить его с размером обуви в миллиметрах.';
+
 			var html = '<div class="size-conversion-table">';
-			html += '<h5>Соответствие размеров обуви</h5>';
+			html += '<h5>' + title + '</h5>';
 			html += '<table class="table table-bordered table-sm">';
 			html += '<thead><tr>';
 
-			// Headers
 			Object.keys(tables).forEach(function(system) {
-				var label = system === 'mm' ? 'Миллиметры' : system;
+				var label = system === 'mm' ? mmLabel : system;
 				html += '<th>' + label + '</th>';
 			});
 
 			html += '</tr></thead><tbody>';
 
-			// Get max length
 			var maxLength = 0;
 			Object.keys(tables).forEach(function(system) {
 				if (tables[system].length > maxLength) {
@@ -437,7 +520,6 @@
 				}
 			});
 
-			// Rows
 			for (var i = 0; i < maxLength; i++) {
 				html += '<tr>';
 				Object.keys(tables).forEach(function(system) {
@@ -448,26 +530,64 @@
 			}
 
 			html += '</tbody></table>';
-			html += '<p class="text-muted"><small>Если вы сомневаетесь в своем размере, рекомендуем измерить стельку обуви, которая подходит вам идеально и сравнить его с размером обуви в миллиметрах.</small></p>';
+			html += '<p class="text-muted"><small>' + hint + '</small></p>';
 			html += '</div>';
 
 			return html;
 		},
 
-		renderMeasurementsTable: function(measurements, gender) {
+		renderMeasurementsTable: function(measurements, gender, sizeTables) {
+			var lang = this.lang;
+			var title = lang.measurements || 'Таблица размеров одежды';
+			var chestLabel = lang.chest_waist || 'Рост / Обхват груди (см)';
+			var waistLabel = lang.chest_waist_lower || 'Рост / Обхват талии (см)';
+
+			// Determine which size systems to show
+			var systems = [];
+			if (sizeTables) {
+				// Show Asian, EU, US in that order if available
+				['Asian', 'EU', 'US'].forEach(function(sys) {
+					if (sizeTables[sys]) {
+						systems.push(sys);
+					}
+				});
+			}
+
 			var html = '<div class="measurements-table">';
-			html += '<h5>Размерные измерения</h5>';
+			html += '<h5>' + title + '</h5>';
+			html += '<div class="table-responsive">';
 			html += '<table class="table table-bordered table-sm">';
 			html += '<thead><tr>';
-			html += '<th>Размер</th>';
-			html += '<th>Рост / Обхват груди (см)</th>';
-			html += '<th>Рост / Обхват талии (см)</th>';
+
+			// Size system headers
+			systems.forEach(function(sys) {
+				html += '<th>' + sys + '</th>';
+			});
+
+			// Measurement headers
+			html += '<th>' + chestLabel + '</th>';
+			html += '<th>' + waistLabel + '</th>';
 			html += '</tr></thead><tbody>';
 
-			Object.keys(measurements).forEach(function(size) {
-				var measure = measurements[size];
+			// Get measurement keys (Asian sizes like XS, S, M, L, etc.)
+			var measurementKeys = Object.keys(measurements);
+
+			measurementKeys.forEach(function(asianSize, index) {
+				var measure = measurements[asianSize];
 				html += '<tr>';
-				html += '<td><strong>' + size + '</strong></td>';
+
+				// Size conversions for each system
+				systems.forEach(function(sys) {
+					var sizeValue = '';
+					if (sizeTables && sizeTables[sys] && sizeTables[sys][index] !== undefined) {
+						sizeValue = sizeTables[sys][index];
+					} else if (sys === 'Asian') {
+						sizeValue = asianSize;
+					}
+					html += '<td><strong>' + sizeValue + '</strong></td>';
+				});
+
+				// Measurements
 				html += '<td>' + (measure.chest || '') + '</td>';
 				html += '<td>' + (measure.waist || '') + '</td>';
 				html += '</tr>';
@@ -475,12 +595,12 @@
 
 			html += '</tbody></table>';
 			html += '</div>';
+			html += '</div>';
 
 			return html;
 		}
 	};
 
-	// jQuery plugin
 	$.fn.sizeSelector = function(options) {
 		return this.each(function() {
 			var $this = $(this);
@@ -491,18 +611,5 @@
 			}
 		});
 	};
-
-	// Auto-initialize on product pages
-	$(document).ready(function() {
-		if ($('.product-info').length > 0) {
-			var productId = $('input[name="product_id"]').val();
-
-			if (productId && $('#size-selector-container').length > 0) {
-				$('#size-selector-container').sizeSelector({
-					productId: productId
-				});
-			}
-		}
-	});
 
 })(jQuery);

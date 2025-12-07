@@ -299,33 +299,33 @@
                   </div>
                 {% endif %}
 
-                {# === SIZE SELECTOR MODULE === #}
-                {% if product_id %}
-
-                <div id="size-selector-container" class="size-selector-widget" data-product-id="{{ product_id }}">
-                  <div class="size-selector-loading">
-                    <i class="fa fa-spinner fa-spin"></i> Загрузка размеров...
-                  </div>
-                </div>
-
-                <script src="catalog/view/theme/journal3/js/size_tables.js"></script>
-                <script src="catalog/view/theme/journal3/js/size_selector.js"></script>
-
-                <script>
-                $(document).ready(function() {
-                  if ($('#size-selector-container').length > 0) {
-                    $('#size-selector-container').sizeSelector({
-                      productId: {{ product_id }}
-                    });
-                  }
-                });
-                </script>
-                {% endif %}
-                {# === END SIZE SELECTOR === #}
-
                 {% if options %}
                   <div class="product-options">
                     <h3 class="options-title title">{{ text_option }}</h3>
+
+                    {# === SIZE SELECTOR MODULE === #}
+                    {% if product_id %}
+                    <link rel="stylesheet" href="catalog/view/theme/journal3/stylesheet/size_selector.css" />
+                    <div id="size-selector-container" class="size-selector-widget" data-product-id="{{ product_id }}">
+                      <div class="size-selector-loading">
+                        <i class="fa fa-spinner fa-spin"></i> Загрузка размеров...
+                      </div>
+                    </div>
+
+                    <script src="catalog/view/theme/journal3/js/size_selector.js"></script>
+
+                    <script>
+                    $(document).ready(function() {
+                      if ($('#size-selector-container').length > 0) {
+                        $('#size-selector-container').sizeSelector({
+                          productId: {{ product_id }}
+                        });
+                      }
+                    });
+                    </script>
+                    {% endif %}
+                    {# === END SIZE SELECTOR === #}
+
                     {% for option in options %}
                       {% if option.type == 'select' %}
                         <div class="form-group{% if option.required %} required {% endif %} product-option-{{ option.type }} {% if journal3.get(stylePrefix ~ 'OptionsPushSelect') %}push-option{% endif %}">

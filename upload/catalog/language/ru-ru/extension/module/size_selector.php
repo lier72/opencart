@@ -7,6 +7,8 @@ $_['heading_title'] = 'Выбор размера';
 $_['text_select_size'] = 'Выберите размер';
 $_['text_size_guide'] = 'Таблица размеров';
 $_['text_women'] = 'Женские';
+$_['text_men'] = 'Мужские';
+$_['text_kids'] = 'Детские';
 $_['text_universal'] = 'Универсальные';
 $_['text_unisex'] = 'Унисекс';
 $_['text_in_stock'] = 'В наличии';
@@ -34,3 +36,6 @@ $_['text_system_asian'] = 'Asian';
 // Errors
 $_['error_no_size_selected'] = 'Пожалуйста, выберите размер';
 $_['error_size_not_available'] = 'Выбранный размер недоступен';
+
+// Loading
+$_['text_loading'] = 'Загрузка размеров...';

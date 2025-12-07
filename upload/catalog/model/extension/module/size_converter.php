@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Journal3 Size Converter Model
+ * Size Converter Model
  * Handles size conversion between different sizing systems
  *
  * Conversion systems:
@@ -12,7 +12,7 @@
  * - women: Women's sizing
  * - universal: Men's/Unisex sizing (same table for both)
  */
-class ModelJournal3SizeConverter extends Model {
+class ModelExtensionModuleSizeConverter extends Model {
 
 	/**
 	 * Women's Shoe Sizes
@@ -41,7 +41,7 @@ class ModelJournal3SizeConverter extends Model {
 	 * Asian L = EU M = US S (offset conversion)
 	 */
 	private $apparel_men = array(
-		'Asian' => array('XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL'),
+		'Asian' => array('XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'),
 		'EU'    => array('XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'),
 		'US'    => array('XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'),
 		'measurements' => array(
@@ -61,9 +61,9 @@ class ModelJournal3SizeConverter extends Model {
 	 * Asian L = EU M = US S (offset conversion)
 	 */
 	private $apparel_women = array(
-		'Asian' => array('XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'),
+		'Asian' => array('XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'),
 		'EU'    => array('XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'),
-		'US'    => array('XXXS', 'XXS', 'XS', 'S', 'M', 'L', 'XL'),
+		'US'    => array('3XS', 'XXS', 'XS', 'S', 'M', 'L', 'XL'),
 		'measurements' => array(
 			'XS'   => array('chest' => '155 / 80', 'waist' => '155 / 64'),
 			'S'    => array('chest' => '160 / 84', 'waist' => '160 / 68'),
@@ -171,7 +171,7 @@ class ModelJournal3SizeConverter extends Model {
 	 * @return array|false Measurements array or false
 	 */
 	public function getMeasurements($gender) {
-		if ($gender === 'universal' || $gender === 'unisex') {
+		if ($gender === 'universal' || $gender === 'unisex' || $gender === 'men' || $gender === 'kids') {
 			return $this->apparel_men['measurements'];
 		} elseif ($gender === 'women') {
 			return $this->apparel_women['measurements'];
@@ -261,13 +261,13 @@ class ModelJournal3SizeConverter extends Model {
 		if ($size_type === 'shoes') {
 			if ($gender === 'women') {
 				return $this->women_shoes;
-			} elseif ($gender === 'universal' || $gender === 'unisex') {
+			} elseif ($gender === 'universal' || $gender === 'unisex' || $gender === 'men' || $gender === 'kids') {
 				return $this->universal_shoes;
 			}
 		} elseif ($size_type === 'apparel') {
 			if ($gender === 'women') {
 				return $this->apparel_women;
-			} elseif ($gender === 'universal' || $gender === 'unisex') {
+			} elseif ($gender === 'universal' || $gender === 'unisex' || $gender === 'men' || $gender === 'kids') {
 				return $this->apparel_men;
 			}
 		}
@@ -371,4 +371,4 @@ class ModelJournal3SizeConverter extends Model {
 	}
 }
 
-class_alias('ModelJournal3SizeConverter', '\Opencart\Catalog\Model\Journal3\SizeConverter');
+class_alias('ModelExtensionModuleSizeConverter', '\Opencart\Catalog\Model\Extension\Module\SizeConverter');

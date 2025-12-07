@@ -1,0 +1,542 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="button" id="button-save" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-list"></i> {{ heading_title }}</h3>
+      </div>
+      <div class="panel-body">
+        <ul class="nav nav-tabs">
+          <li class="active"><a href="#tab-options" data-toggle="tab">{{ tab_option_mapping }}</a></li>
+          {% if v2_installed %}
+          <li><a href="#tab-categories" data-toggle="tab">{{ tab_category_mapping }}</a></li>
+          <li><a href="#tab-tables" data-toggle="tab">{{ tab_conversion_tables }}</a></li>
+          {% endif %}
+        </ul>
+        <div class="tab-content">
+          <!-- Option Mapping Tab -->
+          <div class="tab-pane active" id="tab-options">
+            {% if not v2_installed %}
+            <div class="alert alert-info">
+              <i class="fa fa-info-circle"></i> {{ help_category_mapping }}
+              <button type="button" id="btn-install-v2" class="btn btn-success btn-sm" style="margin-left: 15px;">
+                <i class="fa fa-download"></i> {{ button_install_v2 }}
+              </button>
+            </div>
+            {% endif %}
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover">
+                <thead>
+                  <tr>
+                    <td class="text-center" style="width: 50px;">{{ column_enabled }}</td>
+                    <td class="text-left">{{ column_option }}</td>
+                    <td class="text-left">{{ column_type }}</td>
+                    <td class="text-left">{{ column_gender }}</td>
+                    <td class="text-left">{{ column_size_type }}</td>
+                    <td class="text-left">{{ column_source_system }}</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for option in options %}
+                  {% if option.type == 'radio' or option.type == 'select' or option.type == 'checkbox' %}
+                  <tr>
+                    <td class="text-center">
+                      <input type="checkbox" name="mappings[{{ option.option_id }}][enabled]" value="1" {% if option.mapped %}checked{% endif %} />
+                    </td>
+                    <td class="text-left">{{ option.name }}</td>
+                    <td class="text-left">{{ option.type }}</td>
+                    <td class="text-left">
+                      <select name="mappings[{{ option.option_id }}][gender]" class="form-control">
+                        <option value="women" {% if option.gender == 'women' %}selected{% endif %}>{{ text_women }}</option>
+                        <option value="men" {% if option.gender == 'men' %}selected{% endif %}>{{ text_men }}</option>
+                        <option value="unisex" {% if option.gender == 'unisex' %}selected{% endif %}>{{ text_unisex }}</option>
+                        <option value="kids" {% if option.gender == 'kids' %}selected{% endif %}>{{ text_kids }}</option>
+                      </select>
+                    </td>
+                    <td class="text-left">
+                      <select name="mappings[{{ option.option_id }}][size_type]" class="form-control">
+                        <option value="shoes" {% if option.size_type == 'shoes' %}selected{% endif %}>{{ text_shoes }}</option>
+                        <option value="apparel" {% if option.size_type == 'apparel' %}selected{% endif %}>{{ text_apparel }}</option>
+                      </select>
+                    </td>
+                    <td class="text-left">
+                      <select name="mappings[{{ option.option_id }}][source_system]" class="form-control">
+                        <option value="EU" {% if option.source_system == 'EU' %}selected{% endif %}>EU</option>
+                        <option value="US" {% if option.source_system == 'US' %}selected{% endif %}>US</option>
+                        <option value="UK" {% if option.source_system == 'UK' %}selected{% endif %}>UK</option>
+                        <option value="Asian" {% if option.source_system == 'Asian' %}selected{% endif %}>Asian</option>
+                      </select>
+                    </td>
+                  </tr>
+                  {% endif %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {% if v2_installed %}
+          <!-- Category Mapping Tab -->
+          <div class="tab-pane" id="tab-categories">
+            <div class="alert alert-info">
+              <i class="fa fa-info-circle"></i> {{ help_inherit }}
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="panel panel-default">
+                  <div class="panel-heading">
+                    <h3 class="panel-title">{{ entry_category }}</h3>
+                  </div>
+                  <div class="panel-body">
+                    <div class="form-group">
+                      <label class="control-label">{{ entry_category }}</label>
+                      <select id="input-category" class="form-control">
+                        <option value="">-- {{ entry_category }} --</option>
+                        {% for category in categories %}
+                        <option value="{{ category.category_id }}"
+                                data-gender="{{ category.gender_type }}"
+                                data-age="{{ category.age_group }}">{{ category.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="control-label">{{ entry_gender_type }}</label>
+                      <select id="input-gender-type" class="form-control">
+                        <option value="men">{{ text_men }}</option>
+                        <option value="women">{{ text_women }}</option>
+                        <option value="kids">{{ text_kids }}</option>
+                        <option value="unisex">{{ text_unisex }}</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="control-label">{{ entry_age_group }}</label>
+                      <select id="input-age-group" class="form-control">
+                        <option value="adult">{{ text_adult }}</option>
+                        <option value="kids">{{ text_kids }}</option>
+                        <option value="baby">{{ text_baby }}</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <div class="checkbox">
+                        <label>
+                          <input type="checkbox" id="input-inherit" value="1" checked /> {{ entry_inherit_children }}
+                        </label>
+                      </div>
+                    </div>
+                    <button type="button" id="btn-save-category" class="btn btn-primary">
+                      <i class="fa fa-save"></i> {{ button_save }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="panel panel-default">
+                  <div class="panel-heading">
+                    <h3 class="panel-title">{{ text_list }}</h3>
+                  </div>
+                  <div class="panel-body">
+                    <div class="table-responsive">
+                      <table class="table table-bordered table-hover" id="category-mapping-table">
+                        <thead>
+                          <tr>
+                            <td class="text-left">{{ column_category }}</td>
+                            <td class="text-left">{{ column_gender_type }}</td>
+                            <td class="text-left">{{ column_age_group }}</td>
+                            <td class="text-center">{{ column_inherit }}</td>
+                            <td class="text-right">{{ column_action }}</td>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for category in categories %}
+                          {% if category.gender_type %}
+                          <tr data-category-id="{{ category.category_id }}">
+                            <td class="text-left">{{ category.name }}</td>
+                            <td class="text-left">
+                              {% if category.gender_type == 'men' %}{{ text_men }}
+                              {% elseif category.gender_type == 'women' %}{{ text_women }}
+                              {% elseif category.gender_type == 'kids' %}{{ text_kids }}
+                              {% else %}{{ text_unisex }}{% endif %}
+                            </td>
+                            <td class="text-left">
+                              {% if category.age_group == 'adult' %}{{ text_adult }}
+                              {% elseif category.age_group == 'kids' %}{{ text_kids }}
+                              {% else %}{{ text_baby }}{% endif %}
+                            </td>
+                            <td class="text-center">
+                              <i class="fa fa-{% if category.inherit_children %}check text-success{% else %}times text-danger{% endif %}"></i>
+                            </td>
+                            <td class="text-right">
+                              <button type="button" class="btn btn-danger btn-sm btn-delete-category" data-category-id="{{ category.category_id }}">
+                                <i class="fa fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                          {% endif %}
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conversion Tables Tab -->
+          <div class="tab-pane" id="tab-tables">
+            <div class="row">
+              <div class="col-sm-4">
+                <div class="panel panel-default">
+                  <div class="panel-heading">
+                    <h3 class="panel-title">{{ tab_conversion_tables }}</h3>
+                  </div>
+                  <div class="panel-body">
+                    <div class="list-group" id="conversion-tables-list">
+                      {% for table in conversion_tables %}
+                      <a href="#" class="list-group-item conversion-table-item" data-table-id="{{ table.table_id }}">
+                        <span class="badge">{% if table.enabled %}<i class="fa fa-check"></i>{% else %}<i class="fa fa-times"></i>{% endif %}</span>
+                        {{ table.table_name }}
+                        <small class="text-muted">({{ table.gender_type }} / {{ table.size_type }})</small>
+                      </a>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-8">
+                <div class="panel panel-default">
+                  <div class="panel-heading">
+                    <h3 class="panel-title" id="table-editor-title">{{ button_edit }}</h3>
+                  </div>
+                  <div class="panel-body" id="table-editor">
+                    <div class="text-center text-muted" id="table-editor-placeholder">
+                      <i class="fa fa-hand-pointer-o fa-3x"></i>
+                      <p>Select a table from the list to edit</p>
+                    </div>
+                    <div id="table-editor-form" style="display: none;">
+                      <input type="hidden" id="edit-table-id" value="" />
+                      <div class="form-group">
+                        <label class="control-label">{{ column_table_name }}</label>
+                        <input type="text" id="edit-table-name" class="form-control" />
+                      </div>
+                      <div class="row">
+                        <div class="col-sm-6">
+                          <div class="form-group">
+                            <label class="control-label">{{ column_gender_type }}</label>
+                            <select id="edit-gender-type" class="form-control" disabled>
+                              <option value="men">{{ text_men }}</option>
+                              <option value="women">{{ text_women }}</option>
+                              <option value="kids">{{ text_kids }}</option>
+                              <option value="baby">{{ text_baby }}</option>
+                              <option value="unisex">{{ text_unisex }}</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="col-sm-6">
+                          <div class="form-group">
+                            <label class="control-label">{{ column_size_type }}</label>
+                            <select id="edit-size-type" class="form-control" disabled>
+                              <option value="shoes">{{ text_shoes }}</option>
+                              <option value="apparel">{{ text_apparel }}</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label class="control-label">Table Data (JSON)</label>
+                        <textarea id="edit-table-data" class="form-control" rows="15" style="font-family: monospace;"></textarea>
+                      </div>
+                      <div class="checkbox">
+                        <label>
+                          <input type="checkbox" id="edit-table-enabled" value="1" /> {{ column_enabled }}
+                        </label>
+                      </div>
+                      <button type="button" id="btn-save-table" class="btn btn-primary">
+                        <i class="fa fa-save"></i> {{ button_save }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+$(document).ready(function() {
+  // Save option mappings
+  $('#button-save').on('click', function() {
+    var mappings = {};
+
+    $('input[name^="mappings"]').each(function() {
+      var name = $(this).attr('name');
+      var match = name.match(/mappings\[(\d+)\]\[(\w+)\]/);
+
+      if (match) {
+        var optionId = match[1];
+        var field = match[2];
+
+        if (!mappings[optionId]) {
+          mappings[optionId] = {};
+        }
+
+        if ($(this).is(':checkbox')) {
+          mappings[optionId][field] = $(this).is(':checked') ? 1 : 0;
+        } else {
+          mappings[optionId][field] = $(this).val();
+        }
+      }
+    });
+
+    $('select[name^="mappings"]').each(function() {
+      var name = $(this).attr('name');
+      var match = name.match(/mappings\[(\d+)\]\[(\w+)\]/);
+
+      if (match) {
+        var optionId = match[1];
+        var field = match[2];
+
+        if (!mappings[optionId]) {
+          mappings[optionId] = {};
+        }
+
+        mappings[optionId][field] = $(this).val();
+      }
+    });
+
+    $.ajax({
+      url: '{{ save_option_url }}&user_token={{ user_token }}',
+      type: 'POST',
+      data: { mappings: mappings },
+      dataType: 'json',
+      beforeSend: function() {
+        $('#button-save').prop('disabled', true).find('i').removeClass('fa-save').addClass('fa-spinner fa-spin');
+      },
+      complete: function() {
+        $('#button-save').prop('disabled', false).find('i').removeClass('fa-spinner fa-spin').addClass('fa-save');
+      },
+      success: function(json) {
+        // Remove all previous alerts first
+        $('#content .alert').remove();
+
+        if (json.success) {
+          $('#content > .container-fluid').first().prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + json.success + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+        }
+        if (json.error) {
+          $('#content > .container-fluid').first().prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json.error + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+        }
+      },
+      error: function(xhr, status, errorThrown) {
+        $('#content .alert').remove();
+        var errorText = 'Error: ' + (errorThrown || status);
+        $('#content > .container-fluid').first().prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + errorText + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+        console.log('Server response:', xhr.responseText);
+      }
+    });
+  });
+
+  {% if v2_installed %}
+  // Category selection change
+  $('#input-category').on('change', function() {
+    var $selected = $(this).find('option:selected');
+    var gender = $selected.data('gender');
+    var age = $selected.data('age');
+
+    if (gender) {
+      $('#input-gender-type').val(gender);
+    }
+    if (age) {
+      $('#input-age-group').val(age);
+    }
+  });
+
+  // Save category mapping
+  $('#btn-save-category').on('click', function() {
+    var categoryId = $('#input-category').val();
+
+    if (!categoryId) {
+      alert('Please select a category');
+      return;
+    }
+
+    $.ajax({
+      url: '{{ save_category_url }}&user_token={{ user_token }}',
+      type: 'POST',
+      data: {
+        category_id: categoryId,
+        gender_type: $('#input-gender-type').val(),
+        age_group: $('#input-age-group').val(),
+        inherit_children: $('#input-inherit').is(':checked') ? 1 : 0
+      },
+      dataType: 'json',
+      success: function(json) {
+        if (json.success) {
+          location.reload();
+        }
+        if (json.error) {
+          alert(json.error);
+        }
+      }
+    });
+  });
+
+  // Delete category mapping
+  $(document).on('click', '.btn-delete-category', function() {
+    var categoryId = $(this).data('category-id');
+
+    if (confirm('Are you sure?')) {
+      $.ajax({
+        url: '{{ delete_category_url }}&user_token={{ user_token }}',
+        type: 'POST',
+        data: { category_id: categoryId },
+        dataType: 'json',
+        success: function(json) {
+          if (json.success) {
+            $('tr[data-category-id="' + categoryId + '"]').remove();
+          }
+          if (json.error) {
+            alert(json.error);
+          }
+        }
+      });
+    }
+  });
+
+  // Load conversion table for editing
+  $(document).on('click', '.conversion-table-item', function(e) {
+    e.preventDefault();
+
+    var tableId = $(this).data('table-id');
+
+    $('.conversion-table-item').removeClass('active');
+    $(this).addClass('active');
+
+    $.ajax({
+      url: '{{ get_table_url }}&user_token={{ user_token }}&table_id=' + tableId,
+      type: 'GET',
+      dataType: 'json',
+      success: function(json) {
+        if (json.success && json.table) {
+          $('#table-editor-placeholder').hide();
+          $('#table-editor-form').show();
+
+          $('#edit-table-id').val(json.table.table_id);
+          $('#edit-table-name').val(json.table.table_name);
+          $('#edit-gender-type').val(json.table.gender_type);
+          $('#edit-size-type').val(json.table.size_type);
+          $('#edit-table-data').val(JSON.stringify(json.table.table_data, null, 2));
+          $('#edit-table-enabled').prop('checked', json.table.enabled == 1);
+
+          $('#table-editor-title').text(json.table.table_name);
+        }
+        if (json.error) {
+          alert(json.error);
+        }
+      }
+    });
+  });
+
+  // Save conversion table
+  $('#btn-save-table').on('click', function() {
+    var tableData = $('#edit-table-data').val();
+
+    // Validate JSON
+    try {
+      JSON.parse(tableData);
+    } catch (e) {
+      alert('Invalid JSON format: ' + e.message);
+      return;
+    }
+
+    $.ajax({
+      url: '{{ save_table_url }}&user_token={{ user_token }}',
+      type: 'POST',
+      data: {
+        table_id: $('#edit-table-id').val(),
+        table_name: $('#edit-table-name').val(),
+        gender_type: $('#edit-gender-type').val(),
+        size_type: $('#edit-size-type').val(),
+        table_data: tableData,
+        enabled: $('#edit-table-enabled').is(':checked') ? 1 : 0
+      },
+      dataType: 'json',
+      success: function(json) {
+        // Remove all previous alerts first
+        $('#content .alert').remove();
+
+        if (json.success) {
+          $('#content > .container-fluid').first().prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + json.success + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+
+          // Update table name in list
+          var tableId = $('#edit-table-id').val();
+          $('.conversion-table-item[data-table-id="' + tableId + '"]').html(
+            '<span class="badge">' + ($('#edit-table-enabled').is(':checked') ? '<i class="fa fa-check"></i>' : '<i class="fa fa-times"></i>') + '</span>' +
+            $('#edit-table-name').val() +
+            '<small class="text-muted">(' + $('#edit-gender-type').val() + ' / ' + $('#edit-size-type').val() + ')</small>'
+          );
+        }
+        if (json.error) {
+          $('#content > .container-fluid').first().prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json.error + '<button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+        }
+      }
+    });
+  });
+  {% endif %}
+
+  // Install v2
+  $('#btn-install-v2').on('click', function() {
+    if (confirm('This will install category mapping and conversion table features. Continue?')) {
+      $.ajax({
+        url: '{{ install_v2_url }}&user_token={{ user_token }}',
+        type: 'POST',
+        dataType: 'json',
+        beforeSend: function() {
+          $('#btn-install-v2').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Installing...');
+        },
+        success: function(json) {
+          if (json.success) {
+            location.reload();
+          }
+          if (json.error) {
+            alert(json.error);
+            $('#btn-install-v2').prop('disabled', false).html('<i class="fa fa-download"></i> {{ button_install_v2 }}');
+          }
+        },
+        error: function() {
+          alert('Installation failed');
+          $('#btn-install-v2').prop('disabled', false).html('<i class="fa fa-download"></i> {{ button_install_v2 }}');
+        }
+      });
+    }
+  });
+});
+</script>
+{{ footer }}
