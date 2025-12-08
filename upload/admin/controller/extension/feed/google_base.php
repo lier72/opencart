@@ -46,7 +46,7 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 
 		$data['user_token'] = $this->session->data['user_token'];
 
-		$data['data_feed'] = HTTP_CATALOG . 'index.php?route=extension/feed/google_base';
+		$data['data_feed'] = HTTPS_CATALOG . 'index.php?route=extension/feed/google_base';
 
 		if (isset($this->request->post['feed_google_base_status'])) {
 			$data['feed_google_base_status'] = $this->request->post['feed_google_base_status'];

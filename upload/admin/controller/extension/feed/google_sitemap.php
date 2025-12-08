@@ -50,7 +50,7 @@ class ControllerExtensionFeedGoogleSitemap extends Controller {
 			$data['feed_google_sitemap_status'] = $this->config->get('feed_google_sitemap_status');
 		}
 
-		$data['data_feed'] = HTTP_CATALOG . 'index.php?route=extension/feed/google_sitemap';
+		$data['data_feed'] = HTTPS_CATALOG . 'index.php?route=extension/feed/google_sitemap';
 
 		$data['header'] = $this->load->controller('common/header');
 		$data['column_left'] = $this->load->controller('common/column_left');
