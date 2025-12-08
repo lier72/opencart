@@ -179,13 +179,6 @@
 					displaySize = sizeItem.size;
 				}
 
-				// var stockText = '';
-				// if (this.sizeData.show_stock && sizeItem.subtract) {
-				// 	if (sizeItem.quantity <= 3) {
-				// 		stockText = ' <small style="color: #ff9800;">(' + sizeItem.quantity + ')</small>';
-				// 	}
-				// }
-
 				html += '<div class="radio">';
 				html += '<label>';
 				html += '<input type="radio" name="option[' + genderData.product_option_id + ']" ';
@@ -193,7 +186,7 @@
 				html += 'title="' + displaySize + '" aria-label="' + displaySize + '" ';
 				html += 'data-size="' + displaySize + '" data-original-size="' + sizeItem.size + '" />';
 				html += '<span class="option-wrapper">';
-				html += '<span class="option-value">' + displaySize /* + stockText */ + '</span>';
+				html += '<span class="option-value">' + displaySize + '</span>';
 				html += '</span>';
 				html += '</label>';
 				html += '</div>';
@@ -482,10 +475,6 @@
 			if (data.size_type === 'shoes' && data.size_tables) {
 				modalHtml += this.renderSizeTable(data.size_tables, data.gender);
 			}
-
-/* 			if (data.guide_content) {
-				modalHtml += '<div class="guide-content">' + data.guide_content + '</div>';
-			} */
 
 			modalHtml += '</div>';
 			modalHtml += '</div></div></div>';

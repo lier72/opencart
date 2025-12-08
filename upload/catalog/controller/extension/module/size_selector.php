@@ -168,91 +168,6 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 	}
 
 	/**
-	 * Convert sizes to a different system
-	 * AJAX endpoint for dynamic size system switching
-	 *
-	 * @return void (outputs JSON)
-	 */
-	public function convertSizes() {
-		$this->load->model('extension/module/size_converter');
-		$this->load->model('extension/module/size_mapping');
-
-		$sizes = Arr::get($this->request->post, 'sizes', array());
-		$from_system = Arr::get($this->request->post, 'from_system');
-		$to_system = Arr::get($this->request->post, 'to_system');
-		$gender = Arr::get($this->request->post, 'gender');
-		$size_type = Arr::get($this->request->post, 'size_type');
-
-		if (!$sizes || !$from_system || !$to_system || !$gender || !$size_type) {
-			$this->response->addHeader('Content-Type: application/json');
-			$this->response->setOutput(json_encode(array('status' => 'error', 'message' => 'Missing parameters')));
-			return;
-		}
-
-		$converted = array();
-
-		foreach ($sizes as $size_item) {
-			$size_value = $size_item['size'];
-
-			$converted_value = $this->model_extension_module_size_converter->convert(
-				$size_value,
-				$from_system,
-				$to_system,
-				$gender,
-				$size_type
-			);
-
-			if ($converted_value !== false) {
-				$converted[] = array(
-					'option_value_id' => $size_item['option_value_id'],
-					'size' => $converted_value,
-					'original_size' => $size_value,
-					'quantity' => $size_item['quantity'],
-					'subtract' => $size_item['subtract']
-				);
-			}
-		}
-
-		$this->response->addHeader('Content-Type: application/json');
-		$this->response->setOutput(json_encode(array('status' => 'success', 'sizes' => $converted)));
-	}
-
-	/**
-	 * Convert gender (Women <-> Universal) for shoes
-	 * AJAX endpoint for gender switching
-	 *
-	 * @return void (outputs JSON)
-	 */
-	public function convertGender() {
-		$this->load->model('extension/module/size_converter');
-
-		$size_value = Arr::get($this->request->post, 'size');
-		$current_system = Arr::get($this->request->post, 'system');
-		$from_gender = Arr::get($this->request->post, 'from_gender');
-		$to_gender = Arr::get($this->request->post, 'to_gender');
-
-		if (!$size_value || !$current_system || !$from_gender || !$to_gender) {
-			$this->response->addHeader('Content-Type: application/json');
-			$this->response->setOutput(json_encode(array('status' => 'error', 'message' => 'Missing parameters')));
-			return;
-		}
-
-		$converted = $this->model_extension_module_size_converter->convertGender(
-			$size_value,
-			$current_system,
-			$from_gender,
-			$to_gender
-		);
-
-		$this->response->addHeader('Content-Type: application/json');
-		if ($converted !== false) {
-			$this->response->setOutput(json_encode(array('status' => 'success', 'size' => $converted)));
-		} else {
-			$this->response->setOutput(json_encode(array('status' => 'error', 'message' => 'Conversion failed')));
-		}
-	}
-
-	/**
 	 * Get size guide content
 	 *
 	 * @return void (outputs JSON with HTML)
@@ -271,10 +186,7 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 			return;
 		}
 
-		// Get size guide from database
-		// $guide = $this->model_extension_module_size_mapping->getSizeGuide($category_id, $gender, $size_type);
-
-		// If apparel, also get measurements
+		// If apparel, get measurements
 		$measurements = null;
 		if ($size_type === 'apparel') {
 			$measurements = $this->model_extension_module_size_converter->getMeasurements($gender);
@@ -302,7 +214,6 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 		}
 
 		$data = array(
-		//	'guide_content' => $guide ? $guide['guide_content'] : '',
 			'measurements' => $measurements,
 			'size_tables' => $size_tables,
 			'gender' => $gender,
@@ -311,33 +222,6 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 
 		$this->response->addHeader('Content-Type: application/json');
 		$this->response->setOutput(json_encode(array('status' => 'success', 'data' => $data)));
-	}
-
-	/**
-	 * Render size selector widget for product page
-	 * This method can be called from product.twig or via AJAX
-	 *
-	 * @return string HTML output
-	 */
-	public function render() {
-		$this->load->model('extension/module/size_mapping');
-		$this->load->model('extension/module/size_converter');
-
-		$product_id = (int)Arr::get($this->request->get, 'product_id');
-
-		if (!$product_id || !$this->model_extension_module_size_mapping->productHasSizeOptions($product_id)) {
-			return '';
-		}
-
-		$this->load->language('extension/module/size_selector');
-
-		$data = array();
-		$data['product_id'] = $product_id;
-		$data['text_select_size'] = $this->language->get('text_select_size');
-		$data['text_size_guide'] = $this->language->get('text_size_guide');
-		$data['ajax_url'] = $this->url->link('extension/module/size_selector');
-
-		return $this->load->view('extension/module/size_selector', $data);
 	}
 }
 
