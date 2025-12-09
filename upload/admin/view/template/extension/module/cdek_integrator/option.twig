@@ -468,12 +468,13 @@
                 <label class="col-sm-2 control-label" for="setting-seller-ownership">{{ entry_seller_ownership }}</label>
                 <div class="col-sm-10">
                   <select class="form-control" id="setting-seller-ownership" name="cdek_integrator_setting[seller_ownership]">
-                    <option value="9">Акционерное общество</option>
-                    <option value="61">Закрытое акционерное общество</option>
-                    <option value="63">Индивидуальный предприниматель</option>
-                    <option value="119">Открытое акционерное общество</option>
-                    <option value="137">Общество с ограниченной ответственностью</option>
-                    <option value="147">Публичное акционерное общество</option>
+                    {% for ownership_id,ownership_form in ownership_forms %}
+                      {% set selected = '' %}
+                      {% if (setting['seller_ownership'] is not empty and setting['seller_ownership'] == ownership_id) %}
+                        {% set selected = 'selected' %}
+                      {% endif %}
+                      <option value="{{ ownership_id }}" {{ selected }}>{{ ownership_form }}</option>
+                    {% endfor %}
                   </select>
                 </div>
               </div>

@@ -846,6 +846,11 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 
 		if (empty($token)) {
 			$this->log->write('Не удалось авторизоваться в OpenCart API (проверьте, настройки Opencart)');
+			$this->log->write('Site_url: '. $site_url .'Username: ' . $api_info['username']. 'order_id: ' . $order_id .'$status_id: '. $status_id);
+			ob_start();
+    		debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+    		$trace = ob_get_clean();
+			$this->log->write('TRACE: ' . $trace);
 		}
 
 		$oc->order->setToken($token);

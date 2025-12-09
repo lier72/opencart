@@ -818,6 +818,10 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$rdata['entry_delivery_recipient_vat_rate'] = $this->language->get('entry_delivery_recipient_vat_rate');
 		$rdata['entry_delivery_recipient_vat_sum'] = $this->language->get('entry_delivery_recipient_vat_sum');
 		$rdata['entry_seller_name'] = $this->language->get('entry_seller_name');
+		$rdata['entry_seller_telephone'] = $this->language->get('entry_seller_telephone');
+		$rdata['entry_seller_inn'] = $this->language->get('entry_seller_inn');
+		$rdata['entry_seller_address'] = $this->language->get('entry_seller_address');
+		$rdata['entry_seller_ownership'] = $this->language->get('entry_seller_ownership');
 		$rdata['entry_comment'] = $this->language->get('entry_comment');
 		$rdata['entry_recipient_name'] = $this->language->get('entry_recipient_name');
 		$rdata['entry_recipient_telephone'] = $this->language->get('entry_recipient_telephone');
@@ -1398,7 +1402,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			if (!empty($post_data)) {
 
-				foreach (array('city_id', 'city_name', 'tariff_id', 'mode_id', 'recipient_city_id', 'recipient_city_name', 'delivery_recipient_cost', 'delivery_recipient_vat_rate', 'delivery_recipient_vat_sum', 'seller_name', 'cdek_comment', 'package', 'schedule', 'add_service') as $item) {
+				foreach (array('city_id', 'city_name', 'tariff_id', 'mode_id', 'recipient_city_id', 'recipient_city_name', 'delivery_recipient_cost', 'delivery_recipient_vat_rate', 'delivery_recipient_vat_sum', 'seller_name', 'seller_ownership', 'seller_inn', 'seller_telephone', 'seller_address', 'cdek_comment', 'package', 'schedule', 'add_service') as $item) {
 
 					if (isset($post_data[$item])) {
 						$exdata[$item] = $post_data[$item];
@@ -1433,6 +1437,22 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 				if (!empty($this->setting['seller_name'])) {
 					$exdata['seller_name'] = $this->setting['seller_name'];
+				}
+
+				if (!empty($this->setting['seller_ownership'])) {
+					$exdata['seller_ownership'] = $this->setting['seller_ownership'];
+				}
+
+				if (!empty($this->setting['seller_inn'])) {
+					$exdata['seller_inn'] = $this->setting['seller_inn'];
+				}
+
+				if (!empty($this->setting['seller_telephone'])) {
+					$exdata['seller_telephone'] = $this->setting['seller_telephone'];
+				}
+
+				if (!empty($this->setting['seller_address'])) {
+					$exdata['seller_address'] = $this->setting['seller_address'];
 				}
 
 				if (!empty($this->setting['add_service'])) {
@@ -1600,6 +1620,10 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$rdata['entry_cod_default'] = $this->language->get('entry_cod_default');
 		$rdata['entry_delivery_recipient_cost'] = $this->language->get('entry_delivery_recipient_cost');
 		$rdata['entry_seller_name'] = $this->language->get('entry_seller_name');
+		$rdata['entry_seller_telephone'] = $this->language->get('entry_seller_telephone');
+		$rdata['entry_seller_inn'] = $this->language->get('entry_seller_inn');
+		$rdata['entry_seller_address'] = $this->language->get('entry_seller_address');
+		$rdata['entry_seller_ownership'] = $this->language->get('entry_seller_ownership');
 		$rdata['entry_add_service'] = $this->language->get('entry_add_service');
 		$rdata['entry_replace_items'] = $this->language->get('entry_replace_items');
 		$rdata['entry_replace_item_name'] = $this->language->get('entry_replace_item_name');
@@ -1713,6 +1737,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$rdata['weight_classes'] = $this->model_localisation_weight_class->getWeightClasses();
 		$rdata['length_classes'] = $this->model_localisation_length_class->getLengthClasses();
 		$rdata['add_cervices'] = $this->getInfo()->getAddServices();
+		$rdata['ownership_forms'] = $this->getInfo()->getOwnershipForm();
 
 		$rdata['header'] = $this->load->controller('common/header');
 		$rdata['column_left'] = $this->load->controller('common/column_left');
