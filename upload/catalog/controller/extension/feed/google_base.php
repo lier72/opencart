@@ -48,8 +48,8 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 
 						$output .= '  <g:model_number>' . $product['model'] . '</g:model_number>';
 
-						if ($product['mpn']) {
-							$output .= '  <g:mpn><![CDATA[' . $product['mpn'] . ']]></g:mpn>' ;
+						if ($product['model']) {
+							$output .= '  <g:mpn><![CDATA[' . $product['model'] . ']]></g:mpn>' ;
 						} else {
 							$output .= '  <g:identifier_exists>false</g:identifier_exists>';
 						}
@@ -65,7 +65,8 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 						$currencies = array(
 							'USD',
 							'EUR',
-							'GBP'
+							'GBP',
+                            'RUB'
 						);
 
 						if (in_array($this->session->data['currency'], $currencies)) {

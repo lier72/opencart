@@ -129,7 +129,7 @@ class ModelExtensionModuleHbSeoSnippets extends Model {
 				$reviews = $review_query->rows;
 				
 				foreach ($reviews as $rev) {
-					$review_data[] = '{"@type": "Review","author": "'.$rev['author'].'", "datePublished": "'.date('Y-m-d', strtotime($rev['date_added'])).'", "description": "'.htmlentities($rev['text']).'", "reviewRating": {"@type": "Rating","bestRating": "5","ratingValue": "'.$rev['rating'].'","worstRating": "1"}}';
+					$review_data[] = '{"@type": "Review", "author": {"@type": "Person", "name": "'.$rev['author'].'"}, "datePublished": "'.date('Y-m-d', strtotime($rev['date_added'])).'", "description": "'.htmlentities($rev['text']).'", "reviewRating": {"@type": "Rating","bestRating": "5","ratingValue": "'.$rev['rating'].'","worstRating": "1"}}';
 				}
 				$review_data = implode(',',$review_data);
 				
