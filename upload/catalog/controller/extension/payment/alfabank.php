@@ -335,36 +335,43 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		$ex = explode("_", $response['orderNumber']);
 		$order_number = $ex[0];
 		$this->load->model('checkout/order');
+		$this->load->model('extension/payment/alfabank');
 		$order_info = $this->model_checkout_order->getOrder($order_number);
 		if ($order_info) {
 			if (($response['errorCode'] == 0) && (($response['orderStatus'] == 1) || ($response['orderStatus'] == 2))) {
-				$this->_storeGatewayOrderData($order_id, $order_info, $response);
+				// Check if this order has already been marked as paid to prevent duplicate history entries
+				$completed_status_id = $this->config->get('payment_alfabank_order_status_completed_id');
+				$already_paid = $this->model_extension_payment_alfabank->get_oc_paid_status($order_number, array($completed_status_id));
 
-				$payment_type = $response['orderStatus'] == 2
-					? 'Полная авторизация'
-					: 'Предавторизация (Двухстадийный платеж)';
+				if (!$already_paid) {
+					$this->_storeGatewayOrderData($order_id, $order_info, $response);
 
-				$comment = sprintf(
-					"Платеж подтвержден через callback\n" .
-					"ID транзакции в шлюзе: %s\n" .
-					"Тип платежа: %s\n" .
-					"Сумма оплаты: %s\n" .
-					"Код действия: %s - %s\n" .
-					"Дата обработки: %s",
-					$response['orderId'],
-					$payment_type,
-					number_format($response['amount'] / 100, 2, '.', ' '),
-					$response['actionCode'] ?? 'N/A',
-					$response['actionCodeDescription'] ?? 'Успешно',
-					date('Y-m-d H:i:s')
-				);
+					$payment_type = $response['orderStatus'] == 2
+						? 'Полная авторизация'
+						: 'Предавторизация (Двухстадийный платеж)';
 
-				// Add card info if available (masked)
-				if (isset($response['cardAuthInfo']['pan'])) {
-					$comment .= "\nКарта: " . $response['cardAuthInfo']['pan'];
+					$comment = sprintf(
+						"Платеж подтвержден через callback\n" .
+						"ID транзакции в шлюзе: %s\n" .
+						"Тип платежа: %s\n" .
+						"Сумма оплаты: %s\n" .
+						"Код действия: %s - %s\n" .
+						"Дата обработки: %s",
+						$response['orderId'],
+						$payment_type,
+						number_format($response['amount'] / 100, 2, '.', ' '),
+						$response['actionCode'] ?? 'N/A',
+						$response['actionCodeDescription'] ?? 'Успешно',
+						date('Y-m-d H:i:s')
+					);
+
+					// Add card info if available (masked)
+					if (isset($response['cardAuthInfo']['pan'])) {
+						$comment .= "\nКарта: " . $response['cardAuthInfo']['pan'];
+					}
+
+					$this->model_checkout_order->addOrderHistory($order_number, $completed_status_id, $comment, false);
 				}
-
-				$this->model_checkout_order->addOrderHistory($order_number, $this->config->get('payment_alfabank_order_status_completed_id'), $comment, false);
 				$this->response->redirect($this->url->link('checkout/success', '', true));
 			} elseif ($response['errorCode'] == 0 && $response['orderStatus'] == 4) {
 				$is_part_refunted = $response['paymentAmountInfo']['approvedAmount'] === $response['amount'] && $response['paymentAmountInfo']['refundedAmount'] != 0;
@@ -412,28 +419,35 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		$ex = explode("_", $response['orderNumber']);
 		$order_number = $ex[0];
 		$this->load->model('checkout/order');
+		$this->load->model('extension/payment/alfabank');
 		$order_info = $this->model_checkout_order->getOrder($order_number);
 		if ($order_info) {
 			if (($response['errorCode'] == 0) && (($response['orderStatus'] == 1) || ($response['orderStatus'] == 2))) {
 				if ($this->method_library->allowCallbacks == false) {
-					$this->_storeGatewayOrderData($order_id, $order_info, $response);
+					// Check if this order has already been marked as paid to prevent duplicate history entries
+					$completed_status_id = $this->config->get('payment_alfabank_order_status_completed_id');
+					$already_paid = $this->model_extension_payment_alfabank->get_oc_paid_status($order_number, array($completed_status_id));
 
-					$payment_status = $response['orderStatus'] == 2
-						? 'Полная авторизация'
-						: 'Предавторизация';
+					if (!$already_paid) {
+						$this->_storeGatewayOrderData($order_id, $order_info, $response);
 
-					$comment = sprintf(
-						"Платеж подтвержден через return URL\n" .
-						"ID транзакции в шлюзе: %s\n" .
-						"Статус платежа: %s\n" .
-						"Сумма: %s\n" .
-						"Покупатель вернулся в магазин",
-						$order_id,
-						$payment_status,
-						number_format($response['amount'] / 100, 2, '.', ' ')
-					);
+						$payment_status = $response['orderStatus'] == 2
+							? 'Полная авторизация'
+							: 'Предавторизация';
 
-					$this->model_checkout_order->addOrderHistory($order_number, $this->config->get('payment_alfabank_order_status_completed_id'), $comment, false);
+						$comment = sprintf(
+							"Платеж подтвержден через return URL\n" .
+							"ID транзакции в шлюзе: %s\n" .
+							"Статус платежа: %s\n" .
+							"Сумма: %s\n" .
+							"Покупатель вернулся в магазин",
+							$order_id,
+							$payment_status,
+							number_format($response['amount'] / 100, 2, '.', ' ')
+						);
+
+						$this->model_checkout_order->addOrderHistory($order_number, $completed_status_id, $comment, false);
+					}
 				}
 				$this->response->redirect($this->url->link('checkout/success', '', true));
 			} else {

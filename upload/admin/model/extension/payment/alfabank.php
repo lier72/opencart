@@ -16,7 +16,8 @@ $this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "alfabank_order` (
 `date_added` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
 `date_updated` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
 PRIMARY KEY (`gateway_order_id`),
-KEY `order_id` (`order_id`)
+UNIQUE KEY `unique_gateway_reference` (`gateway_order_reference`),
+UNIQUE KEY `unique_order_id` (`order_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8");
 }
 public function deleteTables() {

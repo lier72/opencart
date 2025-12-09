@@ -88,7 +88,21 @@ class ModelExtensionPaymentAlfabank extends Model
     }
     public function storeGatewayOrder($data)
     {
-        $this->db->query("INSERT INTO `" . DB_PREFIX . "alfabank_order` SET `order_id` = '" . (int)$data['order_id'] . "', `gateway_order_reference` = '" . $this->db->escape($data['gateway_order_reference']) . "', `currency` = '" . $this->db->escape($data['currency']) . "', `order_amount` = '" . (float)$data['order_amount'] . "', `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "', `status_deposited` = '" . (int)$data['status_deposited'] . "', `date_added` = NOW(), `date_updated` = NOW()");
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "alfabank_order` SET
+            `order_id` = '" . (int)$data['order_id'] . "',
+            `gateway_order_reference` = '" . $this->db->escape($data['gateway_order_reference']) . "',
+            `currency` = '" . $this->db->escape($data['currency']) . "',
+            `order_amount` = '" . (float)$data['order_amount'] . "',
+            `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "',
+            `status_deposited` = '" . (int)$data['status_deposited'] . "',
+            `date_added` = NOW(),
+            `date_updated` = NOW()
+        ON DUPLICATE KEY UPDATE
+            `currency` = '" . $this->db->escape($data['currency']) . "',
+            `order_amount` = '" . (float)$data['order_amount'] . "',
+            `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "',
+            `status_deposited` = '" . (int)$data['status_deposited'] . "',
+            `date_updated` = NOW()");
     }
 
     public function get_alfabank_current_payment_list($order_status = array(-1, 0, 1, 2, 3, 4, 5, 6))
