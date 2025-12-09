@@ -1,5 +1,5 @@
 <?php
-$_['entry_alfabank_text_title'] = 'Оплата картой/приложением &nbsp<img src="image/cards/cards_payment_new.png" alt="Alfa Bank" width = "150" title="Alfa Acquiring" />';
+$_['entry_alfabank_text_title'] = 'Оплата картой/приложением &nbsp<img src="https://uniqsport.ru/image/cards/cards_payment_new.png" alt="Alfa Bank" width = "150" title="Alfa Acquiring" />';
 $_['button_confirm'] = 'Перейти к оплате';
 $_['error_title'] = 'Ошибка';
 $_['error_continue'] = 'Вернуться в корзину';
