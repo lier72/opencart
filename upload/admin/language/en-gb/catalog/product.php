@@ -25,6 +25,17 @@ $_['column_price']           = 'Price';
 $_['column_quantity']        = 'Quantity';
 $_['column_status']          = 'Status';
 $_['column_action']          = 'Action';
+$_['column_date']            = 'Date';
+$_['column_direction']       = 'Direction';
+$_['column_sync_status']     = 'Sync Status';
+$_['column_message']         = 'Message';
+
+// Tab
+$_['tab_sync_history']       = 'Sync History';
+
+// Button
+$_['button_sync']            = 'Sync to Odoo';
+$_['button_price_history']   = 'Price History';
 
 // Entry
 $_['entry_name']             = 'Product Name';

@@ -25,6 +25,17 @@ $_['column_price']           = 'Цена на сайте';
 $_['column_quantity']        = 'Количество';
 $_['column_status']          = 'Статус';
 $_['column_action']          = 'Действие';
+$_['column_date']            = 'Дата';
+$_['column_direction']       = 'Направление';
+$_['column_sync_status']     = 'Статус синхронизации';
+$_['column_message']         = 'Сообщение';
+
+// Tab
+$_['tab_sync_history']       = 'История синхронизации';
+
+// Button
+$_['button_sync']            = 'Синхронизировать с Odoo';
+$_['button_price_history']   = 'История цен';
 
 // Entry
 $_['entry_name']             = 'Название товара';

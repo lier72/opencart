@@ -1188,6 +1188,15 @@ class ControllerCatalogProduct extends Controller {
 		if (isset($this->request->get['product_id'])) {
 			$data['product_id'] = $this->request->get['product_id'];
 
+			// Load sync history language strings
+			$data['button_sync'] = $this->language->get('button_sync');
+			$data['tab_sync_history'] = $this->language->get('tab_sync_history');
+			$data['column_date'] = $this->language->get('column_date');
+			$data['column_direction'] = $this->language->get('column_direction');
+			$data['column_sync_status'] = $this->language->get('column_sync_status');
+			$data['column_message'] = $this->language->get('column_message');
+			$data['button_price_history'] = $this->language->get('button_price_history');
+
 			// Check if odoo_product_mapping model file exists before loading
 			$model_file = DIR_APPLICATION . 'model/extension/module/odoo_product_mapping.php';
 			if (is_file($model_file)) {
@@ -1233,6 +1242,18 @@ class ControllerCatalogProduct extends Controller {
 				$data['sync_pagination'] = '';
 				$data['sync_results'] = '';
 			}
+		} else {
+			// Product is being added (no product_id), initialize empty sync history
+			$data['sync_history'] = array();
+			$data['sync_pagination'] = '';
+			$data['sync_results'] = '';
+			$data['button_sync'] = $this->language->get('button_sync');
+			$data['tab_sync_history'] = $this->language->get('tab_sync_history');
+			$data['column_date'] = $this->language->get('column_date');
+			$data['column_direction'] = $this->language->get('column_direction');
+			$data['column_sync_status'] = $this->language->get('column_sync_status');
+			$data['column_message'] = $this->language->get('column_message');
+			$data['button_price_history'] = $this->language->get('button_price_history');
 		}
 
 		$data['header'] = $this->load->controller('common/header');
