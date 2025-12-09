@@ -580,7 +580,7 @@ class ControllerApiProduct extends Controller {
             if (isset($data['oc_seo_url']) && !empty($data['oc_seo_url'])) {
                 // Get Russian language ID
                 $language_query = $this->db->query("SELECT language_id FROM " . DB_PREFIX .
-                    "language WHERE code = 'ru' AND status = '1'");
+                    "language WHERE code = 'ru-ru' AND status = '1'");
 
                 if (!$language_query->num_rows) {
                     throw new Exception('Russian language not found or not active');
@@ -621,7 +621,7 @@ class ControllerApiProduct extends Controller {
 
             // Get Russian language ID
             $language_query = $this->db->query("SELECT language_id FROM " . DB_PREFIX .
-                "language WHERE code = 'ru' AND status = '1'");
+                "language WHERE code = 'ru-ru' AND status = '1'");
 
             if (!$language_query->num_rows) {
                 throw new Exception('Russian language not found or not active');
