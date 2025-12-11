@@ -1,0 +1,215 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="button" data-toggle="tooltip" title="{{ button_add }}" class="btn btn-primary" onclick="addColor();"><i class="fa fa-plus"></i></button>
+        <button type="button" data-toggle="tooltip" title="{{ button_delete }}" class="btn btn-danger" onclick="confirm('{{ text_confirm }}') ? $('#form-color-mapping').submit() : false;"><i class="fa fa-trash-o"></i></button>
+        <a href="{{ back }}" data-toggle="tooltip" title="{{ button_back }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-list"></i> {{ text_color_mapping }}</h3>
+      </div>
+      <div class="panel-body">
+        <form action="{{ delete }}" method="post" enctype="multipart/form-data" id="form-color-mapping">
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td style="width: 1px;" class="text-center"><input type="checkbox" onclick="$('input[name*=\'selected\']').prop('checked', this.checked);" /></td>
+                  <td class="text-left">{{ column_keyword }}</td>
+                  <td class="text-left">{{ column_color_name_ru }}</td>
+                  <td class="text-left">{{ column_color_name_en }}</td>
+                  <td class="text-center">{{ column_hex_code }}</td>
+                  <td class="text-right">{{ column_sort_order }}</td>
+                  <td class="text-right">{{ column_action }}</td>
+                </tr>
+              </thead>
+              <tbody id="color-list">
+                {% for color in colors %}
+                <tr id="color-row{{ color.color_id }}">
+                  <td class="text-center">
+                    <input type="checkbox" name="selected[]" value="{{ color.color_id }}" />
+                  </td>
+                  <td class="text-left">{{ color.keyword }}</td>
+                  <td class="text-left">{{ color.color_name_ru }}</td>
+                  <td class="text-left">{{ color.color_name_en }}</td>
+                  <td class="text-center">
+                    <span style="display: inline-block; width: 30px; height: 20px; background-color: {{ color.hex_code }}; border: 1px solid #ccc; vertical-align: middle;"></span>
+                    {{ color.hex_code }}
+                  </td>
+                  <td class="text-right">{{ color.sort_order }}</td>
+                  <td class="text-right">
+                    <button type="button" class="btn btn-primary btn-xs" onclick="editColor({{ color.color_id }}, '{{ color.keyword|escape('js') }}', '{{ color.color_name_ru|escape('js') }}', '{{ color.color_name_en|escape('js') }}', '{{ color.hex_code }}', {{ color.sort_order }});" data-toggle="tooltip" title="{{ button_edit }}">
+                      <i class="fa fa-pencil"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Color Modal -->
+<div id="modal-color" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title" id="modal-color-title">{{ text_add_color }}</h4>
+      </div>
+      <div class="modal-body">
+        <form id="form-color" class="form-horizontal">
+          <input type="hidden" name="color_id" id="color-id" value="" />
+
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="color-keyword"><span data-toggle="tooltip" title="{{ help_keyword }}">{{ entry_keyword }}</span></label>
+            <div class="col-sm-9">
+              <input type="text" name="keyword" id="color-keyword" class="form-control" placeholder="{{ entry_keyword }}" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="color-name-ru">{{ entry_color_name_ru }}</label>
+            <div class="col-sm-9">
+              <input type="text" name="color_name_ru" id="color-name-ru" class="form-control" placeholder="{{ entry_color_name_ru }}" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="color-name-en">{{ entry_color_name_en }}</label>
+            <div class="col-sm-9">
+              <input type="text" name="color_name_en" id="color-name-en" class="form-control" placeholder="{{ entry_color_name_en }}" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="color-hex">{{ entry_hex_code }}</label>
+            <div class="col-sm-9">
+              <div class="input-group">
+                <input type="text" name="hex_code" id="color-hex" class="form-control" placeholder="#000000" />
+                <span class="input-group-addon">
+                  <input type="color" id="color-picker" style="border: none; width: 30px; height: 20px;" />
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="color-sort-order">{{ entry_sort_order }}</label>
+            <div class="col-sm-9">
+              <input type="text" name="sort_order" id="color-sort-order" class="form-control" value="0" />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">{{ button_cancel }}</button>
+        <button type="button" class="btn btn-primary" onclick="saveColor();">{{ button_save }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+function addColor() {
+  $('#modal-color-title').text('{{ text_add_color }}');
+  $('#color-id').val('');
+  $('#color-keyword').val('');
+  $('#color-name-ru').val('');
+  $('#color-name-en').val('');
+  $('#color-hex').val('#000000');
+  $('#color-picker').val('#000000');
+  $('#color-sort-order').val('0');
+  $('#modal-color').modal('show');
+}
+
+function editColor(id, keyword, nameRu, nameEn, hex, sortOrder) {
+  $('#modal-color-title').text('{{ text_edit_color }}');
+  $('#color-id').val(id);
+  $('#color-keyword').val(keyword);
+  $('#color-name-ru').val(nameRu);
+  $('#color-name-en').val(nameEn);
+  $('#color-hex').val(hex);
+  $('#color-picker').val(hex);
+  $('#color-sort-order').val(sortOrder);
+  $('#modal-color').modal('show');
+}
+
+function saveColor() {
+  var colorId = $('#color-id').val();
+  var formData = $('#form-color').serialize();
+
+  var userToken = '{{ user_token }}';
+  var url = colorId ?
+    'index.php?route=extension/module/color_detector/editColor&user_token=' + userToken + '&color_id=' + colorId :
+    'index.php?route=extension/module/color_detector/addColor&user_token=' + userToken;
+
+  $.ajax({
+    url: url,
+    type: 'post',
+    data: formData,
+    dataType: 'json',
+    success: function(json) {
+      if (json['error']) {
+        alert(json['error']);
+
+        // If session expired, reload page
+        if (json['error'].indexOf('permission') !== -1) {
+          location.reload();
+        }
+      } else if (json['success']) {
+        location.reload();
+      }
+    },
+    error: function(xhr, ajaxOptions, thrownError) {
+      // Check if response is HTML (login page) instead of JSON
+      if (xhr.responseText && xhr.responseText.indexOf('<!DOCTYPE html>') !== -1) {
+        alert('Session expired. Please login again.');
+        location.reload();
+      } else {
+        alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+      }
+    }
+  });
+}
+
+// Color picker sync
+$('#color-picker').on('change', function() {
+  $('#color-hex').val($(this).val().toUpperCase());
+});
+
+$('#color-hex').on('input', function() {
+  var hex = $(this).val();
+  if (/^#[0-9A-F]{6}$/i.test(hex)) {
+    $('#color-picker').val(hex);
+  }
+});
+</script>
+
+{{ footer }}

@@ -1,0 +1,188 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="submit" form="form-color-detector" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+      </div>
+      <div class="panel-body">
+        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-color-detector" class="form-horizontal">
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-status">{{ entry_status }}</label>
+            <div class="col-sm-10">
+              <select name="module_color_detector_status" id="input-status" class="form-control">
+                {% if module_color_detector_status %}
+                <option value="1" selected="selected">{{ text_enabled }}</option>
+                <option value="0">{{ text_disabled }}</option>
+                {% else %}
+                <option value="1">{{ text_enabled }}</option>
+                <option value="0" selected="selected">{{ text_disabled }}</option>
+                {% endif %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-attribute"><span data-toggle="tooltip" title="{{ help_attribute }}">{{ entry_attribute }}</span></label>
+            <div class="col-sm-10">
+              <select name="module_color_detector_attribute_id" id="input-attribute" class="form-control">
+                <option value="">{{ text_select }}</option>
+                {% for attribute in attributes %}
+                  {% if attribute.attribute_id == module_color_detector_attribute_id %}
+                  <option value="{{ attribute.attribute_id }}" selected="selected">{{ attribute.name }}</option>
+                  {% else %}
+                  <option value="{{ attribute.attribute_id }}">{{ attribute.name }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_categories }}">{{ entry_categories }}</span></label>
+            <div class="col-sm-10">
+              <div class="well well-sm" style="height: 150px; overflow: auto;">
+                {% for category in categories %}
+                <div class="checkbox">
+                  <label>
+                    {% if module_color_detector_categories and category.category_id in module_color_detector_categories %}
+                    <input type="checkbox" name="module_color_detector_categories[]" value="{{ category.category_id }}" checked="checked" />
+                    {{ category.name }}
+                    {% else %}
+                    <input type="checkbox" name="module_color_detector_categories[]" value="{{ category.category_id }}" />
+                    {{ category.name }}
+                    {% endif %}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-force"><span data-toggle="tooltip" title="{{ help_force }}">{{ entry_force }}</span></label>
+            <div class="col-sm-10">
+              <select name="module_color_detector_force" id="input-force" class="form-control">
+                {% if module_color_detector_force %}
+                <option value="1" selected="selected">{{ text_yes }}</option>
+                <option value="0">{{ text_no }}</option>
+                {% else %}
+                <option value="1">{{ text_yes }}</option>
+                <option value="0" selected="selected">{{ text_no }}</option>
+                {% endif %}
+              </select>
+            </div>
+          </div>
+        </form>
+
+        <hr />
+
+        <div class="form-group">
+          <label class="col-sm-2 control-label">{{ text_actions }}</label>
+          <div class="col-sm-10">
+            <button type="button" id="button-process" class="btn btn-success" data-loading-text="{{ text_loading }}"><i class="fa fa-cog"></i> {{ button_process }}</button>
+            <a href="{{ color_mapping }}" class="btn btn-info"><i class="fa fa-list"></i> {{ button_color_mapping }}</a>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="col-sm-2 control-label"></label>
+          <div class="col-sm-10">
+            <div id="process-result" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+  $('#button-process').on('click', function() {
+    var button = $(this);
+    button.button('loading');
+
+    $('#process-result').html('').hide();
+
+    // Build URL with proper user_token
+    var processUrl = 'index.php?route=extension/module/color_detector/process&user_token={{ user_token }}';
+    console.log('Process URL:', processUrl);
+
+    $.ajax({
+      url: processUrl,
+      type: 'post',
+      dataType: 'text', // Change to text to see raw response
+      success: function(response) {
+        button.button('reset');
+        console.log('Raw response:', response);
+
+        try {
+          var json = JSON.parse(response);
+
+          if (json['error']) {
+            $('#process-result').html('<div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> ' + json['error'] + '</div>').show();
+
+            // If session expired, reload page to show login
+            if (json['error'].indexOf('Session expired') !== -1 || json['error'].indexOf('login') !== -1) {
+              setTimeout(function() {
+                location.reload();
+              }, 2000);
+            }
+          }
+
+          if (json['success']) {
+            var message = '<div class="alert alert-success"><i class="fa fa-check-circle"></i> ' + json['success'];
+            if (json['debug']) {
+              message += '<br><small>' + json['debug'] + '</small>';
+            }
+            message += '</div>';
+            $('#process-result').html(message).show();
+          }
+        } catch(e) {
+          console.error('JSON parse error:', e);
+          console.error('Response text:', response);
+          $('#process-result').html('<div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> Error: Invalid JSON response. Check browser console for details.</div>').show();
+        }
+      },
+      error: function(xhr, ajaxOptions, thrownError) {
+        button.button('reset');
+        console.error('AJAX error:', thrownError);
+        console.error('Response:', xhr.responseText);
+
+        // Check if response is HTML (login page) instead of JSON
+        if (xhr.responseText && xhr.responseText.indexOf('<!DOCTYPE html>') !== -1) {
+          $('#process-result').html('<div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> Session expired. Please login again.</div>').show();
+          setTimeout(function() {
+            location.reload();
+          }, 2000);
+        } else {
+          alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+        }
+      }
+    });
+  });
+  </script>
+</div>
+{{ footer }}
