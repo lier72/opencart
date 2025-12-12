@@ -104,7 +104,7 @@ class ControllerReportStatistics extends Controller {
 		$this->getList();	
 	}
 
-	public function returns() {
+	public function return() {
 		$this->load->language('report/statistics');
 
 		$this->document->setTitle($this->language->get('heading_title'));	
