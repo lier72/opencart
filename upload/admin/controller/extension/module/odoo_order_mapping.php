@@ -195,6 +195,10 @@ class ControllerExtensionModuleOdooOrderMapping extends Controller {
         $data['order'] = $order;
         $data['user_token'] = $this->session->data['user_token'];
 
+        // Get payment and currency mappings for the tabs
+        $data['payment_mappings'] = $this->model_extension_module_odoo_connector->getPaymentAcquirerMappings();
+        $data['currency_mappings'] = $this->model_extension_module_odoo_connector->getCurrencyMappings();
+
         $data['header'] = $this->load->controller('common/header');
         $data['column_left'] = $this->load->controller('common/column_left');
         $data['footer'] = $this->load->controller('common/footer');

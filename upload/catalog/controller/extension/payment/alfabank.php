@@ -259,6 +259,20 @@ class ControllerExtensionPaymentAlfabank extends Controller
 				$currency_symbol
 			);
 			$this->model_checkout_order->addOrderHistory($order_number, $this->config->get('payment_alfabank_order_status_before_id'), $comment, false);
+
+			// Store initial payment transaction data for Odoo sync
+			$this->load->model('extension/payment/alfabank');
+			$initial_data = array(
+				'order_id' => (int)$order_info['order_id'],
+				'gateway_order_reference' => $response['orderId'],
+				'tx_url' => isset($response['formUrl']) ? $response['formUrl'] : '',
+				'order_number' => $args['orderNumber'],
+				'currency' => isset($response['currency']) ? $response['currency'] : $order_info['currency_code'],
+				'order_amount' => $amount,
+				'order_amount_deposited' => 0,
+				'status_deposited' => 0, // Registered, not paid
+			);
+			$this->model_extension_payment_alfabank->storeGatewayOrder($initial_data);
 		}
 		if (isset($response['errorCode'])) {
 			$this->document->setTitle($this->language->get('error_title'));
@@ -461,6 +475,8 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		$data = array(
 			'order_id' => (int)$order_info['order_id'],
 			'gateway_order_reference' => $order_id,
+			'tx_url' => isset($response['formUrl']) ? $response['formUrl'] : '',
+			'order_number' => isset($response['orderNumber']) ? $response['orderNumber'] : '',
 			'currency' => $response['currency'],
 			'order_amount' => $response['amount'],
 			'order_amount_deposited' => $response['amount'],

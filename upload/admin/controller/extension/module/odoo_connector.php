@@ -275,4 +275,164 @@ class ControllerExtensionModuleOdooConnector extends Controller {
         $this->response->setOutput(json_encode($json));
     }
 
+    /**
+     * Payment Acquirer Mapping Management
+     */
+    public function paymentMapping() {
+        $this->load->language('extension/module/odoo_connector');
+        $this->load->model('extension/module/odoo_connector');
+
+        $this->document->setTitle('Odoo Payment Acquirer Mapping');
+
+        $data['heading_title'] = 'Odoo Payment Acquirer Mapping';
+        $data['text_list'] = 'Payment Acquirer Mappings';
+        $data['text_no_results'] = 'No mappings found';
+        $data['text_confirm'] = 'Are you sure?';
+
+        $data['column_oc_code'] = 'OpenCart Payment Code';
+        $data['column_oc_name'] = 'OpenCart Payment Name';
+        $data['column_odoo_id'] = 'Odoo Acquirer ID';
+        $data['column_odoo_name'] = 'Odoo Acquirer Name';
+        $data['column_active'] = 'Active';
+        $data['column_action'] = 'Action';
+
+        $data['button_edit'] = 'Edit';
+        $data['button_save'] = 'Save';
+        $data['button_cancel'] = 'Cancel';
+
+        // Breadcrumbs
+        $data['breadcrumbs'] = array();
+        $data['breadcrumbs'][] = array(
+            'text' => 'Home',
+            'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+        );
+        $data['breadcrumbs'][] = array(
+            'text' => 'Odoo Connector',
+            'href' => $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true)
+        );
+        $data['breadcrumbs'][] = array(
+            'text' => 'Payment Mapping',
+            'href' => $this->url->link('extension/module/odoo_connector/paymentMapping', 'user_token=' . $this->session->data['user_token'], true)
+        );
+
+        // Get mappings
+        $data['mappings'] = $this->model_extension_module_odoo_connector->getPaymentAcquirerMappings();
+
+        $data['user_token'] = $this->session->data['user_token'];
+        $data['header'] = $this->load->controller('common/header');
+        $data['column_left'] = $this->load->controller('common/column_left');
+        $data['footer'] = $this->load->controller('common/footer');
+
+        $this->response->setOutput($this->load->view('extension/module/odoo_payment_mapping', $data));
+    }
+
+    /**
+     * Currency Mapping Management
+     */
+    public function currencyMapping() {
+        $this->load->language('extension/module/odoo_connector');
+        $this->load->model('extension/module/odoo_connector');
+
+        $this->document->setTitle('Odoo Currency Mapping');
+
+        $data['heading_title'] = 'Odoo Currency Mapping';
+        $data['text_list'] = 'Currency Mappings';
+        $data['text_no_results'] = 'No mappings found';
+        $data['text_confirm'] = 'Are you sure?';
+
+        $data['column_oc_code'] = 'OpenCart Currency Code';
+        $data['column_oc_name'] = 'OpenCart Currency Name';
+        $data['column_odoo_id'] = 'Odoo Currency ID';
+        $data['column_odoo_name'] = 'Odoo Currency Name';
+        $data['column_active'] = 'Active';
+        $data['column_action'] = 'Action';
+
+        $data['button_edit'] = 'Edit';
+        $data['button_save'] = 'Save';
+        $data['button_cancel'] = 'Cancel';
+
+        // Breadcrumbs
+        $data['breadcrumbs'] = array();
+        $data['breadcrumbs'][] = array(
+            'text' => 'Home',
+            'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+        );
+        $data['breadcrumbs'][] = array(
+            'text' => 'Odoo Connector',
+            'href' => $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true)
+        );
+        $data['breadcrumbs'][] = array(
+            'text' => 'Currency Mapping',
+            'href' => $this->url->link('extension/module/odoo_connector/currencyMapping', 'user_token=' . $this->session->data['user_token'], true)
+        );
+
+        // Get mappings
+        $data['mappings'] = $this->model_extension_module_odoo_connector->getCurrencyMappings();
+
+        $data['user_token'] = $this->session->data['user_token'];
+        $data['header'] = $this->load->controller('common/header');
+        $data['column_left'] = $this->load->controller('common/column_left');
+        $data['footer'] = $this->load->controller('common/footer');
+
+        $this->response->setOutput($this->load->view('extension/module/odoo_currency_mapping', $data));
+    }
+
+    /**
+     * Update payment acquirer mapping via AJAX
+     */
+    public function updatePaymentMapping() {
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = array('success' => false);
+
+        if ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            $result = $this->model_extension_module_odoo_connector->updatePaymentAcquirerMapping($this->request->post);
+            $json = $result;
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    /**
+     * Update currency mapping via AJAX
+     */
+    public function updateCurrencyMapping() {
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = array('success' => false);
+
+        if ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            $result = $this->model_extension_module_odoo_connector->updateCurrencyMapping($this->request->post);
+            $json = $result;
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    /**
+     * Fetch payment acquirers from Odoo via AJAX
+     */
+    public function fetchOdooAcquirers() {
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = $this->model_extension_module_odoo_connector->fetchOdooPaymentAcquirers();
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    /**
+     * Fetch currencies from Odoo via AJAX
+     */
+    public function fetchOdooCurrencies() {
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = $this->model_extension_module_odoo_connector->fetchOdooCurrencies();
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
 }

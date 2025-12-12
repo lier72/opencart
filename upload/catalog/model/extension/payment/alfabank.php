@@ -91,6 +91,8 @@ class ModelExtensionPaymentAlfabank extends Model
         $this->db->query("INSERT INTO `" . DB_PREFIX . "alfabank_order` SET
             `order_id` = '" . (int)$data['order_id'] . "',
             `gateway_order_reference` = '" . $this->db->escape($data['gateway_order_reference']) . "',
+            `tx_url` = '" . (isset($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "',
+            `order_number` = '" . (isset($data['order_number']) ? $this->db->escape($data['order_number']) : '') . "',
             `currency` = '" . $this->db->escape($data['currency']) . "',
             `order_amount` = '" . (float)$data['order_amount'] . "',
             `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "',
@@ -98,6 +100,8 @@ class ModelExtensionPaymentAlfabank extends Model
             `date_added` = NOW(),
             `date_updated` = NOW()
         ON DUPLICATE KEY UPDATE
+            `tx_url` = '" . (isset($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "',
+            `order_number` = '" . (isset($data['order_number']) ? $this->db->escape($data['order_number']) : '') . "',
             `currency` = '" . $this->db->escape($data['currency']) . "',
             `order_amount` = '" . (float)$data['order_amount'] . "',
             `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "',

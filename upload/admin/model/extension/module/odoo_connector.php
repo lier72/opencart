@@ -174,6 +174,68 @@ class ModelExtensionModuleOdooConnector extends Model {
 
 
     /**
+     * Get payment acquirer mapping for OpenCart payment method
+     * @param string $payment_code OpenCart payment method code
+     * @return array|null Mapping data or null if not found
+     */
+    private function getPaymentAcquirerMapping($payment_code)
+    {
+        $sql = "SELECT opencart_payment_code, opencart_payment_name,
+                       odoo_acquirer_id, odoo_acquirer_name, is_active
+                FROM " . DB_PREFIX . "odoo_payment_acquirer_map
+                WHERE opencart_payment_code = '" . $this->db->escape($payment_code) . "'
+                AND is_active = 1
+                LIMIT 1";
+        $result = $this->db->query($sql);
+
+        if ($result->num_rows) {
+            return $result->row;
+        }
+        return null;
+    }
+
+    /**
+     * Get currency mapping for OpenCart currency code
+     * @param string $currency_code OpenCart currency code (e.g., 'RUB', 'USD')
+     * @return array|null Mapping data or null if not found
+     */
+    private function getCurrencyMapping($currency_code)
+    {
+        $sql = "SELECT opencart_currency_code, opencart_currency_title,
+                       odoo_currency_id, odoo_currency_name, is_active
+                FROM " . DB_PREFIX . "odoo_currency_map
+                WHERE opencart_currency_code = '" . $this->db->escape($currency_code) . "'
+                AND is_active = 1
+                LIMIT 1";
+        $result = $this->db->query($sql);
+
+        if ($result->num_rows) {
+            return $result->row;
+        }
+        return null;
+    }
+
+    /**
+     * Get Alfabank payment transaction data for an order
+     * @param int $oc_order_id OpenCart order ID
+     * @return array|null Transaction data or null if not found
+     */
+    private function getAlfabankTransactionData($oc_order_id)
+    {
+        $sql = "SELECT gateway_order_reference, tx_url, order_number, order_amount
+                FROM " . DB_PREFIX . "alfabank_order
+                WHERE order_id = " . (int)$oc_order_id . "
+                ORDER BY date_added DESC
+                LIMIT 1";
+        $result = $this->db->query($sql);
+
+        if ($result->num_rows) {
+            return $result->row;
+        }
+        return null;
+    }
+
+    /**
      * Creates new Sales Order in odoo based on Open Cart order data
      * it checks if the opencart client is mapped in odoo_client_map mapping table
      * if it is new client it adds new client to odoo
@@ -231,9 +293,9 @@ class ModelExtensionModuleOdooConnector extends Model {
             $password = $odoo_connect['pwd'];
 
             // Check the clinet information from order data
-            $sql = "SELECT customer_id, firstname,lastname, email, telephone, customer_group_id, payment_zone_id, payment_city, 
-                payment_postcode, payment_country_id, payment_address_1, payment_address_2, comment, total, order_status_id 
-                FROM " . DB_PREFIX . "order 
+            $sql = "SELECT customer_id, firstname,lastname, email, telephone, customer_group_id, payment_zone_id, payment_city,
+                payment_postcode, payment_country_id, payment_address_1, payment_address_2, comment, total, order_status_id, payment_code
+                FROM " . DB_PREFIX . "order
                 WHERE order_id =" . $oc_order_id;
             $result = $this->db->query($sql) or die("Error in Selecting order " . mysqli_error($this->db));
 
@@ -470,6 +532,93 @@ class ModelExtensionModuleOdooConnector extends Model {
                     $json['errors'][]= $error_msg;
                     $json['success'] = false;
                     return $json;
+                }
+
+                // Create payment.transaction record if payment method has a mapping
+                if (isset($customer_data['payment_code']) && !empty($customer_data['payment_code'])) {
+                    // Get payment acquirer mapping
+                    $acquirer_mapping = $this->getPaymentAcquirerMapping($customer_data['payment_code']);
+
+                    if ($acquirer_mapping && $acquirer_mapping['odoo_acquirer_id']) {
+                        // Get payment-specific transaction data
+                        $payment_tx_data = null;
+                        if ($customer_data['payment_code'] == 'alfabank') {
+                            $payment_tx_data = $this->getAlfabankTransactionData($oc_order_id);
+                        }
+
+                        // Get currency from order
+                        $currency_code = 'RUB'; // Default
+                        $currency_sql = "SELECT currency_code FROM " . DB_PREFIX . "order WHERE order_id = " . (int)$oc_order_id;
+                        $currency_result = $this->db->query($currency_sql);
+                        if ($currency_result->num_rows) {
+                            $currency_code = $currency_result->row['currency_code'];
+                        }
+
+                        // Get currency mapping
+                        $currency_mapping = $this->getCurrencyMapping($currency_code);
+                        $currency_id = $currency_mapping ? (int)$currency_mapping['odoo_currency_id'] : 36;
+
+                        $transaction_data = array(
+                            'acquirer_id' => (int)$acquirer_mapping['odoo_acquirer_id'],
+                            'partner_id' => (int)$odoo_partner,
+                            'amount' => (float)($customer_data['total']),
+                            'currency_id' => $currency_id,
+                            'state' => 'pending',
+                        );
+
+                        // Add payment-specific fields if available
+                        if ($payment_tx_data) {
+                            if (isset($payment_tx_data['order_number'])) {
+                                $transaction_data['reference'] = $payment_tx_data['order_number'];
+                            }
+                            if (isset($payment_tx_data['gateway_order_reference'])) {
+                                $transaction_data['acquirer_reference'] = $payment_tx_data['gateway_order_reference'];
+                            }
+                            if (isset($payment_tx_data['tx_url'])) {
+                                $transaction_data['tx_url'] = $payment_tx_data['tx_url'];
+                            }
+                        } else {
+                            // For payment methods without specific transaction data
+                            $transaction_data['reference'] = 'OC-' . $oc_order_id;
+                        }
+
+                        // Check if transaction with this reference already exists
+                        $existing_tx = $models->execute_kw($db_name, $uid, $password,
+                            'payment.transaction', 'search_read',
+                            array(array(array('reference', '=', $transaction_data['reference']))),
+                            array('fields' => array('id', 'reference', 'state'))
+                        );
+
+                        if (!empty($existing_tx)) {
+                            // Transaction already exists, skip creation
+                            if ($this->debug) {
+                                $this->log->write('Model odoo_connector createOdooOrder: payment.transaction already exists for reference: '
+                                    . $transaction_data['reference'] . ' (ID: ' . $existing_tx[0]['id'] . ', State: ' . $existing_tx[0]['state'] . ')');
+                            }
+                        } else {
+                            // Create new transaction
+                            $transaction_response = $models->execute_kw($db_name, $uid, $password,
+                                'payment.transaction', 'create',
+                                array($transaction_data)
+                            );
+
+                            if (isset($transaction_response['faultCode']) && $transaction_response['faultCode']) {
+                                $error_detail = !empty($transaction_response['faultString']) ? $transaction_response['faultString'] : $transaction_response['faultCode'];
+                                $error_msg = 'Error creating payment.transaction for ' . $customer_data['payment_code'] . ': ' . $error_detail;
+                                $this->log->write('Error Creating payment.transaction: '. $error_detail);
+                                $json['errors'][]= $error_msg;
+                            } else {
+                                if ($this->debug) {
+                                    $this->log->write('Model odoo_connector createOdooOrder: Created payment.transaction ID: ' . $transaction_response
+                                        . ' for payment method: ' . $customer_data['payment_code']);
+                                }
+                            }
+                        }
+                    } else {
+                        if ($this->debug) {
+                            $this->log->write('Model odoo_connector createOdooOrder: No active payment acquirer mapping found for: ' . $customer_data['payment_code']);
+                        }
+                    }
                 }
             }
 
@@ -1404,15 +1553,45 @@ class ModelExtensionModuleOdooConnector extends Model {
             `is_sync` tinyint(1) NOT NULL DEFAULT 0,
             PRIMARY KEY (`id`)
           ) DEFAULT CHARSET=utf8");
+// Payment acquirer mapping table
+        $this->db->query("CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "odoo_payment_acquirer_map (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `opencart_payment_code` varchar(64) NOT NULL COMMENT 'OpenCart payment method code',
+            `opencart_payment_name` varchar(255) NOT NULL COMMENT 'OpenCart payment method name',
+            `odoo_acquirer_id` int(11) NOT NULL COMMENT 'Odoo payment acquirer ID',
+            `odoo_acquirer_name` varchar(255) NULL COMMENT 'Odoo acquirer name for reference',
+            `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Is mapping active',
+            `created_by` varchar(128) NOT NULL,
+            `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `modified_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `unique_payment_code` (`opencart_payment_code`)
+          ) DEFAULT CHARSET=utf8 COMMENT='Maps OpenCart payment methods to Odoo payment acquirers'");
+// Currency mapping table
+        $this->db->query("CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "odoo_currency_map (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `opencart_currency_code` varchar(3) NOT NULL COMMENT 'OpenCart currency code (ISO 4217)',
+            `opencart_currency_title` varchar(128) NOT NULL COMMENT 'OpenCart currency title',
+            `odoo_currency_id` int(11) NOT NULL COMMENT 'Odoo currency ID',
+            `odoo_currency_name` varchar(64) NULL COMMENT 'Odoo currency name (for reference)',
+            `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Is mapping active',
+            `created_by` varchar(128) NOT NULL,
+            `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `modified_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `unique_currency_code` (`opencart_currency_code`)
+          ) DEFAULT CHARSET=utf8 COMMENT='Maps OpenCart currencies to Odoo currencies'");
     }
 
     function uninstall()
     {
-        $sql  = "DROP TABLE `" . DB_PREFIX . "odoo_config`, ";
+        $sql  = "DROP TABLE IF EXISTS `" . DB_PREFIX . "odoo_config`, ";
         $sql .= "`" . DB_PREFIX . "odoo_product_variant_map`, ";
         $sql .= "`" . DB_PREFIX . "odoo_order_map`, ";
         $sql .= "`" . DB_PREFIX . "odoo_client_map`, ";
-        $sql .= "`" . DB_PREFIX . "odoo_region_map`";
+        $sql .= "`" . DB_PREFIX . "odoo_region_map`, ";
+        $sql .= "`" . DB_PREFIX . "odoo_payment_acquirer_map`, ";
+        $sql .= "`" . DB_PREFIX . "odoo_currency_map`";
 
         $this->db->query($sql);
     }
@@ -1528,10 +1707,171 @@ class ModelExtensionModuleOdooConnector extends Model {
     }
 
     public function getOrderStatuses() {
-        $query = $this->db->query("SELECT order_status_id, name FROM " . DB_PREFIX . "order_status 
-        WHERE language_id = '" . (int)$this->config->get('config_language_id') . "' 
+        $query = $this->db->query("SELECT order_status_id, name FROM " . DB_PREFIX . "order_status
+        WHERE language_id = '" . (int)$this->config->get('config_language_id') . "'
         ORDER BY name");
 
         return $query->rows;
+    }
+
+    /**
+     * Get all payment acquirer mappings
+     * @return array
+     */
+    public function getPaymentAcquirerMappings() {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "odoo_payment_acquirer_map ORDER BY opencart_payment_name");
+        return $query->rows;
+    }
+
+    /**
+     * Get all currency mappings
+     * @return array
+     */
+    public function getCurrencyMappings() {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "odoo_currency_map ORDER BY opencart_currency_code");
+        return $query->rows;
+    }
+
+    /**
+     * Update payment acquirer mapping
+     * @param array $data
+     * @return array
+     */
+    public function updatePaymentAcquirerMapping($data) {
+        $json = array('success' => false);
+
+        if (isset($data['id']) && isset($data['odoo_acquirer_id']) && isset($data['is_active'])) {
+            $this->db->query("UPDATE " . DB_PREFIX . "odoo_payment_acquirer_map
+                SET odoo_acquirer_id = '" . (int)$data['odoo_acquirer_id'] . "',
+                    odoo_acquirer_name = '" . $this->db->escape($data['odoo_acquirer_name']) . "',
+                    is_active = '" . (int)$data['is_active'] . "',
+                    modified_on = NOW()
+                WHERE id = '" . (int)$data['id'] . "'");
+
+            $json['success'] = true;
+            $json['message'] = 'Payment acquirer mapping updated successfully';
+        } else {
+            $json['error'] = 'Missing required fields';
+        }
+
+        return $json;
+    }
+
+    /**
+     * Update currency mapping
+     * @param array $data
+     * @return array
+     */
+    public function updateCurrencyMapping($data) {
+        $json = array('success' => false);
+
+        if (isset($data['id']) && isset($data['odoo_currency_id']) && isset($data['is_active'])) {
+            $this->db->query("UPDATE " . DB_PREFIX . "odoo_currency_map
+                SET odoo_currency_id = '" . (int)$data['odoo_currency_id'] . "',
+                    odoo_currency_name = '" . $this->db->escape($data['odoo_currency_name']) . "',
+                    is_active = '" . (int)$data['is_active'] . "',
+                    modified_on = NOW()
+                WHERE id = '" . (int)$data['id'] . "'");
+
+            $json['success'] = true;
+            $json['message'] = 'Currency mapping updated successfully';
+        } else {
+            $json['error'] = 'Missing required fields';
+        }
+
+        return $json;
+    }
+
+    /**
+     * Fetch payment acquirers from Odoo
+     * @return array
+     */
+    public function fetchOdooPaymentAcquirers() {
+        $json = array('success' => false, 'data' => array());
+
+        try {
+            // Ensure connection is established
+            if (!$this->isConnected()) {
+                $this->getConfig();
+            }
+
+            if (!$this->isConnected()) {
+                $json['error'] = 'Odoo connection not established';
+                return $json;
+            }
+
+            // Fetch payment acquirers using existing connection
+            // Filter for published acquirers (website_published = true)
+            $acquirers = $this->connection['client']->execute_kw(
+                $this->connection['db'],
+                $this->connection['userId'],
+                $this->connection['pwd'],
+                'payment.acquirer',
+                'search_read',
+                array(array(array('website_published', '=', true))), // only published acquirers
+                array(
+                    'fields' => array('id', 'name', 'provider', 'website_published'),
+                    'order' => 'name asc'
+                )
+            );
+
+            if ($acquirers) {
+                $json['success'] = true;
+                $json['data'] = $acquirers;
+            } else {
+                $json['error'] = 'No acquirers found';
+            }
+        } catch (Exception $e) {
+            $json['error'] = 'Error fetching acquirers: ' . $e->getMessage();
+            $this->log->write('Error fetchOdooPaymentAcquirers: ' . $e->getMessage());
+        }
+
+        return $json;
+    }
+
+    /**
+     * Fetch currencies from Odoo
+     * @return array
+     */
+    public function fetchOdooCurrencies() {
+        $json = array('success' => false, 'data' => array());
+
+        try {
+            // Ensure connection is established
+            if (!$this->isConnected()) {
+                $this->getConfig();
+            }
+
+            if (!$this->isConnected()) {
+                $json['error'] = 'Odoo connection not established';
+                return $json;
+            }
+
+            // Fetch currencies using existing connection
+            $currencies = $this->connection['client']->execute_kw(
+                $this->connection['db'],
+                $this->connection['userId'],
+                $this->connection['pwd'],
+                'res.currency',
+                'search_read',
+                array(array(array('active', '=', true))), // only active currencies
+                array(
+                    'fields' => array('id', 'name', 'active'),
+                    'order' => 'name asc'
+                )
+            );
+
+            if ($currencies) {
+                $json['success'] = true;
+                $json['data'] = $currencies;
+            } else {
+                $json['error'] = 'No currencies found';
+            }
+        } catch (Exception $e) {
+            $json['error'] = 'Error fetching currencies: ' . $e->getMessage();
+            $this->log->write('Error fetchOdooCurrencies: ' . $e->getMessage());
+        }
+
+        return $json;
     }
 }

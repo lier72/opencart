@@ -15,6 +15,17 @@
     </div>
 
     <div class="container-fluid">
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs" role="tablist">
+            <li role="presentation" class="active"><a href="#tab-orders" aria-controls="tab-orders" role="tab" data-toggle="tab"><i class="fa fa-shopping-cart"></i> Order Mapping</a></li>
+            <li role="presentation"><a href="#tab-payments" aria-controls="tab-payments" role="tab" data-toggle="tab"><i class="fa fa-credit-card"></i> Payment Acquirers</a></li>
+            <li role="presentation"><a href="#tab-currencies" aria-controls="tab-currencies" role="tab" data-toggle="tab"><i class="fa fa-money"></i> Currencies</a></li>
+        </ul>
+
+        <!-- Tab panes -->
+        <div class="tab-content">
+            <!-- Orders Tab -->
+            <div role="tabpanel" class="tab-pane active" id="tab-orders">
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h3 class="panel-title"><i class="fa fa-list"></i> {{ text_list }}</h3>
@@ -151,6 +162,137 @@
                 </div>
             </div>
         </div>
+            </div>
+            <!-- End Orders Tab -->
+
+            <!-- Payment Acquirers Tab -->
+            <div role="tabpanel" class="tab-pane" id="tab-payments">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="fa fa-credit-card"></i> Payment Acquirer Mappings</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"></i> Configure which Odoo payment acquirer ID corresponds to each OpenCart payment method. Set "Active" to enable payment.transaction export to Odoo.
+                        </div>
+                        <div class="well well-sm">
+                            <button type="button" class="btn btn-success" id="sync-acquirers-btn">
+                                <i class="fa fa-refresh"></i> Sync Acquirers from Odoo
+                            </button>
+                            <span id="acquirers-sync-status" class="text-muted" style="margin-left: 10px;"></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="payment-mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th>OpenCart Payment Code</th>
+                                        <th>OpenCart Payment Name</th>
+                                        <th>Odoo Acquirer ID</th>
+                                        <th>Odoo Acquirer Name</th>
+                                        <th>Active</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if payment_mappings %}
+                                        {% for mapping in payment_mappings %}
+                                            <tr data-id="{{ mapping.id }}">
+                                                <td>{{ mapping.opencart_payment_code }}</td>
+                                                <td>{{ mapping.opencart_payment_name }}</td>
+                                                <td>
+                                                    <input type="number" class="form-control input-sm acquirer-id" value="{{ mapping.odoo_acquirer_id }}" style="width: 100px;" />
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control input-sm acquirer-name" value="{{ mapping.odoo_acquirer_name }}" />
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="active-checkbox" {% if mapping.is_active == 1 %}checked{% endif %} />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-primary btn-sm save-payment" data-id="{{ mapping.id }}">
+                                                        <i class="fa fa-save"></i> Save
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center">No payment mappings found</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Payment Acquirers Tab -->
+
+            <!-- Currencies Tab -->
+            <div role="tabpanel" class="tab-pane" id="tab-currencies">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="fa fa-money"></i> Currency Mappings</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"></i> Map OpenCart currency codes to Odoo currency IDs. These are used when creating payment.transaction records in Odoo.
+                        </div>
+                        <div class="well well-sm">
+                            <button type="button" class="btn btn-success" id="sync-currencies-btn">
+                                <i class="fa fa-refresh"></i> Sync Currencies from Odoo
+                            </button>
+                            <span id="currencies-sync-status" class="text-muted" style="margin-left: 10px;"></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="currency-mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th>OpenCart Currency Code</th>
+                                        <th>OpenCart Currency Title</th>
+                                        <th>Odoo Currency ID</th>
+                                        <th>Odoo Currency Name</th>
+                                        <th>Active</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if currency_mappings %}
+                                        {% for mapping in currency_mappings %}
+                                            <tr data-id="{{ mapping.id }}">
+                                                <td>{{ mapping.opencart_currency_code }}</td>
+                                                <td>{{ mapping.opencart_currency_title }}</td>
+                                                <td>
+                                                    <input type="number" class="form-control input-sm currency-id" value="{{ mapping.odoo_currency_id }}" style="width: 100px;" />
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control input-sm currency-name" value="{{ mapping.odoo_currency_name }}" />
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="active-checkbox" {% if mapping.is_active == 1 %}checked{% endif %} />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-primary btn-sm save-currency" data-id="{{ mapping.id }}">
+                                                        <i class="fa fa-save"></i> Save
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center">No currency mappings found</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Currencies Tab -->
+
+        </div>
+        <!-- End Tab Content -->
     </div>
 </div>
 <script type="text/javascript">
@@ -210,6 +352,173 @@
         }
 
         location = url;
+    });
+
+    // Payment Acquirer Mapping Save
+    $('.save-payment').on('click', function() {
+        var btn = $(this);
+        var row = btn.closest('tr');
+        var id = row.data('id');
+        var acquirer_id = row.find('.acquirer-id').val();
+        var acquirer_name = row.find('.acquirer-name').val();
+        var is_active = row.find('.active-checkbox').is(':checked') ? 1 : 0;
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_connector/updatePaymentMapping&user_token={{ user_token }}',
+            type: 'POST',
+            data: {
+                id: id,
+                odoo_acquirer_id: acquirer_id,
+                odoo_acquirer_name: acquirer_name,
+                is_active: is_active
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fa fa-save"></i> Save');
+            },
+            success: function(json) {
+                if (json.success) {
+                    row.css('background-color', '#d4edda');
+                    setTimeout(function() {
+                        row.css('background-color', '');
+                    }, 2000);
+                    alert('Payment mapping updated successfully');
+                } else if (json.error) {
+                    alert('Error: ' + json.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error updating mapping: ' + error);
+            }
+        });
+    });
+
+    // Currency Mapping Save
+    $('.save-currency').on('click', function() {
+        var btn = $(this);
+        var row = btn.closest('tr');
+        var id = row.data('id');
+        var currency_id = row.find('.currency-id').val();
+        var currency_name = row.find('.currency-name').val();
+        var is_active = row.find('.active-checkbox').is(':checked') ? 1 : 0;
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_connector/updateCurrencyMapping&user_token={{ user_token }}',
+            type: 'POST',
+            data: {
+                id: id,
+                odoo_currency_id: currency_id,
+                odoo_currency_name: currency_name,
+                is_active: is_active
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fa fa-save"></i> Save');
+            },
+            success: function(json) {
+                if (json.success) {
+                    row.css('background-color', '#d4edda');
+                    setTimeout(function() {
+                        row.css('background-color', '');
+                    }, 2000);
+                    alert('Currency mapping updated successfully');
+                } else if (json.error) {
+                    alert('Error: ' + json.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error updating mapping: ' + error);
+            }
+        });
+    });
+
+    // Sync Acquirers from Odoo
+    $('#sync-acquirers-btn').on('click', function() {
+        var btn = $(this);
+        var statusSpan = $('#acquirers-sync-status');
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_connector/fetchOdooAcquirers&user_token={{ user_token }}',
+            type: 'GET',
+            dataType: 'json',
+            beforeSend: function() {
+                btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Syncing...');
+                statusSpan.html('');
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fa fa-refresh"></i> Sync Acquirers from Odoo');
+            },
+            success: function(json) {
+                if (json.success && json.data) {
+                    var html = '<div class="alert alert-success" style="margin-top: 15px;">';
+                    html += '<strong>Found ' + json.data.length + ' acquirers in Odoo:</strong><br>';
+                    html += '<ul>';
+                    json.data.forEach(function(acquirer) {
+                        html += '<li>ID: ' + acquirer.id + ' - ' + acquirer.name;
+                        if (acquirer.provider) {
+                            html += ' (Provider: ' + acquirer.provider + ')';
+                        }
+                        if (acquirer.website_published) {
+                            html += ' [Published]';
+                        }
+                        html += '</li>';
+                    });
+                    html += '</ul>';
+                    html += '<small class="text-muted">You can now use these IDs in the mapping table above.</small>';
+                    html += '</div>';
+                    statusSpan.html(html);
+                } else if (json.error) {
+                    statusSpan.html('<div class="alert alert-danger" style="margin-top: 15px;">' + json.error + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                statusSpan.html('<div class="alert alert-danger" style="margin-top: 15px;">Error fetching acquirers: ' + error + '</div>');
+            }
+        });
+    });
+
+    // Sync Currencies from Odoo
+    $('#sync-currencies-btn').on('click', function() {
+        var btn = $(this);
+        var statusSpan = $('#currencies-sync-status');
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_connector/fetchOdooCurrencies&user_token={{ user_token }}',
+            type: 'GET',
+            dataType: 'json',
+            beforeSend: function() {
+                btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Syncing...');
+                statusSpan.html('');
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fa fa-refresh"></i> Sync Currencies from Odoo');
+            },
+            success: function(json) {
+                if (json.success && json.data) {
+                    var html = '<div class="alert alert-success" style="margin-top: 15px;">';
+                    html += '<strong>Found ' + json.data.length + ' active currencies in Odoo:</strong><br>';
+                    html += '<ul>';
+                    json.data.forEach(function(currency) {
+                        html += '<li>ID: ' + currency.id + ' - ' + currency.name + '</li>';
+                    });
+                    html += '</ul>';
+                    html += '<small class="text-muted">You can now use these IDs in the mapping table above.</small>';
+                    html += '</div>';
+                    statusSpan.html(html);
+                } else if (json.error) {
+                    statusSpan.html('<div class="alert alert-danger" style="margin-top: 15px;">' + json.error + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                statusSpan.html('<div class="alert alert-danger" style="margin-top: 15px;">Error fetching currencies: ' + error + '</div>');
+            }
+        });
     });
 </script>
 {{ footer }}
