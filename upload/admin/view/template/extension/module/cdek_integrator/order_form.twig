@@ -1036,24 +1036,37 @@ $(".setting-city-name").bind('cityselect', function(){
 						},
 						minLength: 1,
 						select: function(event, ui) {
+							// Handle different autocomplete library signatures
+							var item = ui && ui.item ? ui.item : (ui || event);
+
+							if (!item) {
+								console.error('No item data in PVZ select!');
+								return false;
+							}
+
 							// Set hidden field with PVZ code
-							$('#cdek-orders-address-pvz-code-value').val(ui.item.pvz_code);
+							var code = item.pvz_code || item.id || item.value;
+							$('#cdek-orders-address-pvz-code-value').val(code);
 
 							// Update PVZ info display
-							var html = '<p>' + ui.item.pvz_name;
-							if (ui.item.pvz_x) {
-								html += ' (<a href="http://maps.google.ru/maps?q=' + ui.item.pvz_y + ',' + ui.item.pvz_x + '" target="_blank">на карте</a>)';
+							if (item.pvz_name) {
+								var html = '<p>' + item.pvz_name;
+								if (item.pvz_x) {
+									html += ' (<a href="http://maps.google.ru/maps?q=' + item.pvz_y + ',' + item.pvz_x + '" target="_blank">на карте</a>)';
+								}
+								html += '</p><span class="help">';
+								html += '<strong>Адрес</strong>: ' + item.pvz_address + '<br />';
+								if (item.pvz_phone && item.pvz_phone != '-') {
+									html += '<strong>Телефон</strong>: ' + item.pvz_phone + '<br />';
+								}
+								if (item.pvz_worktime && item.pvz_worktime != '-') {
+									html += '<strong>Режим работы</strong>: ' + item.pvz_worktime;
+								}
+								html += '</span>';
+								$('.address-mode.pvz .pvz-wrapper').html(html);
 							}
-							html += '</p><span class="help">';
-							html += '<strong>Адрес</strong>: ' + ui.item.pvz_address + '<br />';
-							if (ui.item.pvz_phone && ui.item.pvz_phone != '-') {
-								html += '<strong>Телефон</strong>: ' + ui.item.pvz_phone + '<br />';
-							}
-							if (ui.item.pvz_worktime && ui.item.pvz_worktime != '-') {
-								html += '<strong>Режим работы</strong>: ' + ui.item.pvz_worktime;
-							}
-							html += '</span>';
-							$('.address-mode.pvz .pvz-wrapper').html(html);
+
+							return false; // Prevent default
 						}
 					});
 				}

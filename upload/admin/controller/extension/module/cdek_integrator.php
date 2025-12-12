@@ -1449,6 +1449,9 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 				if (!empty($this->setting['seller_telephone'])) {
 					$exdata['seller_telephone'] = $this->setting['seller_telephone'];
+				} elseif (!empty($this->config->get('config_telephone'))) {
+					// Fallback to shop telephone if seller telephone is not configured
+					$exdata['seller_telephone'] = $this->config->get('config_telephone');
 				}
 
 				if (!empty($this->setting['seller_address'])) {
