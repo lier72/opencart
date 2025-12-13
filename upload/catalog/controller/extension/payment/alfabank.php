@@ -262,12 +262,16 @@ class ControllerExtensionPaymentAlfabank extends Controller
 
 			// Store initial payment transaction data for Odoo sync
 			$this->load->model('extension/payment/alfabank');
+			// Convert currency to numeric format
+			$currency_value = isset($response['currency']) ? $response['currency'] : $order_info['currency_code'];
+			$numeric_currency = $this->method_library->normalize_currency_to_numeric($currency_value);
+
 			$initial_data = array(
 				'order_id' => (int)$order_info['order_id'],
 				'gateway_order_reference' => $response['orderId'],
 				'tx_url' => isset($response['formUrl']) ? $response['formUrl'] : '',
 				'order_number' => $args['orderNumber'],
-				'currency' => isset($response['currency']) ? $response['currency'] : $order_info['currency_code'],
+				'currency' => $numeric_currency,
 				'order_amount' => $amount,
 				'order_amount_deposited' => 0,
 				'status_deposited' => 0, // Registered, not paid
@@ -472,12 +476,25 @@ class ControllerExtensionPaymentAlfabank extends Controller
 	public function _storeGatewayOrderData($order_id, $order_info, $response)
 	{
 		$this->load->model('extension/payment/alfabank');
+		// Ensure currency is stored in numeric format
+		$currency_value = isset($response['currency']) ? $response['currency'] : $order_info['currency_code'];
+		$numeric_currency = $this->method_library->normalize_currency_to_numeric($currency_value);
+
+		// Extract payment way and payment system from response
+		$payment_way = isset($response['paymentWay']) ? $response['paymentWay'] : '';
+		$payment_system = '';
+		if (isset($response['cardAuthInfo']['paymentSystem'])) {
+			$payment_system = $response['cardAuthInfo']['paymentSystem'];
+		}
+
 		$data = array(
 			'order_id' => (int)$order_info['order_id'],
 			'gateway_order_reference' => $order_id,
 			'tx_url' => isset($response['formUrl']) ? $response['formUrl'] : '',
 			'order_number' => isset($response['orderNumber']) ? $response['orderNumber'] : '',
-			'currency' => $response['currency'],
+			'currency' => $numeric_currency,
+			'payment_way' => $payment_way,
+			'payment_system' => $payment_system,
 			'order_amount' => $response['amount'],
 			'order_amount_deposited' => $response['amount'],
 			'status_deposited' => $response['orderStatus'] === 1 ? 0 : 1, //todo

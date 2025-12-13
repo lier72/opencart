@@ -187,7 +187,7 @@ return json_encode($error);
 $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 curl_close($ch);
 if ($this->logging) {
-$this->logger($action_address,'test', serialize($data), $response);
+$this->logger($action_address, '', serialize($data), $response);
 }
 return substr($response, $header_size);
 }
@@ -296,5 +296,80 @@ $currency_codes = array(
 'INR' => '356'
 );
 return isset($currency_codes[$currency_code]) ? $currency_codes[$currency_code] : null;
+}
+
+/**
+ * Convert numeric currency code to ISO currency code
+ * @param string $numeric_code Numeric currency code (e.g., '810', '643')
+ * @return string|null ISO currency code (e.g., 'RUB') or null if not found
+ */
+function get_currency_code_from_numeric($numeric_code)
+{
+$numeric_codes = array(
+'933' => 'BYN',
+'048' => 'BHD',
+'974' => 'BYR',
+'124' => 'CAD',
+'156' => 'CNY',
+'978' => 'EUR',
+'826' => 'GBP',
+'344' => 'HKD',
+'348' => 'HUF',
+'376' => 'ILS',
+'392' => 'JPY',
+'417' => 'KGS',
+'410' => 'KRW',
+'398' => 'KZT',
+'498' => 'MDL',
+'458' => 'MYR',
+'512' => 'OMR',
+'608' => 'PHP',
+'946' => 'RON',
+'643' => 'RUB',
+'810' => 'RUB',  // Russian Ruble (RUR is old code, maps to RUB)
+'702' => 'SGD',
+'980' => 'UAH',
+'840' => 'USD',
+'566' => 'NGN',
+'943' => 'MZN',
+'975' => 'BGN',
+'084' => 'BZD',
+'936' => 'GHS',
+'324' => 'GNF',
+'952' => 'XOF',
+'985' => 'PLN',
+'426' => 'LSL',
+'834' => 'TZS',
+'554' => 'NZD',
+'116' => 'KHR',
+'949' => 'TRY',
+'051' => 'AMD',
+'682' => 'SAR',
+'784' => 'AED',
+'170' => 'COP',
+'036' => 'AUD',
+'360' => 'IDR',
+'414' => 'KWD',
+'400' => 'JOD',
+'356' => 'INR'
+);
+return isset($numeric_codes[$numeric_code]) ? $numeric_codes[$numeric_code] : null;
+}
+
+/**
+ * Normalize currency to numeric code
+ * Converts ISO currency code to numeric if needed, or returns numeric code as-is
+ * @param string $currency Currency code (ISO like 'RUB' or numeric like '810')
+ * @return string Numeric currency code
+ */
+function normalize_currency_to_numeric($currency)
+{
+// If it's already numeric (3 digits), return as-is
+if (preg_match('/^\d{3}$/', $currency)) {
+return $currency;
+}
+// Otherwise convert from ISO to numeric
+$numeric = $this->get_numeric_currency_code($currency);
+return $numeric !== null ? $numeric : $currency;
 }
 }

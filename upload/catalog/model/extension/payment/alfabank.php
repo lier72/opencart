@@ -94,15 +94,19 @@ class ModelExtensionPaymentAlfabank extends Model
             `tx_url` = '" . (isset($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "',
             `order_number` = '" . (isset($data['order_number']) ? $this->db->escape($data['order_number']) : '') . "',
             `currency` = '" . $this->db->escape($data['currency']) . "',
+            `payment_way` = '" . (isset($data['payment_way']) ? $this->db->escape($data['payment_way']) : '') . "',
+            `payment_system` = '" . (isset($data['payment_system']) ? $this->db->escape($data['payment_system']) : '') . "',
             `order_amount` = '" . (float)$data['order_amount'] . "',
             `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "',
             `status_deposited` = '" . (int)$data['status_deposited'] . "',
             `date_added` = NOW(),
             `date_updated` = NOW()
         ON DUPLICATE KEY UPDATE
-            `tx_url` = '" . (isset($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "',
+            `tx_url` = IF('" . (isset($data['tx_url']) && !empty($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "' != '', '" . (isset($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "', `tx_url`),
             `order_number` = '" . (isset($data['order_number']) ? $this->db->escape($data['order_number']) : '') . "',
             `currency` = '" . $this->db->escape($data['currency']) . "',
+            `payment_way` = '" . (isset($data['payment_way']) ? $this->db->escape($data['payment_way']) : '') . "',
+            `payment_system` = '" . (isset($data['payment_system']) ? $this->db->escape($data['payment_system']) : '') . "',
             `order_amount` = '" . (float)$data['order_amount'] . "',
             `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "',
             `status_deposited` = '" . (int)$data['status_deposited'] . "',
@@ -152,11 +156,26 @@ class ModelExtensionPaymentAlfabank extends Model
 
     public function update_alfabank_order($data)
     {
-        $this->db->query("UPDATE " . DB_PREFIX . "alfabank_order SET
-`date_updated` = NOW(),
-`status_deposited` = " . (int)$data['orderStatus'] . ",
-`order_amount_deposited` = " . (float)$data['amount'] . "
-WHERE `gateway_order_reference` = '" . $this->db->escape($data['orderId']) . "'");
+        // Extract payment way and payment system if available
+        $payment_way = isset($data['paymentWay']) ? $data['paymentWay'] : null;
+        $payment_system = isset($data['cardAuthInfo']['paymentSystem']) ? $data['cardAuthInfo']['paymentSystem'] : null;
+
+        $sql = "UPDATE " . DB_PREFIX . "alfabank_order SET
+            `date_updated` = NOW(),
+            `status_deposited` = " . (int)$data['orderStatus'] . ",
+            `order_amount_deposited` = " . (float)$data['amount'];
+
+        if ($payment_way !== null) {
+            $sql .= ", `payment_way` = '" . $this->db->escape($payment_way) . "'";
+        }
+
+        if ($payment_system !== null) {
+            $sql .= ", `payment_system` = '" . $this->db->escape($payment_system) . "'";
+        }
+
+        $sql .= " WHERE `gateway_order_reference` = '" . $this->db->escape($data['orderId']) . "'";
+
+        $this->db->query($sql);
     }
 
     public function delete_alfabank_order($orderId)
@@ -242,7 +261,7 @@ WHERE `gateway_order_reference` = '" . $this->db->escape($data['orderId']) . "'"
         }
     }
 
-    private function get_oc_paid_status($oc_order_id, $paid_statuses = array(14, 15, 22, 23))
+    public function get_oc_paid_status($oc_order_id, $paid_statuses = array(14, 15, 22, 23))
     {
         $oc_order_id = (int) $oc_order_id;
         $array = implode(", ", array_map('intval', $paid_statuses));

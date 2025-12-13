@@ -4,8 +4,12 @@ public function install() {
 $this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "alfabank_order` (
 `gateway_order_id` int(11) NOT NULL AUTO_INCREMENT,
 `gateway_order_reference` varchar(64),
+`tx_url` varchar(512),
 `order_id` int(11) NOT NULL,
-`currency` varchar(3),
+`order_number` varchar(64),
+`currency` varchar(3) COMMENT 'ISO 4217 numeric currency code (e.g., 810 for RUB)',
+`payment_way` varchar(50) COMMENT 'Payment method (e.g., ALFAPAY, CARD)',
+`payment_system` varchar(50) COMMENT 'Payment system (e.g., MIR, VISA, MASTERCARD)',
 `order_amount` decimal(15,4) NOT NULL COMMENT 'Order amount',
 `order_amount_deposited` decimal(15,4) NOT NULL COMMENT 'Order deposited amount',
 `order_amount_refunded` decimal(15,4) NOT NULL COMMENT 'Order refunded amount',
