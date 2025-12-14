@@ -122,7 +122,9 @@ class OpenCart {
     public $order;
 
     public function __construct($url, $session_id = '', $session_file = '') {
-        $this->url = rtrim('http://'.preg_replace('/^https?\:\/\//', '', $url), '/') . '/index.php?route=api/';
+        // Preserve the protocol from the URL (http:// or https://)
+        // If no protocol is provided, the URL is used as-is (should include protocol)
+        $this->url = rtrim($url, '/') . '/index.php?route=api/';
         $this->curl = new CurlRequest($session_id, $session_file);
         $this->order = new Order($this);
     }

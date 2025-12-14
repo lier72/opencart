@@ -839,14 +839,25 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 
 		require_once DIR_SYSTEM . 'library/cdek_integrator/ocapi.php';
 
-		$site_url = str_replace(array('http://', 'https://'), '', HTTP_CATALOG);
+		// Prefer HTTPS_CATALOG if defined (production sites should use HTTPS)
+		// Fall back to HTTP_CATALOG for local/dev environments
+		if (defined('HTTPS_CATALOG')) {
+			$site_url = rtrim(HTTPS_CATALOG, '/');
+		} else {
+			$site_url = rtrim(HTTP_CATALOG, '/');
+		}
 
 		$oc = new OpenCart\OpenCart($site_url);
 		$token = $oc->login($api_info['username'], $api_info['key']);
 
 		if (empty($token)) {
-			$this->log->write('Не удалось авторизоваться в OpenCart API (проверьте, настройки Opencart)');
-			$this->log->write('Site_url: '. $site_url .'Username: ' . $api_info['username']. 'order_id: ' . $order_id .'$status_id: '. $status_id);
+			$last_error = $oc->getLastError();
+			$this->log->write('Не удалось авторизоваться в OpenCart API (проверьте настройки OpenCart)');
+			$this->log->write('Site_url: ' . $site_url . ' | Username: ' . $api_info['username'] . ' | order_id: ' . $order_id . ' | status_id: ' . $status_id);
+			if ($last_error) {
+				$this->log->write('API Error: ' . print_r($last_error, true));
+			}
+			$this->log->write('Проверьте: 1) IP сервера в ocus_api_ip, 2) HTTP_CATALOG в config.php, 3) API ключ');
 			ob_start();
     		debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
     		$trace = ob_get_clean();
