@@ -1303,10 +1303,9 @@ class OrderSyncWorker {
             $this->syncCdekDispatch($source_conn, $target_conn, $cdek_order['dispatch_id'], $target_db);
         }
 
-        // Sync cdek_order_status_history
+        // NOTE: CDEK history sync - these methods now check if tables exist
+        // If tables don't exist, they gracefully skip with a log message
         $this->syncCdekOrderStatusHistory($source_conn, $target_conn, $order_id, $target_db);
-
-        // Sync cdek_order_package and package items
         $this->syncCdekOrderPackages($source_conn, $target_conn, $order_id, $target_db);
 
         $this->log("  Synced CDEK order #{$order_id} to {$target_db}");
@@ -1417,6 +1416,22 @@ class OrderSyncWorker {
         $source_prefix = ($target_db === 'oc3') ? OC2_DB_PREFIX : OC3_DB_PREFIX;
         $target_prefix = ($target_db === 'oc3') ? OC3_DB_PREFIX : OC2_DB_PREFIX;
 
+        // Check if table exists in both source and target
+        $source_table_check = $source_conn->query("SHOW TABLES LIKE '{$source_prefix}cdek_order_status_history'");
+        $target_table_check = $target_conn->query("SHOW TABLES LIKE '{$target_prefix}cdek_order_status_history'");
+
+        if (!$source_table_check || $source_table_check->num_rows === 0) {
+            $this->log("    SKIP: cdek_order_status_history table not found in source DB");
+            $target_conn->query("SET @sync_in_progress = NULL");
+            return;
+        }
+
+        if (!$target_table_check || $target_table_check->num_rows === 0) {
+            $this->log("    SKIP: cdek_order_status_history table not found in target DB (using API)");
+            $target_conn->query("SET @sync_in_progress = NULL");
+            return;
+        }
+
         // Fetch all status history records from source
         $history_query = "SELECT * FROM {$source_prefix}cdek_order_status_history WHERE order_id = " . (int)$order_id;
         $history_result = $source_conn->query($history_query);
@@ -1449,6 +1464,7 @@ class OrderSyncWorker {
                     throw new Exception("Failed to insert cdek_order_status_history: " . $target_conn->error);
                 }
             }
+            $this->log("    Synced " . $history_result->num_rows . " status history records");
         }
 
         $target_conn->query("SET @sync_in_progress = NULL");
@@ -1459,6 +1475,22 @@ class OrderSyncWorker {
 
         $source_prefix = ($target_db === 'oc3') ? OC2_DB_PREFIX : OC3_DB_PREFIX;
         $target_prefix = ($target_db === 'oc3') ? OC3_DB_PREFIX : OC2_DB_PREFIX;
+
+        // Check if tables exist in both source and target
+        $source_table_check = $source_conn->query("SHOW TABLES LIKE '{$source_prefix}cdek_order_package'");
+        $target_table_check = $target_conn->query("SHOW TABLES LIKE '{$target_prefix}cdek_order_package'");
+
+        if (!$source_table_check || $source_table_check->num_rows === 0) {
+            $this->log("    SKIP: cdek_order_package table not found in source DB");
+            $target_conn->query("SET @sync_in_progress = NULL");
+            return;
+        }
+
+        if (!$target_table_check || $target_table_check->num_rows === 0) {
+            $this->log("    SKIP: cdek_order_package table not found in target DB (using API)");
+            $target_conn->query("SET @sync_in_progress = NULL");
+            return;
+        }
 
         // Fetch all package records from source
         $package_query = "SELECT * FROM {$source_prefix}cdek_order_package WHERE order_id = " . (int)$order_id;
@@ -1512,6 +1544,7 @@ class OrderSyncWorker {
                 // Now sync package items for this package
                 $this->syncCdekOrderPackageItems($source_conn, $target_conn, $source_package_id, $target_package_id, $order_id, $source_prefix, $target_prefix);
             }
+            $this->log("    Synced " . $package_result->num_rows . " packages");
         }
 
         $target_conn->query("SET @sync_in_progress = NULL");
