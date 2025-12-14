@@ -2947,7 +2947,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 					$update[$order_id]['recipient_city_postcode'] = (string)$info['entity']['to_location']['postal_code'];
                 }
 
-				//changed
+				//changed COD and COD Fact are the same fields and store the amount of cash collected from the recipient
 				if(!empty($info['entity']['delivery_detail']['payment_sum'])) {
 					$update[$order_id]['cod'] = (string)$info['entity']['delivery_detail']['payment_sum'];
 					$update[$order_id]['cod_fact'] = (string)$info['entity']['delivery_detail']['payment_sum'];
@@ -3967,7 +3967,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				echo "WARNING: Not isset dispatch ".$dispatch_number.PHP_EOL;
 				continue;
 			}
-			
+
 			$statuses = $info['entity']['statuses'];
 
 			$end_status = array_shift($statuses);
@@ -3978,6 +3978,11 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			if($dispatch['status_id'] == $status_id) {
 				echo "Order with dispatch ".$dispatch_number. " OpenCart No: ". $dispatch['order_id']. " not changed".PHP_EOL;
+				// I do not think we need to check COD payment status here 
+				// Even if status didn't change, check COD payment status if order is delivered
+				// if ($status_id == 'DELIVERED') {
+				// 	$this->checkCodPaymentStatus($dispatch['order_id'], $info);
+				// }
 				continue;
 			}
 
@@ -3994,9 +3999,155 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				$this->model_extension_module_cdek_integrator->editDispatch($dispatch['order_id'], $update[$dispatch['order_id']]);
 			}
 
+			// Check COD payment status for delivered orders
+			if ($status_id == 'DELIVERED') {
+				$this->checkCodPaymentStatus($dispatch['order_id'], $info);
+			}
+
 			echo PHP_EOL;
 		}
-		
+
+	}
+
+	/**
+	 * Check COD (Cash on Delivery) payment status for delivered orders
+	 * Adds order history comment with payment details from CDEK API
+	 *
+	 * @param int $order_id OpenCart order ID
+	 * @param array $cdek_order_info CDEK API response with order information
+	 */
+	private function checkCodPaymentStatus($order_id, $cdek_order_info) {
+
+		// Load necessary models
+		$this->load->model('sale/order');
+
+		// Get OpenCart order info
+		$order_info = $this->model_sale_order->getOrder($order_id);
+
+		if (!$order_info) {
+			echo "Warning: Order #$order_id not found in OpenCart" . PHP_EOL;
+			return;
+		}
+
+		// Check if this is a COD payment order
+		if ($order_info['payment_code'] != 'cod_cdek') {
+			// Not a COD order, skip
+			return;
+		}
+
+		// Check if delivery_detail exists with payment information
+		if (empty($cdek_order_info['entity']['delivery_detail'])) {
+			echo "Warning: No delivery_detail found for order #$order_id" . PHP_EOL;
+			return;
+		}
+
+		$delivery_detail = $cdek_order_info['entity']['delivery_detail'];
+
+		// Extract payment information
+		$payment_sum = isset($delivery_detail['payment_sum']) ? (float)$delivery_detail['payment_sum'] : 0;
+		$delivery_sum = isset($delivery_detail['delivery_sum']) ? (float)$delivery_detail['delivery_sum'] : 0;
+		$total_sum = isset($delivery_detail['total_sum']) ? (float)$delivery_detail['total_sum'] : 0;
+		$recipient_name = isset($delivery_detail['recipient_name']) ? $delivery_detail['recipient_name'] : '';
+		$delivery_date = isset($delivery_detail['date']) ? $delivery_detail['date'] : '';
+
+		// Get item costs from packages
+		$item_total = 0;
+		if (!empty($cdek_order_info['entity']['packages'])) {
+			foreach ($cdek_order_info['entity']['packages'] as $package) {
+				if (!empty($package['items'])) {
+					foreach ($package['items'] as $item) {
+						if (isset($item['payment']['value'])) {
+							$item_total += (float)$item['payment']['value'];
+						}
+					}
+				}
+			}
+		}
+
+		// Build payment info array
+		$payment_info_text = '';
+		if (!empty($delivery_detail['payment_info'])) {
+			$payment_methods = array();
+			foreach ($delivery_detail['payment_info'] as $payment) {
+				$type_text = '';
+				switch ($payment['type']) {
+					case 'CASH':
+						$type_text = 'Наличными';
+						break;
+					case 'CARD':
+						$type_text = 'Картой';
+						break;
+					case 'CASHLESS':
+						$type_text = 'Безналичный расчёт';
+						break;
+					default:
+						$type_text = $payment['type'];
+				}
+				$payment_methods[] = $type_text . ': ' . number_format($payment['sum'], 2, '.', ' ') . ' руб.';
+			}
+			$payment_info_text = implode(', ', $payment_methods);
+		}
+
+		// Calculate what should be returned to customer if overpaid
+		$expected_total = $item_total + $delivery_sum;
+		$return_amount = $payment_sum - $expected_total;
+
+		// Build comprehensive comment
+		$comment = "=== ИНФОРМАЦИЯ ОБ ОПЛАТЕ ПРИ ДОСТАВКЕ ===\n\n";
+		$comment .= "Дата доставки: " . $delivery_date . "\n";
+		$comment .= "Получатель: " . $recipient_name . "\n\n";
+		$comment .= "--- Детали оплаты ---\n";
+		$comment .= "Стоимость товаров: " . number_format($item_total, 2, '.', ' ') . " руб.\n";
+		$comment .= "Стоимость доставки: " . number_format($delivery_sum, 2, '.', ' ') . " руб.\n";
+		$comment .= "Итого к оплате: " . number_format($expected_total, 2, '.', ' ') . " руб.\n\n";
+		$comment .= "Оплачено клиентом: " . number_format($payment_sum, 2, '.', ' ') . " руб.\n";
+
+		if ($payment_info_text) {
+			$comment .= "Способ оплаты: " . $payment_info_text . "\n";
+		}
+
+		if ($return_amount > 0.01) {
+			$comment .= "\n⚠️ ВНИМАНИЕ: Возврат клиенту: " . number_format($return_amount, 2, '.', ' ') . " руб.\n";
+			$comment .= "Клиент переплатил и ему необходимо вернуть разницу.\n";
+		} elseif ($return_amount < -0.01) {
+			$comment .= "\n⚠️ ВНИМАНИЕ: Недоплата: " . number_format(abs($return_amount), 2, '.', ' ') . " руб.\n";
+			$comment .= "Клиент заплатил меньше, чем требовалось.\n";
+		} else {
+			$comment .= "\n✓ Оплата произведена полностью.\n";
+		}
+
+		$comment .= "\nОбщая сумма по данным CDEK: " . number_format($total_sum, 2, '.', ' ') . " руб.\n";
+		$comment .= "\n--- Данные получены автоматически из CDEK API ---";
+
+		// Check if we already added this payment info (to avoid duplicates)
+		$check_history = $this->db->query(
+			"SELECT * FROM `" . DB_PREFIX . "order_history`
+			WHERE order_id = " . (int)$order_id . "
+			AND comment LIKE '%ИНФОРМАЦИЯ ОБ ОПЛАТЕ ПРИ ДОСТАВКЕ%'
+			ORDER BY date_added DESC
+			LIMIT 1"
+		);
+
+		if ($check_history->num_rows > 0) {
+			// Already have payment info, check if it's different
+			$existing_comment = $check_history->row['comment'];
+			if (strpos($existing_comment, 'Оплачено клиентом: ' . number_format($payment_sum, 2, '.', ' ')) !== false) {
+				echo "Order #$order_id: Payment info already recorded with same amount" . PHP_EOL;
+				return;
+			}
+		}
+
+		// Add order history with payment information
+		// Don't change order status, just add a comment (status_id = 0 means keep current status)
+		echo "Order #$order_id: Adding COD payment info (Paid: {$payment_sum} руб, Return: " . ($return_amount > 0 ? $return_amount : 0) . " руб)" . PHP_EOL;
+
+		// Use model's statusApi method to add order history
+		$this->model_extension_module_cdek_integrator->statusApi(
+			(int)$order_id,
+			(int)$order_info['order_status_id'], // Keep current status
+			0, // Don't notify customer
+			$comment
+		);
 	}
 
 	private function clearCurrencyFormat($value, $decimal_place = 2, $decimal_point = '.', $thousand_point = ' ') {
