@@ -265,7 +265,7 @@ function ensureAttributeExists($db, $config) {
 		SELECT a.attribute_id
 		FROM " . DB_PREFIX . "attribute a
 		LEFT JOIN " . DB_PREFIX . "attribute_description ad ON (a.attribute_id = ad.attribute_id)
-		WHERE ad.name = 'model_name'
+		WHERE ad.name = 'Модель'
 		AND ad.language_id = '1'
 		LIMIT 1
 	");
