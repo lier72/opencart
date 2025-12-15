@@ -143,8 +143,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				'city_name'				=> $dispatch_info['city_name'],
                 'shipment_point'		=> $this->setting['shipment_point_default'],
 				'recipient_city_name'	=> $dispatch_info['recipient_city_name'],
-				'status'				=> $dispatch_info['status_description'],
-				'status_date'			=> $this->formatDate($dispatch_info['status_date']),
+				'status'				=> $dispatch_info['status_id'],
+				'status_date'			=> $this->formatDate($dispatch_info['last_exchange']),
 				'cost'					=> (float)$dispatch_info['delivery_cost'] ? $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency')) : 0,
 				'sync'					=> $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&target=list&order_id=' . $dispatch_info['order_id'], 'SSL'),
 				'action'				=> $action
@@ -1970,8 +1970,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				'date'					=> $this->formatDate($dispatch_info['date']),
 				'city_name'				=> $dispatch_info['city_name'],
 				'recipient_city_name'	=> $dispatch_info['recipient_city_name'],
-				'status'				=> $dispatch_info['status_description'],
-				'status_date'			=> $this->formatDate($dispatch_info['status_date']),
+				'status'				=> $dispatch_info['status_id'],
+				'status_date'			=> $this->formatDate($dispatch_info['last_exchange']),
 				'cost'					=> (float)$dispatch_info['delivery_cost'] ? $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency')) : '',
 				'action'				=> $action
 			);
@@ -3107,7 +3107,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 						'city_name'				=> $dispatch_info['city_name'],
 						'recipient_city_name'	=> $dispatch_info['recipient_city_name'],
 						'status_title'			=> $dispatch_info['status_description'],
-						'status_date'			=> $this->formatDate($dispatch_info['status_date']),
+						'status_date'			=> $this->formatDate($dispatch_info['last_exchange']),
 						'cost'					=> $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency'))
 					);
 
