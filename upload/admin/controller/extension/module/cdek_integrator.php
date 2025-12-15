@@ -3980,16 +3980,16 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				echo "Order with dispatch ".$dispatch_number. " OpenCart No: ". $dispatch['order_id']. " not changed".PHP_EOL;
 				// I do not think we need to check COD payment status here 
 				// Even if status didn't change, check COD payment status if order is delivered
-				// if ($status_id == 'DELIVERED') {
-				// 	$this->checkCodPaymentStatus($dispatch['order_id'], $info);
-				// }
+				if ($status_id == 'DELIVERED') {
+				$this->checkCodPaymentStatus($dispatch['order_id'], $info);
+				}
 				continue;
 			}
 
 			echo "Working with ".$dispatch_number." OpenCart No:  ". $dispatch['order_id']. " status ".$status_id.PHP_EOL;
 
 			$filter_data = array(
-				$dispatch_info['order_id'] => $dispatch
+				$dispatch['order_id'] => $dispatch
 			);
 
 			$update = $this->sync($filter_data);
@@ -4001,6 +4001,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			// Check COD payment status for delivered orders
 			if ($status_id == 'DELIVERED') {
+				echo "Checking COD payment status for order ".$dispatch['order_id'].PHP_EOL;
 				$this->checkCodPaymentStatus($dispatch['order_id'], $info);
 			}
 
@@ -4045,8 +4046,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		// Extract payment information
 		$payment_sum = isset($delivery_detail['payment_sum']) ? (float)$delivery_detail['payment_sum'] : 0;
-		$delivery_sum = isset($delivery_detail['delivery_sum']) ? (float)$delivery_detail['delivery_sum'] : 0;
-		$total_sum = isset($delivery_detail['total_sum']) ? (float)$delivery_detail['total_sum'] : 0;
+		//$delivery_sum = isset($delivery_detail['delivery_sum']) ? (float)$delivery_detail['delivery_sum'] : 0;
+		//$total_sum = isset($delivery_detail['total_sum']) ? (float)$delivery_detail['total_sum'] : 0;
 		$recipient_name = isset($delivery_detail['recipient_name']) ? $delivery_detail['recipient_name'] : '';
 		$delivery_date = isset($delivery_detail['date']) ? $delivery_detail['date'] : '';
 
@@ -4089,24 +4090,26 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		}
 
 		// Calculate what should be returned to customer if overpaid
-		$expected_total = $item_total + $delivery_sum;
-		$return_amount = $payment_sum - $expected_total;
+//		$expected_total = $item_total + $delivery_sum;
+//		echo "Debug: ";
+//		var_dump( $item_total, $delivery_sum, $expected_total, $payment_sum);
+//		$return_amount = $payment_sum - $expected_total;
 
 		// Build comprehensive comment
 		$comment = "=== ИНФОРМАЦИЯ ОБ ОПЛАТЕ ПРИ ДОСТАВКЕ ===\n\n";
 		$comment .= "Дата доставки: " . $delivery_date . "\n";
 		$comment .= "Получатель: " . $recipient_name . "\n\n";
 		$comment .= "--- Детали оплаты ---\n";
-		$comment .= "Стоимость товаров: " . number_format($item_total, 2, '.', ' ') . " руб.\n";
+/* 		$comment .= "Стоимость товаров: " . number_format($item_total, 2, '.', ' ') . " руб.\n";
 		$comment .= "Стоимость доставки: " . number_format($delivery_sum, 2, '.', ' ') . " руб.\n";
-		$comment .= "Итого к оплате: " . number_format($expected_total, 2, '.', ' ') . " руб.\n\n";
+		$comment .= "Итого к оплате: " . number_format($expected_total, 2, '.', ' ') . " руб.\n\n"; */
 		$comment .= "Оплачено клиентом: " . number_format($payment_sum, 2, '.', ' ') . " руб.\n";
 
 		if ($payment_info_text) {
 			$comment .= "Способ оплаты: " . $payment_info_text . "\n";
 		}
 
-		if ($return_amount > 0.01) {
+/* 		if ($return_amount > 0.01) {
 			$comment .= "\n⚠️ ВНИМАНИЕ: Возврат клиенту: " . number_format($return_amount, 2, '.', ' ') . " руб.\n";
 			$comment .= "Клиент переплатил и ему необходимо вернуть разницу.\n";
 		} elseif ($return_amount < -0.01) {
@@ -4114,9 +4117,9 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$comment .= "Клиент заплатил меньше, чем требовалось.\n";
 		} else {
 			$comment .= "\n✓ Оплата произведена полностью.\n";
-		}
+		} */
 
-		$comment .= "\nОбщая сумма по данным CDEK: " . number_format($total_sum, 2, '.', ' ') . " руб.\n";
+	//	$comment .= "\nОбщая сумма по данным CDEK: " . number_format($total_sum, 2, '.', ' ') . " руб.\n";
 		$comment .= "\n--- Данные получены автоматически из CDEK API ---";
 
 		// Check if we already added this payment info (to avoid duplicates)
