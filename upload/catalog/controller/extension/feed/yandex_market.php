@@ -63,7 +63,7 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		'стойки' => 'Стойки',
 		'обувь' => 'Кроссовки',
 		'кроссовки' => 'Кроссовки',
-//		'одежда' => 'Одежда',
+		'пуховик' => 'Пуховик',
 		'футболка' => 'Футболка',
 		'шорты' => 'Шорты',
 		'юбка' => 'Юбка',
@@ -84,7 +84,29 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		'куртка' => 'Куртка',
 		'толстовка' => 'Толстовка',
 		'ветровка' => 'Ветровка',
-		'брюки' => 'Брюки'
+		'брюки' => 'Брюки',
+		'носки' => 'Носки',
+		'гольфы' => 'Носки',
+		'корт' => 'Оборудование',
+		'станок' => 'Оборудование',
+		'костюм' => 'Спортивный костюм',
+		'спортивный костюм' => 'Спортивный костюм',
+		'костюм спортивный' => 'Спортивный костюм',
+		'напульсник' => 'Напульсник',	 
+		'повязка' => 'Повязка', 
+		'штаны' => 'Штаны', 
+		'подарочный Сертификат' => 'Подарочный Сертификат',
+		'тапочки' => 'Тапочки', 
+		'прибор' => 'Оборудование', 
+		'бейсболка' => 'Бейсболка', 
+		'кеды' => 'Кроссовки', 
+		'трафарет' => 'Оборудование', 
+		'перетяжка ракетки' => 'Услуги', 
+		'экспресс перетяжка' => 'Услуги', 
+		'индивидуальный подбор' => 'Услуги',
+		'смягчающая намотка' => 'Обмотка',
+		'майка' => 'Футболка', 
+		'спортивные штаны' => 'Брюки'
 	);
 
 	public function index() {
@@ -333,7 +355,7 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 
 		// 2. Detect sport in the name
 		foreach ($this->sports as $sport) {
-			if (mb_stripos($name, $sport) !== false) {
+			if (mb_stripos($name, $sport) !== false && mb_stripos($name, "футболк")== false) {
 				$result['sport'] = $sport;
 				break;
 			}
@@ -806,7 +828,7 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 
 		switch ($type) {
 			case 'vendor.model':
-				$allowed_tags = array_merge($allowed_tags, array('typePrefix'=>0, 'vendor'=>1, 'vendorCode'=>0, 'model'=>1, 'name'=>0, 'provider'=>0, 'tarifplan'=>0));
+				$allowed_tags = array_merge($allowed_tags, array('typePrefix'=>1, 'vendor'=>1, 'vendorCode'=>0, 'model'=>1, 'name'=>0, 'provider'=>0, 'tarifplan'=>0));
 				break;
 
 			case 'book':

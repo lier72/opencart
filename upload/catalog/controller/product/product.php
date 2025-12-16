@@ -452,7 +452,13 @@ class ControllerProductProduct extends Controller {
 			$data['recurrings'] = $this->model_catalog_product->getProfiles($this->request->get['product_id']);
 
 			$this->model_catalog_product->updateViewed($this->request->get['product_id']);
-			
+
+			// Load Product Family module (fail-safe: only load if module is enabled and installed)
+			$data['product_family_module'] = '';
+			if ($this->config->get('module_product_family_status') && file_exists(DIR_APPLICATION . 'controller/extension/module/product_family.php')) {
+				$data['product_family_module'] = $this->load->controller('extension/module/product_family', array('product_id' => $this->request->get['product_id']));
+			}
+
 			$data['column_left'] = $this->load->controller('common/column_left');
 			$data['column_right'] = $this->load->controller('common/column_right');
 			$data['content_top'] = $this->load->controller('common/content_top');

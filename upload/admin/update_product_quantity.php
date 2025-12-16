@@ -237,6 +237,7 @@ class OpencartOdooStockModel {
 
      function parseOdooDefaultCode($data){
         $parts = explode("_",$data);
+        
          if (is_numeric($parts[1])){
              if($parts[1]>100){ // Kids sizes 120,130..160
                  $option = $parts[1];
@@ -249,7 +250,9 @@ class OpencartOdooStockModel {
              if ($this->debug) {
                  echo "Parsing default_code :"; print_r($parts); echo "\n";
              }
-             if (strpos($parts[1],',')){ //Sizes with halves i.e 4,5 .. 11,5
+             if (strlen($parts[1]) == 4 && strpos($parts[1],'C')==0){ // Color starts with C i.e Color C011, C528, .. C999
+                 $option = '('.$parts[1].')';
+             } else if (strpos($parts[1],',')){ //Sizes with halves i.e 4,5 .. 11,5
                  $option = 'us('.$parts[1].')';
              } else if (strpos($parts[1],'C')){//Sizes with 'C' must be baby 7C, 8C, .. 12TC
                  $option = 'us('.$parts[1].')';
@@ -261,8 +264,6 @@ class OpencartOdooStockModel {
          $parts[1]=$option;
          return $parts;
      }
-
-
 }
 
 // Configuration

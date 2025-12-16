@@ -1,0 +1,385 @@
+{% if products|length > 0 %}
+<div class="product-family-wrapper">
+  <div class="product-family-section">
+    <h3 class="product-family-title">{{ heading_title }}</h3>
+
+    {# Display current product's selected variants #}
+    {% if current_variants %}
+    <div class="current-variant-info">
+      <p class="text-muted">
+        <strong>Выбран:</strong>
+        {% for variant in current_variants %}
+          {{ variant.name }}: <span class="current-variant-value">{{ variant.value }}</span>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
+    </div>
+    {% endif %}
+
+    {# Sort products: in-stock first, then out-of-stock #}
+    {% set sorted_products = [] %}
+    {% for product in products %}
+      {% if product.in_stock %}
+        {% set sorted_products = sorted_products|merge([product]) %}
+      {% endif %}
+    {% endfor %}
+    {% for product in products %}
+      {% if not product.in_stock %}
+        {% set sorted_products = sorted_products|merge([product]) %}
+      {% endif %}
+    {% endfor %}
+
+    <div class="product-family-variants">
+      {# Show first 3 variants #}
+      {% for product in sorted_products|slice(0, 3) %}
+      <div class="variant-item{% if not product.in_stock %} variant-out-of-stock{% endif %}">
+        <a href="{{ product.href }}" class="variant-link"{% if not product.in_stock %} onclick="return false;" style="cursor: not-allowed; opacity: 0.5;"{% endif %}>
+          {# Product image #}
+          {% if show_image and product.image %}
+          <div class="variant-image">
+            <img src="{{ product.image }}" alt="{{ product.name }}" class="img-responsive" />
+          </div>
+          {% endif %}
+
+          {# Variant details #}
+          <div class="variant-details">
+            {# Variant attributes (color, size, etc.) #}
+            {% if product.variants %}
+            <div class="variant-attributes">
+              {% for variant in product.variants %}
+              <div class="variant-attribute">
+                <span class="variant-attribute-name">{{ variant.name }}:</span>
+                <span class="variant-attribute-value">{{ variant.value }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Product model #}
+            <div class="variant-model">
+              <small class="text-muted">Артикул: {{ product.model }}</small>
+            </div>
+
+            {# Price #}
+            {% if show_price %}
+            <div class="variant-price">
+              {% if product.special %}
+              <span class="price-old">{{ product.price }}</span>
+              <span class="price-new">{{ product.special }}</span>
+              {% else %}
+              <span class="price">{{ product.price }}</span>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            {# Stock status for out-of-stock items #}
+            {% if not product.in_stock %}
+            <div class="variant-stock-status">
+              <span class="text-danger">{{ text_out_of_stock }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+
+      {# Hidden variants (remaining products after first 3) - only when total > 3 #}
+      {% if products|length > 3 %}
+      <div id="more-variants" class="more-variants-container" style="display: none; flex: 1 1 100%; width: 100%;">
+        <div class="product-family-variants-expanded">
+          {# Remaining variants #}
+          {% for product in sorted_products|slice(3) %}
+          <div class="variant-item{% if not product.in_stock %} variant-out-of-stock{% endif %}">
+            <a href="{{ product.href }}" class="variant-link"{% if not product.in_stock %} onclick="return false;" style="cursor: not-allowed; opacity: 0.5;"{% endif %}>
+              {# Product image #}
+              {% if show_image and product.image %}
+              <div class="variant-image">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="img-responsive" />
+              </div>
+              {% endif %}
+
+              {# Variant details #}
+              <div class="variant-details">
+                {# Variant attributes (color, size, etc.) #}
+                {% if product.variants %}
+                <div class="variant-attributes">
+                  {% for variant in product.variants %}
+                  <div class="variant-attribute">
+                    <span class="variant-attribute-name">{{ variant.name }}:</span>
+                    <span class="variant-attribute-value">{{ variant.value }}</span>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+
+                {# Product model #}
+                <div class="variant-model">
+                  <small class="text-muted">Артикул: {{ product.model }}</small>
+                </div>
+
+                {# Price #}
+                {% if show_price %}
+                <div class="variant-price">
+                  {% if product.special %}
+                  <span class="price-old">{{ product.price }}</span>
+                  <span class="price-new">{{ product.special }}</span>
+                  {% else %}
+                  <span class="price">{{ product.price }}</span>
+                  {% endif %}
+                </div>
+                {% endif %}
+
+                {# Stock status for out-of-stock items #}
+                {% if not product.in_stock %}
+                <div class="variant-stock-status">
+                  <span class="text-danger">{{ text_out_of_stock }}</span>
+                </div>
+                {% endif %}
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Show more/less button - only when total > 3 #}
+    {% if products|length > 3 %}
+    <div class="variant-toggle-container">
+      <button type="button" id="toggle-variants-btn" class="btn-toggle-variants" onclick="toggleVariants()">
+        <span id="toggle-text">Показать еще {{ products|length - 3 }} вариантов</span>
+        <i id="toggle-icon" class="fa fa-chevron-down"></i>
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<style>
+.product-family-wrapper {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f9f9f9;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+}
+
+.product-family-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.current-variant-info {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #fff;
+  border-left: 3px solid #5cb85c;
+  border-radius: 2px;
+}
+
+.current-variant-value {
+  color: #5cb85c;
+  font-weight: 600;
+}
+
+.product-family-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.variant-item {
+  flex: 0 0 auto;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  transition: all 0.3s ease;
+  min-width: 187px;
+}
+
+.variant-item:hover {
+  border-color: #5cb85c;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.variant-item.variant-out-of-stock {
+  opacity: 0.6;
+}
+
+.variant-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.variant-link:hover {
+  text-decoration: none;
+}
+
+.variant-image {
+  text-align: center;
+  margin-bottom: 10px;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 2px;
+}
+
+.variant-image img {
+  max-width: 100%;
+  height: auto;
+}
+
+.variant-details {
+  text-align: left;
+}
+
+.variant-attributes {
+  margin-bottom: 8px;
+}
+
+.variant-attribute {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.variant-attribute-name {
+  color: #666;
+  font-weight: 500;
+}
+
+.variant-attribute-value {
+  color: #333;
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+.variant-model {
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.variant-price {
+  margin-bottom: 5px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.variant-price .price-old {
+  text-decoration: line-through;
+  color: #999;
+  margin-right: 10px;
+}
+
+.variant-price .price-new {
+  color: #d9534f;
+}
+
+.variant-price .price {
+  color: #333;
+}
+
+.variant-stock-status {
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+/* Expandable variants container */
+.more-variants-container {
+  transition: all 0.4s ease-in-out;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.more-variants-container.expanded {
+  display: flex !important;
+  max-height: 2000px;
+  margin-top: 10px;
+}
+
+.product-family-variants-expanded {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Toggle button */
+.variant-toggle-container {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.btn-toggle-variants {
+  background: #fff;
+  border: 2px solid #5cb85c;
+  color: #5cb85c;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-toggle-variants:hover {
+  background: #5cb85c;
+  color: #fff;
+}
+
+.btn-toggle-variants i {
+  transition: transform 0.3s ease;
+}
+
+.btn-toggle-variants.expanded i {
+  transform: rotate(180deg);
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .product-family-variants {
+    flex-direction: column;
+  }
+
+  .variant-item {
+    min-width: 100%;
+  }
+
+  .product-family-variants-expanded {
+    flex-direction: column;
+  }
+}
+</style>
+
+{% if products|length > 3 %}
+<script>
+function toggleVariants() {
+  var container = document.getElementById('more-variants');
+  var btn = document.getElementById('toggle-variants-btn');
+  var text = document.getElementById('toggle-text');
+  var icon = document.getElementById('toggle-icon');
+  var hiddenCount = {{ products|length - 3 }};
+
+  if (container.classList.contains('expanded')) {
+    // Collapse
+    container.classList.remove('expanded');
+    btn.classList.remove('expanded');
+    text.textContent = 'Показать еще ' + hiddenCount + ' вариантов';
+    icon.className = 'fa fa-chevron-down';
+  } else {
+    // Expand
+    container.classList.add('expanded');
+    btn.classList.add('expanded');
+    text.textContent = 'Скрыть';
+    icon.className = 'fa fa-chevron-up';
+  }
+}
+</script>
+{% endif %}

@@ -299,6 +299,12 @@
                   </div>
                 {% endif %}
 
+                {# === PRODUCT FAMILY MODULE === #}
+                {% if product_family_module %}
+                  {{ product_family_module }}
+                {% endif %}
+                {# === END PRODUCT FAMILY MODULE === #}
+
                 {% if options %}
                   <div class="product-options">
                     <h3 class="options-title title">{{ text_option }}</h3>
