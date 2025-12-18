@@ -99,9 +99,9 @@ class ModelExtensionModuleHbSeoSnippets extends Model {
 			}
 			
 			if ($data['manufacturer']) {
-				$code .= '"brand": { "@type": "Thing", "name": "'.$brand.'" },';
+				$code .= '"brand": { "@type": "Brand", "name": "'.$brand.'" },';
 			}else {
-				$code .= '"brand": { "@type": "Thing", "name": "'.$this->config->get('hb_snippets_brand').'" },';
+				$code .= '"brand": { "@type": "Brand", "name": "'.$this->config->get('hb_snippets_brand').'" },';
 			}
 			
 			if ($data['rating'] and $review_count > 0) {
