@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Odoo Integration Menu</name>
+    <version>2.1</version>
+    <author>Max Surdu</author>
+    <link>http://uniqsport.ru</link>
+    <code>odoo_integration_menu</code>
+    <description>Adds Odoo Integration menu items to admin panel (OpenCart 3.0 compatible)</description>
+
+    <!-- Add Odoo menu to column_left controller -->
+    <file path="admin/controller/common/column_left.php">
+        <operation>
+            <search><![CDATA[// Stats]]></search>
+            <add position="before"><![CDATA[
+// Odoo Integration Menu
+$odoo = array();
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_connector')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_settings'),
+		'href'     => $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_product_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_product_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_product_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_price_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_price_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_price_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_order_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_order_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_order_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($odoo) {
+	$data['menus'][] = array(
+		'id'       => 'menu-odoo',
+		'icon'	   => 'fa-cloud-upload',
+		'name'	   => $this->language->get('text_odoo'),
+		'href'     => '',
+		'children' => $odoo
+	);
+}
+
+]]></add>
+        </operation>
+    </file>
+
+    <!-- Add language strings to column_left language file -->
+    <file path="admin/language/en-gb/common/column_left.php">
+        <operation>
+            <search><![CDATA[$_['text_reports']]]></search>
+            <add position="before"><![CDATA[// Odoo Integration
+$_['text_odoo']                  = 'Odoo Integration';
+$_['text_odoo_settings']         = 'Settings';
+$_['text_odoo_product_mapping']  = 'Product Mapping';
+$_['text_odoo_price_mapping']    = 'Price Mapping';
+$_['text_odoo_order_mapping']    = 'Order Mapping';
+]]></add>
+        </operation>
+    </file>
+
+    <!-- Add Russian language strings if the file exists -->
+    <file path="admin/language/ru-ru/common/column_left.php">
+        <operation>
+            <search><![CDATA[$_['text_reports']]]></search>
+            <add position="before"><![CDATA[// Odoo Integration
+$_['text_odoo']                  = 'Интеграция Odoo';
+$_['text_odoo_settings']         = 'Настройки';
+$_['text_odoo_product_mapping']  = 'Сопоставление товаров';
+$_['text_odoo_price_mapping']    = 'Сопоставление цен';
+$_['text_odoo_order_mapping']    = 'Сопоставление заказов';
+]]></add>
+        </operation>
+    </file>
+
+    <!-- Add button to order list template (Twig) -->
+    <file path="admin/view/template/sale/order_list.twig">
+        <operation>
+            <search><![CDATA[<div class="btn-group"> <a href="{{ order.view }}" data-toggle="tooltip" title="{{ button_view }}" class="btn btn-primary"><i class="fa fa-eye"></i></a>]]></search>
+            <add position="before"><![CDATA[{% if order.in_odoo %}<button type="button" data-toggle="tooltip" title="Уже создан в Odoo (ID: {{ order.odoo_order_id }})" class="btn btn-success disabled" style="opacity: 0.5; cursor: not-allowed;"><i class="fa fa-check-circle"></i></button> {% else %}<button type="button" onclick="createOdooOrder('{{ order.order_id }}');" data-toggle="tooltip" title="{{ button_create_odoo }}" class="btn btn-success"><i class="fa fa-cloud-upload"></i></button> {% endif %}]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[{{ footer }}]]></search>
+            <add position="before"><![CDATA[<script type="text/javascript"><!--
+function createOdooOrder(order_id) {
+    console.log('Creating Odoo order for Order ID: ' + order_id);
+
+    if (!confirm('{{ text_confirm_odoo }}')) {
+        return;
+    }
+
+    var $button = $('button[onclick="createOdooOrder(\'' + order_id + '\')"]');
+    var originalHtml = $button.html();
+
+    $.ajax({
+        url: 'index.php?route=extension/module/odoo_connector/createOdooOrder&user_token={{ user_token }}&order_id=' + order_id,
+        type: 'POST',
+        dataType: 'json',
+        beforeSend: function() {
+            $button.prop('disabled', true);
+            $button.html('<i class="fa fa-spinner fa-spin"></i>');
+        },
+        complete: function() {
+            $button.prop('disabled', false);
+            $button.html(originalHtml);
+        },
+        success: function(json) {
+            $('.alert-dismissible').remove();
+
+            if (json['error']) {
+                $('#content > .container-fluid').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json['error'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+            }
+
+            if (json['success']) {
+                $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + json['success'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+
+                // Optionally reload the page to refresh order status
+                // location.reload();
+            }
+        },
+        error: function(xhr, ajaxOptions, thrownError) {
+            alert('Error: ' + thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+        }
+    });
+}
+//--></script>
+]]></add>
+        </operation>
+    </file>
+
+    <!-- Add button text to controller -->
+    <file path="admin/controller/sale/order.php">
+        <operation>
+            <search><![CDATA[$results = $this->model_sale_order->getOrders($filter_data);]]></search>
+            <add position="after"><![CDATA[
+
+		// Check which orders exist in Odoo for button state
+		$odoo_order_ids = array();
+		if (!empty($results)) {
+			$order_ids = array_column($results, 'order_id');
+			$odoo_query = $this->db->query("SELECT opencart_order_id, odoo_order_id FROM " . DB_PREFIX . "odoo_order_map WHERE opencart_order_id IN (" . implode(',', array_map('intval', $order_ids)) . ")");
+			foreach ($odoo_query->rows as $row) {
+				$odoo_order_ids[$row['opencart_order_id']] = $row['odoo_order_id'];
+			}
+		}]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA['shipping_code' => $result['shipping_code'],]]></search>
+            <add position="after"><![CDATA[
+				'in_odoo'       => isset($odoo_order_ids[$result['order_id']]),
+				'odoo_order_id' => isset($odoo_order_ids[$result['order_id']]) ? $odoo_order_ids[$result['order_id']] : null,]]></add>
+        </operation>
+    </file>
+</modification>

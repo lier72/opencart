@@ -1874,4 +1874,342 @@ class ModelExtensionModuleOdooConnector extends Model {
 
         return $json;
     }
+
+    /**
+     * Cron method to check order statuses and send notifications for orders needing attention
+     * This method:
+     * 1. Calls syncOpenCartOrderState to update order statuses
+     * 2. Identifies OC orders not in odoo_order_map (not created in Odoo)
+     * 3. Identifies OC orders still in "draft" state in Odoo (not confirmed)
+     * 4. Checks OC orders in CDEK that haven't reached RECEIVED_AT_SHIPMENT_WAREHOUSE status
+     * 5. Sends email notification to admin with all orders needing attention
+     *
+     * @param bool $debug Enable debug mode
+     * @return array Result with success status and message
+     */
+    public function cronCheckOrderStatuses($debug = false) {
+        $json = array(
+            'success' => false,
+            'message' => '',
+            'orders_not_in_odoo' => array(),
+            'orders_draft_in_odoo' => array(),
+            'orders_cdek_not_received' => array(),
+            'errors' => array()
+        );
+
+        try {
+            if ($debug) {
+                $this->log->write('cronCheckOrderStatuses: Starting cron job');
+            }
+
+            // Step 1: Call syncOpenCartOrderState to update order statuses
+            if ($debug) {
+                $this->log->write('cronCheckOrderStatuses: Calling syncOpenCartOrderState');
+            }
+            $sync_result = $this->syncOpenCartOrderState($debug);
+
+            if (!$sync_result['success']) {
+                $json['errors'][] = 'Failed to sync order states: ' . implode(', ', $sync_result['errors']);
+                if ($debug) {
+                    $this->log->write('cronCheckOrderStatuses: syncOpenCartOrderState failed');
+                }
+            }
+
+            // Step 2: Find OC orders NOT in odoo_order_map (not created in Odoo)
+            // Exclude cancelled and completed orders, focus on active orders
+            $sql_not_in_odoo = "SELECT o.order_id, o.order_status_id, o.date_added, o.date_modified,
+                                CONCAT(o.firstname, ' ', o.lastname) as customer_name, o.email, o.total,
+                                os.name as order_status_name
+                                FROM " . DB_PREFIX . "order o
+                                LEFT JOIN " . DB_PREFIX . "odoo_order_map m ON o.order_id = m.opencart_order_id
+                                LEFT JOIN " . DB_PREFIX . "order_status os ON (o.order_status_id = os.order_status_id AND os.language_id = 1)
+                                WHERE m.opencart_order_id IS NULL
+                                AND o.order_status_id NOT IN (0, 9, 13)
+                                AND o.date_added > DATE_SUB(NOW(), INTERVAL 30 DAY)
+                                ORDER BY o.date_added DESC";
+
+            $result = $this->db->query($sql_not_in_odoo);
+            if ($result->num_rows > 0) {
+                $json['orders_not_in_odoo'] = $result->rows;
+                if ($debug) {
+                    $this->log->write('cronCheckOrderStatuses: Found ' . $result->num_rows . ' orders not in Odoo');
+                }
+            }
+
+            // Step 3: Find OC orders still in "draft" state in Odoo (not confirmed)
+            $sql_draft_in_odoo = "SELECT m.opencart_order_id, m.odoo_order_id, m.odoo_order_state,
+                                  m.opencart_order_state, m.modified_on, o.total,
+                                  CONCAT(o.firstname, ' ', o.lastname) as customer_name, o.email
+                                  FROM " . DB_PREFIX . "odoo_order_map m
+                                  LEFT JOIN " . DB_PREFIX . "order o ON m.opencart_order_id = o.order_id
+                                  WHERE m.odoo_order_state LIKE '%draft%'
+                                  AND m.modified_on > DATE_SUB(NOW(), INTERVAL 7 DAY)
+                                  ORDER BY m.modified_on DESC";
+
+            $result = $this->db->query($sql_draft_in_odoo);
+            if ($result->num_rows > 0) {
+                $json['orders_draft_in_odoo'] = $result->rows;
+                if ($debug) {
+                    $this->log->write('cronCheckOrderStatuses: Found ' . $result->num_rows . ' draft orders in Odoo');
+                }
+            }
+
+            // Step 4: Find OC orders in CDEK that need attention (CREATED or ACCEPTED state)
+            // These are orders that have been submitted to CDEK but haven't progressed to warehouse/delivery
+            $sql_cdek_not_received = "SELECT c.order_id, c.dispatch_number, c.cdek_number, c.status_id,
+                                      c.delivery_date, c.last_exchange, c.recipient_name, c.phone,
+                                      o.order_status_id, o.total, o.email, os.name as order_status_name
+                                      FROM " . DB_PREFIX . "cdek_order c
+                                      LEFT JOIN " . DB_PREFIX . "order o ON c.order_id = o.order_id
+                                      LEFT JOIN " . DB_PREFIX . "order_status os ON (o.order_status_id = os.order_status_id AND os.language_id = 1)
+                                      WHERE c.status_id IN ('CREATED', 'ACCEPTED')
+                                      AND c.delivery_date < DATE_ADD(NOW(), INTERVAL 3 DAY)
+                                      AND c.last_exchange > UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 14 DAY))
+                                      ORDER BY c.delivery_date ASC";
+
+            $result = $this->db->query($sql_cdek_not_received);
+            if ($result->num_rows > 0) {
+                $json['orders_cdek_not_received'] = $result->rows;
+                if ($debug) {
+                    $this->log->write('cronCheckOrderStatuses: Found ' . $result->num_rows . ' CDEK orders not received');
+                }
+            }
+
+            // Step 5: Send email notification if any issues found
+            $total_issues = count($json['orders_not_in_odoo']) +
+                           count($json['orders_draft_in_odoo']) +
+                           count($json['orders_cdek_not_received']);
+
+            if ($total_issues > 0) {
+                $email_sent = $this->sendOrderStatusNotificationEmail($json, $debug);
+                if ($email_sent) {
+                    $json['message'] = 'Found ' . $total_issues . ' orders needing attention. Email notification sent.';
+                    $json['success'] = true;
+                } else {
+                    $json['errors'][] = 'Failed to send email notification';
+                    $json['message'] = 'Found ' . $total_issues . ' orders needing attention, but email failed.';
+                }
+            } else {
+                $json['success'] = true;
+                $json['message'] = 'All orders are in good status. No issues found.';
+                if ($debug) {
+                    $this->log->write('cronCheckOrderStatuses: No issues found');
+                }
+            }
+
+        } catch (Exception $e) {
+            $json['errors'][] = 'Exception: ' . $e->getMessage();
+            $this->log->write('cronCheckOrderStatuses ERROR: ' . $e->getMessage());
+        }
+
+        return $json;
+    }
+
+    /**
+     * Send email notification to admin about orders needing attention
+     *
+     * @param array $data Order status data from cronCheckOrderStatuses
+     * @param bool $debug Enable debug mode
+     * @return bool True if email sent successfully
+     */
+    private function sendOrderStatusNotificationEmail($data, $debug = false) {
+        try {
+            // Load store settings from database (for cron context where config may not be fully loaded)
+            $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "setting WHERE store_id = '0'");
+
+            $settings = array();
+            foreach ($query->rows as $result) {
+                if (!$result['serialized']) {
+                    $settings[$result['key']] = $result['value'];
+                } else {
+                    $settings[$result['key']] = json_decode($result['value'], true);
+                }
+            }
+
+            // Get admin email from database settings
+            $admin_email = isset($settings['config_email']) ? $settings['config_email'] : $this->config->get('config_email');
+            if (empty($admin_email)) {
+                $this->log->write('sendOrderStatusNotificationEmail: No admin email configured');
+                return false;
+            }
+
+            // Get mail settings (use database settings with fallback to config)
+            $mail_engine = isset($settings['config_mail_engine']) ? $settings['config_mail_engine'] : $this->config->get('config_mail_engine');
+            $mail_parameter = isset($settings['config_mail_parameter']) ? $settings['config_mail_parameter'] : $this->config->get('config_mail_parameter');
+            $config_name = isset($settings['config_name']) ? $settings['config_name'] : $this->config->get('config_name');
+
+            // Create mail object
+            $mail = new \Mail($mail_engine ? $mail_engine : 'mail');
+            $mail->parameter = $mail_parameter;
+
+            // Set SMTP settings if engine is smtp
+            if ($mail_engine == 'smtp') {
+                $mail->smtp_hostname = isset($settings['config_mail_smtp_hostname']) ? $settings['config_mail_smtp_hostname'] : '';
+                $mail->smtp_username = isset($settings['config_mail_smtp_username']) ? $settings['config_mail_smtp_username'] : '';
+                $mail->smtp_password = isset($settings['config_mail_smtp_password']) ? html_entity_decode($settings['config_mail_smtp_password'], ENT_QUOTES, 'UTF-8') : '';
+                $mail->smtp_port = isset($settings['config_mail_smtp_port']) ? $settings['config_mail_smtp_port'] : 25;
+                $mail->smtp_timeout = isset($settings['config_mail_smtp_timeout']) ? $settings['config_mail_smtp_timeout'] : 5;
+            }
+
+            $mail->setTo($admin_email);
+            $mail->setFrom($admin_email);
+            $mail->setSender($config_name ? $config_name : 'OpenCart');
+            $mail->setSubject('Odoo Connector: Заказы требующие внимания - ' . date('d.m.Y H:i:s'));
+
+            // Build email body
+            $message = $this->buildEmailMessage($data);
+
+            $mail->setHtml($message);
+            $mail->setText(strip_tags($message));
+
+            $mail->send();
+
+            if ($debug) {
+                $this->log->write('sendOrderStatusNotificationEmail: Email sent to ' . $admin_email);
+            }
+
+            return true;
+
+        } catch (Exception $e) {
+            $this->log->write('sendOrderStatusNotificationEmail ERROR: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Build HTML email message with order details
+     *
+     * @param array $data Order status data
+     * @return string HTML formatted email message
+     */
+    private function buildEmailMessage($data) {
+        // Use HTTPS_SERVER constant which points to admin area
+        $admin_url = HTTPS_SERVER;
+
+        $message = '<html><head><meta charset="UTF-8"></head><body style="font-family: Arial, sans-serif;">';
+        $message .= '<h2>Odoo Connector - Заказы требующие внимания</h2>';
+        $message .= '<p>Сформировано: ' . date('d.m.Y H:i:s') . '</p>';
+
+        $total_count = count($data['orders_not_in_odoo']) +
+                      count($data['orders_draft_in_odoo']) +
+                      count($data['orders_cdek_not_received']);
+
+        $message .= '<p><strong>Всего обнаружено проблем: ' . $total_count . '</strong></p>';
+        $message .= '<hr/>';
+
+        // Section 1: Orders not in Odoo
+        if (!empty($data['orders_not_in_odoo'])) {
+            $message .= '<h3 style="color: #c00;">1. Заказы НЕ созданные в Odoo (' . count($data['orders_not_in_odoo']) . ')</h3>';
+            $message .= '<p>Эти заказы OpenCart не найдены в таблице odoo_order_map:</p>';
+            $message .= '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+            $message .= '<tr style="background-color: #f0f0f0;">
+                            <th>ID Заказа</th>
+                            <th>Клиент</th>
+                            <th>Email</th>
+                            <th>Сумма</th>
+                            <th>Статус</th>
+                            <th>Дата создания</th>
+                            <th>Действие</th>
+                         </tr>';
+
+            foreach ($data['orders_not_in_odoo'] as $order) {
+                $order_link = $admin_url . 'index.php?route=sale/order/info&order_id=' . $order['order_id'];
+                $status_display = !empty($order['order_status_name']) ? htmlspecialchars($order['order_status_name']) : 'ID: ' . $order['order_status_id'];
+                $message .= '<tr>';
+                $message .= '<td><a href="' . $order_link . '">' . $order['order_id'] . '</a></td>';
+                $message .= '<td>' . htmlspecialchars($order['customer_name']) . '</td>';
+                $message .= '<td>' . htmlspecialchars($order['email']) . '</td>';
+                $message .= '<td>' . number_format($order['total'], 2) . ' ₽</td>';
+                $message .= '<td>' . $status_display . '</td>';
+                $message .= '<td>' . $order['date_added'] . '</td>';
+                $message .= '<td><span style="color: #c00;">Создать в Odoo</span></td>';
+                $message .= '</tr>';
+            }
+            $message .= '</table><br/>';
+        }
+
+        // Section 2: Orders in draft state in Odoo
+        if (!empty($data['orders_draft_in_odoo'])) {
+            $message .= '<h3 style="color: #f90;">2. Заказы в статусе ЧЕРНОВИК в Odoo (' . count($data['orders_draft_in_odoo']) . ')</h3>';
+            $message .= '<p>Эти заказы созданы в Odoo, но не подтверждены (находятся в черновике):</p>';
+            $message .= '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+            $message .= '<tr style="background-color: #f0f0f0;">
+                            <th>ID OpenCart</th>
+                            <th>ID Odoo</th>
+                            <th>Клиент</th>
+                            <th>Email</th>
+                            <th>Сумма</th>
+                            <th>Статус Odoo</th>
+                            <th>Изменен</th>
+                            <th>Действие</th>
+                         </tr>';
+
+            foreach ($data['orders_draft_in_odoo'] as $order) {
+                $order_link = $admin_url . 'index.php?route=sale/order/info&order_id=' . $order['opencart_order_id'];
+                $message .= '<tr>';
+                $message .= '<td><a href="' . $order_link . '">' . $order['opencart_order_id'] . '</a></td>';
+                $message .= '<td>' . $order['odoo_order_id'] . '</td>';
+                $message .= '<td>' . htmlspecialchars($order['customer_name']) . '</td>';
+                $message .= '<td>' . htmlspecialchars($order['email']) . '</td>';
+                $message .= '<td>' . number_format($order['total'], 2) . ' ₽</td>';
+                $message .= '<td>' . htmlspecialchars($order['odoo_order_state']) . '</td>';
+                $message .= '<td>' . $order['modified_on'] . '</td>';
+                $message .= '<td><span style="color: #f90;">Подтвердить в Odoo</span></td>';
+                $message .= '</tr>';
+            }
+            $message .= '</table><br/>';
+        }
+
+        // Section 3: CDEK orders in early stages (CREATED/ACCEPTED)
+        if (!empty($data['orders_cdek_not_received'])) {
+            $message .= '<h3 style="color: #00c;">3. Заказы СДЭК требующие внимания (Статус: CREATED/ACCEPTED) (' . count($data['orders_cdek_not_received']) . ')</h3>';
+            $message .= '<p>Эти заказы находятся на ранних стадиях СДЭК (CREATED или ACCEPTED) и требуют внимания:</p>';
+            $message .= '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+            $message .= '<tr style="background-color: #f0f0f0;">
+                            <th>ID Заказа</th>
+                            <th>Номер СДЭК</th>
+                            <th>Получатель</th>
+                            <th>Телефон</th>
+                            <th>Сумма</th>
+                            <th>Статус OpenCart</th>
+                            <th>Статус СДЭК</th>
+                            <th>Дата доставки</th>
+                            <th>Действие</th>
+                         </tr>';
+
+            foreach ($data['orders_cdek_not_received'] as $order) {
+                $order_link = $admin_url . 'index.php?route=sale/order/info&order_id=' . $order['order_id'];
+                $oc_status_display = !empty($order['order_status_name']) ? htmlspecialchars($order['order_status_name']) : 'ID: ' . $order['order_status_id'];
+                $message .= '<tr>';
+                $message .= '<td><a href="' . $order_link . '">' . $order['order_id'] . '</a></td>';
+                $message .= '<td>' . htmlspecialchars($order['cdek_number']) . '</td>';
+                $message .= '<td>' . htmlspecialchars($order['recipient_name']) . '</td>';
+                $message .= '<td>' . htmlspecialchars($order['phone']) . '</td>';
+                $message .= '<td>' . number_format($order['total'], 2) . ' ₽</td>';
+                $message .= '<td>' . $oc_status_display . '</td>';
+                $message .= '<td>' . htmlspecialchars($order['status_id']) . '</td>';
+                $message .= '<td>' . $order['delivery_date'] . '</td>';
+                $message .= '<td><span style="color: #00c;">Проверить статус СДЭК</span></td>';
+                $message .= '</tr>';
+            }
+            $message .= '</table><br/>';
+        }
+
+        // Footer with errors if any
+        if (!empty($data['errors'])) {
+            $message .= '<hr/>';
+            $message .= '<h3 style="color: #c00;">Ошибки при обработке:</h3>';
+            $message .= '<ul>';
+            foreach ($data['errors'] as $error) {
+                $message .= '<li>' . htmlspecialchars($error) . '</li>';
+            }
+            $message .= '</ul>';
+        }
+
+        $message .= '<hr/>';
+        $message .= '<p style="font-size: 12px; color: #666;">Это автоматическое уведомление от задачи Odoo Connector cron.</p>';
+        $message .= '</body></html>';
+
+        return $message;
+    }
 }
