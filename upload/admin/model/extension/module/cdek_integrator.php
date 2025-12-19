@@ -444,7 +444,7 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 		}
 		
 		if (!empty($data['filter_status_id'])) {
-			$filter[] = "o.status_id = " . (int)$data['filter_status_id'];
+			$filter[] = "o.status_id = '" . $this->db->escape($data['filter_status_id']) . "'";
 		}
 		
 		if (!empty($data['filter_total'])) {
@@ -527,7 +527,7 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 		}
 		
 		if (!empty($data['filter_status_id'])) {
-			$filter[] = "o.status_id = " . (int)$data['filter_status_id'];
+			$filter[] = "o.status_id = '" . $this->db->escape($data['filter_status_id']) . "'";
 		}
 		
 		if (!empty($data['filter_total'])) {

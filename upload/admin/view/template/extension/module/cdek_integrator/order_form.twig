@@ -4,6 +4,9 @@
 		<div class="container-fluid">
 			<div class="pull-right">
 				<a onclick="$('#form').submit();" class="btn btn-primary">{{ button_send }}</a>
+				{% if delete is defined %}
+					<a href="{{ delete }}" class="btn btn-danger" onclick="return confirm('Вы уверены, что хотите удалить этот заказ CDEK?');">Удалить</a>
+				{% endif %}
 				<a href="{{ cancel }}" class="btn btn-primary">{{ button_cancel }}</a>
 			</div>
 			<h1>{{ heading_title }}</h1>

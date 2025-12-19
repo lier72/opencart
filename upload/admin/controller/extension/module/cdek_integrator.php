@@ -1948,7 +1948,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				'class'	=> 'js sync'
 			);
 
-			if ($dispatch_info['status_id'] == "ACCEPTED" || $dispatch_info['status_id'] == 'INVALID') {
+			if ($dispatch_info['status_id'] == "ACCEPTED" || $dispatch_info['status_id'] == 'CREATED' || $dispatch_info['status_id'] == 'INVALID') {
 
 				$action[] = array(
 					'text' => $this->language->get('text_delete'),
@@ -2272,6 +2272,11 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$rdata['sync'] = $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
 			$rdata['print'] = $this->url->link('extension/module/cdek_integrator/dispatchPrint', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
 			$rdata['cancel'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL');
+
+			// Add delete button for orders with ACCEPTED, CREATED, or INVALID status
+			if ($dispatch_info['status_id'] == 'ACCEPTED' || $dispatch_info['status_id'] == 'CREATED' || $dispatch_info['status_id'] == 'INVALID') {
+				$rdata['delete'] = $this->url->link('extension/module/cdek_integrator/dispatchDelete', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
+			}
 
 			if (empty($dispatch_info['currency'])) $dispatch_info['currency'] = 'RUB';
 
@@ -2857,7 +2862,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		$dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
 
-        if ($dispatch_info && ($dispatch_info['status_id'] == 'ACCEPTED') || $dispatch_info['status_id'] == 'INVALID') { // Удалить можно только новый заказ
+        if ($dispatch_info && ($dispatch_info['status_id'] == 'ACCEPTED' || $dispatch_info['status_id'] == 'CREATED' || $dispatch_info['status_id'] == 'INVALID')) { // Удалить можно только новый заказ
 
 			$forced = (isset($this->request->get['forced']));
 
