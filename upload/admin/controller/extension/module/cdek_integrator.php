@@ -4004,6 +4004,11 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				$this->model_extension_module_cdek_integrator->editDispatch($dispatch['order_id'], $update[$dispatch['order_id']]);
 			}
 
+			// Update Odoo payment.transaction for ACCEPTED or DELIVERED status changes
+			if (in_array($status_id, array('ACCEPTED', 'DELIVERED'))) {
+				$this->updateOdooPaymentTransaction($dispatch['order_id'], $info, $dispatch['dispatch_number'], $dispatch['cdek_number']);
+			}
+
 			// Check COD payment status for delivered orders
 			if ($status_id == 'DELIVERED') {
 				echo "Checking COD payment status for order ".$dispatch['order_id'].PHP_EOL;
@@ -4013,6 +4018,47 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			echo PHP_EOL;
 		}
 
+	}
+
+	/**
+	 * Update Odoo payment.transaction with CDEK payment data
+	 * Called when CDEK order status changes to ACCEPTED or DELIVERED
+	 *
+	 * @param int $order_id OpenCart order ID
+	 * @param array $cdek_order_info CDEK API response with order information
+	 * @param string $cdek_uuid CDEK order UUID (dispatch_number)
+	 * @param string $cdek_number CDEK tracking number
+	 */
+	private function updateOdooPaymentTransaction($order_id, $cdek_order_info, $cdek_uuid = '', $cdek_number = '') {
+		// Check if Odoo connector model exists
+		if (!file_exists(DIR_APPLICATION . 'model/extension/module/odoo_connector.php')) {
+			// Odoo connector not installed, skip silently
+			return;
+		}
+
+		// Load Odoo connector model
+		$this->load->model('extension/module/odoo_connector');
+
+		// Call the model method to update payment.transaction
+		$result = $this->model_extension_module_odoo_connector->updateCdekPaymentTransaction(
+			$order_id,
+			$cdek_order_info,
+			$cdek_uuid,
+			$cdek_number
+		);
+
+		// Log the result
+		if ($result['success']) {
+			echo "Odoo: " . $result['message'] . PHP_EOL;
+			$this->log->write('CDEK CRON Odoo: ' . $result['message']);
+		} else {
+			// Only log non-critical failures (like order not in Odoo)
+			if (strpos($result['message'], 'not found in Odoo') === false &&
+				strpos($result['message'], 'is not cod_cdek') === false) {
+				echo "Odoo Warning: " . $result['message'] . PHP_EOL;
+				$this->log->write('CDEK CRON Odoo Warning: ' . $result['message']);
+			}
+		}
 	}
 
 	/**

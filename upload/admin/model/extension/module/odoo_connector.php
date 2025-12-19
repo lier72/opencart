@@ -2212,4 +2212,195 @@ class ModelExtensionModuleOdooConnector extends Model {
 
         return $message;
     }
+
+    /**
+     * Update payment.transaction in Odoo with actual CDEK payment data
+     * Called when CDEK order status changes to ACCEPTED or DELIVERED
+     * Does NOT manage transaction state - only updates amount and CDEK reference data
+     *
+     * @param int $oc_order_id OpenCart order ID
+     * @param array $cdek_order_info CDEK API response with delivery_detail
+     * @param string $cdek_uuid CDEK order UUID (dispatch_number from cdek_order table)
+     * @param string $cdek_number CDEK tracking number
+     * @return array Result with success status and message
+     */
+    public function updateCdekPaymentTransaction($oc_order_id, $cdek_order_info, $cdek_uuid = '', $cdek_number = '')
+    {
+        $result = array(
+            'success' => false,
+            'message' => '',
+            'transaction_id' => null
+        );
+
+        // Get order data
+        $order_query = $this->db->query(
+            "SELECT payment_code, payment_method, total, currency_code, email
+            FROM " . DB_PREFIX . "order
+            WHERE order_id = " . (int)$oc_order_id
+        );
+
+        if (!$order_query->num_rows) {
+            $result['message'] = 'Order #' . $oc_order_id . ' not found';
+            return $result;
+        }
+
+        $order_data = $order_query->row;
+
+        // Only process cod_cdek orders
+        if ($order_data['payment_code'] != 'cod_cdek') {
+            $result['message'] = 'Order #' . $oc_order_id . ' is not cod_cdek payment method';
+            return $result;
+        }
+
+        // Check if delivery_detail has payment_sum
+        if (empty($cdek_order_info['entity']['delivery_detail']['payment_sum'])) {
+            $result['message'] = 'No payment_sum in CDEK delivery_detail for order #' . $oc_order_id;
+            if ($this->debug) {
+                $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+            }
+            return $result;
+        }
+
+        $delivery_detail = $cdek_order_info['entity']['delivery_detail'];
+        $payment_sum = (float)$delivery_detail['payment_sum'];
+
+        // Use existing connection if available, otherwise connect
+        if (!$this->connection || !isset($this->connection['status']) || !$this->connection['status']) {
+            $this->getConfig();
+        }
+
+        $odoo_connect = $this->connection;
+
+        if (!$odoo_connect || !$odoo_connect['status']) {
+            $result['message'] = 'Failed to connect to Odoo: ' . ($odoo_connect['error'] ?? 'Unknown error');
+            $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+            return $result;
+        }
+
+        $models = $odoo_connect['client'];
+        $uid = $odoo_connect['userId'];
+        $password = $odoo_connect['pwd'];
+        $db_name = $odoo_connect['db'];
+
+        // Payment transaction reference format: OC-<order_id>
+        $tx_reference = 'OC-' . $oc_order_id;
+
+        // Search for existing transaction
+        $existing_tx = $models->execute_kw($db_name, $uid, $password,
+            'payment.transaction', 'search_read',
+            array(array(array('reference', '=', $tx_reference))),
+            array('fields' => array('id', 'reference', 'amount', 'acquirer_reference', 'tx_url'))
+        );
+
+        // Get currency mapping
+        $currency_mapping = $this->getCurrencyMapping($order_data['currency_code']);
+        $currency_id = $currency_mapping ? (int)$currency_mapping['odoo_currency_id'] : 36; // Default to RUB
+
+        // Prepare transaction data to update/create
+        // NOTE: We do NOT set 'state' - let Odoo manage payment workflow states
+        $transaction_data = array(
+            'amount' => $payment_sum,
+            'acquirer_reference' => $cdek_number ?: '',
+            'tx_url' => $cdek_uuid ?: '',
+        );
+
+        if (!empty($existing_tx)) {
+            // Update existing transaction
+            $tx_id = $existing_tx[0]['id'];
+
+            // Only update if amount has changed or CDEK references are missing
+            $needs_update = false;
+            if ((float)$existing_tx[0]['amount'] != $payment_sum) {
+                $needs_update = true;
+            }
+            if (empty($existing_tx[0]['acquirer_reference']) && !empty($cdek_number)) {
+                $needs_update = true;
+            }
+            if (empty($existing_tx[0]['tx_url']) && !empty($cdek_uuid)) {
+                $needs_update = true;
+            }
+
+            if ($needs_update) {
+                $update_response = $models->execute_kw($db_name, $uid, $password,
+                    'payment.transaction', 'write',
+                    array(array($tx_id), $transaction_data)
+                );
+
+                if (isset($update_response['faultCode']) && $update_response['faultCode']) {
+                    $error_detail = !empty($update_response['faultString']) ? $update_response['faultString'] : $update_response['faultCode'];
+                    $result['message'] = 'Error updating payment.transaction: ' . $error_detail;
+                    $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+                    return $result;
+                } else {
+                    $result['success'] = true;
+                    $result['transaction_id'] = $tx_id;
+                    $result['message'] = 'Updated payment.transaction ID: ' . $tx_id . ' with amount: ' . $payment_sum;
+
+                    if ($this->debug) {
+                        $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+                    }
+                }
+            } else {
+                $result['success'] = true;
+                $result['transaction_id'] = $tx_id;
+                $result['message'] = 'Transaction ID: ' . $tx_id . ' already up to date (amount: ' . $payment_sum . ')';
+
+                if ($this->debug) {
+                    $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+                }
+            }
+        } else {
+            // Transaction doesn't exist - create it
+            // Get payment acquirer mapping for cod_cdek
+            $acquirer_mapping = $this->getPaymentAcquirerMapping('cod_cdek');
+
+            if (!$acquirer_mapping || !$acquirer_mapping['odoo_acquirer_id']) {
+                $result['message'] = 'No active payment acquirer mapping found for cod_cdek';
+                if ($this->debug) {
+                    $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+                }
+                return $result;
+            }
+
+            // Use checkClient to get partner_id (same pattern as createOdooOrder)
+            $clean_email = preg_replace('/\s*/', '', $order_data['email']);
+            $clean_email = strtolower($clean_email);
+            $odoo_partner = $this->checkClient($clean_email);
+
+            if (!$odoo_partner) {
+                $result['message'] = 'Partner not found in odoo_client_map for email: ' . $clean_email;
+                $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+                return $result;
+            }
+
+            $create_data = array(
+                'acquirer_id' => (int)$acquirer_mapping['odoo_acquirer_id'],
+                'partner_id' => (int)$odoo_partner,
+                'reference' => $tx_reference,
+                'currency_id' => $currency_id,
+            ) + $transaction_data; // Merge with amount, acquirer_reference, tx_url
+
+            $create_response = $models->execute_kw($db_name, $uid, $password,
+                'payment.transaction', 'create',
+                array($create_data)
+            );
+
+            if (isset($create_response['faultCode']) && $create_response['faultCode']) {
+                $error_detail = !empty($create_response['faultString']) ? $create_response['faultString'] : $create_response['faultCode'];
+                $result['message'] = 'Error creating payment.transaction: ' . $error_detail;
+                $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+                return $result;
+            } else {
+                $result['success'] = true;
+                $result['transaction_id'] = $create_response;
+                $result['message'] = 'Created payment.transaction ID: ' . $create_response . ' with amount: ' . $payment_sum;
+
+                if ($this->debug) {
+                    $this->log->write('Model odoo_connector updateCdekPaymentTransaction: ' . $result['message']);
+                }
+            }
+        }
+
+        return $result;
+    }
 }
