@@ -43,7 +43,7 @@
 					<thead>
 					<td class="left">№ на сайте</td>
 					<td class="left">Номер отправления</td>
-					<td class="left">Акта приема-передачи</td>
+					<td class="left">Клиент</td>
 					<td class="left">Дата</td>
 					<td class="left">Откуда</td>
 					<td class="left">Куда</td>
@@ -63,13 +63,7 @@
 										Требуется синхронизация заказа
 									{% endif %}
 								</td>
-								<td class="left">
-                                    {% if (dispatch_info['act_number']) %}
-                                        {{ dispatch_info['act_number'] }}
-                                    {% else %}
-										<a class="js sync-row" href="{{ dispatch_info['sync'] }}">Синхронизовать</a>
-                                    {% endif %}
-								</td>
+								<td class="left">{{ dispatch_info['recipient_name'] }}</td>
 								<td class="left">{{ dispatch_info['date'] }}</td>
 								<td class="left">{{ dispatch_info['city_name'] }}</td>
 								<td class="left">{{ dispatch_info['recipient_city_name'] }}</td>
@@ -118,7 +112,7 @@
 
                     $('td', context).animate({'background-color': '#000000'}, 'fast', function(){
 
-                        $('td:eq(2)', context).html(json.act_number);
+                        $('td:eq(2)', context).html(json.recipient_name);
                         $('td:eq(7)', context).html(json.cost);
 
                         $('td', context).animate({'background-color': '#FFFFFF'}, 'fast');

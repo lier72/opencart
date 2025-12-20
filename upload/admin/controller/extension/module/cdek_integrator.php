@@ -138,7 +138,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				'order_id'				=> $dispatch_info['order_id'],
 				'dispatch_number'		=> $dispatch_info['dispatch_number'],
                 'cdek_number'           => $dispatch_info['cdek_number'],
-				'act_number'			=> $dispatch_info['act_number'],
+				'recipient_name'		=> $dispatch_info['recipient_name'],
 				'date'					=> $this->formatDate($dispatch_info['date']),
 				'city_name'				=> $dispatch_info['city_name'],
                 'shipment_point'		=> $this->setting['shipment_point_default'],
@@ -1783,10 +1783,10 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$filter_dispatch_number = NULL;
 		}
 
-		if (isset($this->request->get['filter_act_number'])) {
-			$filter_act_number = $this->request->get['filter_act_number'];
+		if (isset($this->request->get['filter_recipient_name'])) {
+			$filter_recipient_name = $this->request->get['filter_recipient_name'];
 		} else {
-			$filter_act_number = NULL;
+			$filter_recipient_name = NULL;
 		}
 
 		if (isset($this->request->get['filter_date'])) {
@@ -1853,8 +1853,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
 		}
 
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+		if (isset($this->request->get['filter_recipient_name'])) {
+			$url .= '&filter_recipient_name=' . $this->request->get['filter_recipient_name'];
 		}
 
 		if (isset($this->request->get['filter_date'])) {
@@ -1917,7 +1917,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$exdata = array(
 			'filter_order_id'			=> $filter_order_id,
 			'filter_dispatch_number'	=> $filter_dispatch_number,
-			'filter_act_number'			=> $filter_act_number,
+			'filter_recipient_name'		=> $filter_recipient_name,
 			'filter_date'				=> $filter_date,
 			'filter_city_from'			=> $filter_city_from,
 			'filter_city_to'			=> $filter_city_to,
@@ -1958,14 +1958,10 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			}
 
-			if (is_null($dispatch_info['act_number'])) {
-				$dispatch_info['act_number'] = FALSE;
-			}
-
 			$rdata['dispatches'][] = array(
 				'order_id'				=> $dispatch_info['order_id'],
 				'dispatch_number'		=> $dispatch_info['dispatch_number'],
-				'act_number'			=> $dispatch_info['act_number'],
+				'recipient_name'		=> $dispatch_info['recipient_name'],
                 'cdek_number'           => $dispatch_info['cdek_number'],
 				'date'					=> $this->formatDate($dispatch_info['date']),
 				'city_name'				=> $dispatch_info['city_name'],
@@ -2023,8 +2019,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
 		}
 
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+		if (isset($this->request->get['filter_recipient_name'])) {
+			$url .= '&filter_recipient_name=' . $this->request->get['filter_recipient_name'];
 		}
 
 		if (isset($this->request->get['filter_date'])) {
@@ -2063,6 +2059,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		$rdata['sort_order_id'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.order_id' . $url, 'SSL');
 		$rdata['sort_dispatch_number'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=d.dispatch_number' . $url, 'SSL');
+		$rdata['sort_recipient_name'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.recipient_name' . $url, 'SSL');
 		$rdata['sort_act_number'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.act_number' . $url, 'SSL');
 		$rdata['sort_date'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=d.date' . $url, 'SSL');
 		$rdata['sort_city_from'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.city_name' . $url, 'SSL');
@@ -2080,8 +2077,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
 		}
 
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+		if (isset($this->request->get['filter_recipient_name'])) {
+			$url .= '&filter_recipient_name=' . $this->request->get['filter_recipient_name'];
 		}
 
 		if (isset($this->request->get['filter_date'])) {
@@ -2130,8 +2127,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
 		}
 
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+		if (isset($this->request->get['filter_recipient_name'])) {
+			$url .= '&filter_recipient_name=' . $this->request->get['filter_recipient_name'];
 		}
 
 		if (isset($this->request->get['filter_date'])) {
@@ -2179,7 +2176,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		$rdata['filter_order_id'] = $filter_order_id;
 		$rdata['filter_dispatch_number'] = $filter_dispatch_number;
-		$rdata['filter_act_number'] = $filter_act_number;
+		$rdata['filter_recipient_name'] = $filter_recipient_name;
 		$rdata['filter_date'] = $filter_date;
 		$rdata['filter_city_from'] = $filter_city_from;
 		$rdata['filter_city_to'] = $filter_city_to;
@@ -3107,7 +3104,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 						'order_id'				=> $dispatch_info['order_id'],
 						'dispatch_number'		=> $dispatch_info['number'],
 						'cdek_number'		    => $dispatch_info['cdek_number'],
-						'act_number'			=> $dispatch_info['act_number'],
+						'recipient_name'		=> $dispatch_info['recipient_name'],
 						'date'					=> $this->formatDate($dispatch_info['date']),
 						'city_name'				=> $dispatch_info['city_name'],
 						'recipient_city_name'	=> $dispatch_info['recipient_city_name'],

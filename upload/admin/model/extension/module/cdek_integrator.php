@@ -427,8 +427,8 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 			$filter[] = "o.dispatch_number = " . (int)$data['filter_dispatch_number'];
 		}
 		
-		if (!empty($data['filter_act_number'])) {
-			$filter[] = "o.act_number = '" . $this->db->escape($data['filter_act_number']) . "'";
+		if (!empty($data['filter_recipient_name'])) {
+			$filter[] = "o.recipient_name LIKE '%" . $this->db->escape($data['filter_recipient_name']) . "%'";
 		}
 		
 		if (!empty($data['filter_date'])) {
@@ -458,7 +458,7 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 		$sort_data = array(
 			'o.order_id',
 			'o.dispatch_number',
-			'o.act_number',
+			'o.recipient_name',
 			'd.date',
 			'o.city_name',
 			'o.recipient_city_name',
@@ -510,8 +510,8 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 			$filter[] = "o.dispatch_number = " . (int)$data['filter_dispatch_number'];
 		}
 		
-		if (!empty($data['filter_act_number'])) {
-			$filter[] = "o.act_number = '" . $this->db->escape($data['filter_act_number']) . "'";
+		if (!empty($data['filter_recipient_name'])) {
+			$filter[] = "o.recipient_name LIKE '%" . $this->db->escape($data['filter_recipient_name']) . "%'";
 		}
 		
 		if (!empty($data['filter_date'])) {

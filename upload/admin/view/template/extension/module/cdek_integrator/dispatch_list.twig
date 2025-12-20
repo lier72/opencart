@@ -50,8 +50,8 @@
 							</div>
 
 							<div class="form-group">
-								<label class="control-label">Акт приема-передачи</label>
-								<input type="text" class="form-control" name="filter_act_number" value="{{ filter_act_number }}">
+								<label class="control-label">Клиент</label>
+								<input type="text" class="form-control" name="filter_recipient_name" value="{{ filter_recipient_name }}">
 							</div>
 
 						</div>
@@ -103,7 +103,7 @@
 					<tr>
 						<td class="left"><a href="{{ sort_order_id }}"{% if (sort == 'o.order_id') %} class="{{ order|lower }}"{% endif %}>№ заказа</a></td>
 						<td class="left"><a href="{{ sort_dispatch_number }}"{% if (sort == 'd.dispatch_number') %} class="{{ order|lower }}"{% endif %}>Номер отправления</a></td>
-						<td class="left"><a href="{{ sort_order_id }}"{% if (sort == 'o.order_id') %} class="{{ order|lower }}"{% endif %}>Акт приема-передачи</a></td>
+						<td class="left"><a href="{{ sort_recipient_name }}"{% if (sort == 'o.recipient_name') %} class="{{ order|lower }}"{% endif %}>Клиент</a></td>
 						<td class="left"><a href="{{ sort_act_number }}"{% if (sort == 'o.act_number') %} class="{{ order|lower }}"{% endif %}>Дата отгрузки</a></td>
 						<td class="left"><a href="{{ sort_city_from }}"{% if (sort == 'o.city_name') %} class="{{ order|lower }}"{% endif %}>Откуда</a></td>
 						<td class="left"><a href="{{ sort_city_to }}"{% if (sort == 'o.recipient_city_name') %} class="{{ order|lower }}"{% endif %}>Куда</a></td>
@@ -124,13 +124,7 @@
 										Требуется синхронизация заказа
 									{% endif %}
 								</td>
-								<td class="left">
-                                    {% if (dispatch_info['act_number']) %}
-                                        {{ dispatch_info['act_number'] }}
-                                    {% else %}
-										<a class="js sync-row">Синхронизовать</a>
-                                    {% endif %}
-								</td>
+								<td class="left">{{ dispatch_info['recipient_name'] }}</td>
 								<td class="left">{{ dispatch_info['date'] }}</td>
 								<td class="left">{{ dispatch_info['city_name'] }}</td>
 								<td class="left">{{ dispatch_info['recipient_city_name'] }}</td>
@@ -201,7 +195,7 @@
 
                     $('td', context).animate({'background-color': '#000000'}, 'fast', function(){
 
-                        $('td:eq(2)', context).html(json.act_number);
+                        $('td:eq(2)', context).html(json.recipient_name);
                         $('td:eq(3)', context).html(json.date);
                         $('td:eq(4)', context).html(json.city_name);
                         $('td:eq(5)', context).html(json.recipient_city_name);
@@ -255,10 +249,10 @@
             url += '&filter_dispatch_number=' + encodeURIComponent(filter_dispatch_number);
         }
 
-        var filter_act_number = $('input[name=\'filter_act_number\']').val();
+        var filter_recipient_name = $('input[name=\'filter_recipient_name\']').val();
 
-        if (filter_act_number) {
-            url += '&filter_act_number=' + encodeURIComponent(filter_act_number);
+        if (filter_recipient_name) {
+            url += '&filter_recipient_name=' + encodeURIComponent(filter_recipient_name);
         }
 
         var filter_date = $('input[name=\'filter_date\']').val();
