@@ -498,7 +498,23 @@ class ModelExtensionShippingCdek extends Model
                                 $min_total = (float)$tariff_info['min_total'];
                                 $max_total = (float)$tariff_info['max_total'];
 
-                                if (($min_total > 0 && $total < $min_total) || ($max_total > 0 && $total > $max_total)) {
+                                // Check if free shipping should apply
+                                $free_shipping_eligible = false;
+                                if ($max_total > 0 && $total > $max_total) {
+                                    // Check if this tariff has geo_zone restrictions
+                                    if (!empty($tariff_info['geo_zone'])) {
+                                        // Check if customer's geo zone matches
+                                        $intersect = array_intersect($tariff_info['geo_zone'], $geo_zones);
+                                        if ($intersect) {
+                                            $free_shipping_eligible = true;
+                                            if ($this->config->get('shipping_cdek_log')) {
+                                                $this->log->write('СДЭК: Тариф «' . $tariff_title . '» - бесплатная доставка (сумма заказа ' . $total . ' превышает ' . $max_total . ')!');
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (($min_total > 0 && $total < $min_total) || ($max_total > 0 && $total > $max_total && !$free_shipping_eligible)) {
 
                                     if ($this->config->get('shipping_cdek_log')) {
                                         $this->log->write('СДЭК: Тариф «' . $tariff_title . '» превышены ограничения по стоимости!');
@@ -518,6 +534,9 @@ class ModelExtensionShippingCdek extends Model
                                 } else {
                                     $key = 'all';
                                 }
+
+                                // Add free shipping flag to tariff info
+                                $tariff_info['free_shipping_eligible'] = $free_shipping_eligible;
 
                                 $tariff_list[$tariff_info['tariff_id']][$key] = $tariff_info;
                             }
@@ -628,62 +647,25 @@ class ModelExtensionShippingCdek extends Model
 
                                 if (!empty($results)) {
 
-                                    $pvz_list = array();
-
-                                    $usePVZ = 1;
-
-                                    if ($usePVZ) {
-                                        $pvz_list = $this->getPVZList($city_to, $weight, 'PVZ');
-
-                                        $postamat_list = $this->getPVZList($city_to, $weight, 'POSTAMAT');
-                                    }
-
+                                    // Performance optimization: Skip loading PVZ list during getQuote()
+                                    // PVZ data will be loaded via AJAX when customer selects CDEK shipping
+                                    // Only store city information in session for later use
                                     $this->session->data['cdek']['city'] = $city_to;
+                                    $this->session->data['cdek']['weight'] = $weight;
 
-                                    // Store PVZ data in shared cache files (one per city, not per session)
-                                    // This is much faster - all Moscow customers share the same cache file
-                                    $cache_key_pvz = 'cdek_pvz_' . $city_to;
-                                    $cache_key_postamat = 'cdek_postamat_' . $city_to;
-
-                                    if ($this->config->get('shipping_cdek_log')) {
-                                        $this->log->write('СДЭК DEBUG: Starting PVZ cache write for city=' . $city_to);
-                                    }
-
-                                    foreach ($pvz_list as $pvz_list_content) {
-                                        // Store in shared cache file (one file per city, shared by all sessions)
-                                        $cache_file = DIR_CACHE . $cache_key_pvz . '.cache';
-                                        file_put_contents($cache_file, serialize($pvz_list_content['info']));
-
-                                        // Store cache key in session (just the city_id, not the full data)
-                                        $this->session->data['cdek']['pvz_cache_key'] = $cache_key_pvz;
-
-                                        if ($this->config->get('shipping_cdek_log')) {
-                                            $size = strlen(serialize($pvz_list_content['info']));
-                                            $count = count($pvz_list_content['info']);
-                                            $this->log->write('СДЭК DEBUG: Stored ' . $count . ' PVZ items in shared cache file=' . $cache_file . ', size=' . number_format($size) . ' bytes');
-                                        }
-                                    }
-
-                                    foreach ($postamat_list as $postamat_list_content) {
-                                        // Store in shared cache file (one file per city, shared by all sessions)
-                                        $cache_file = DIR_CACHE . $cache_key_postamat . '.cache';
-                                        file_put_contents($cache_file, serialize($postamat_list_content['info']));
-
-                                        // Store cache key in session (just the city_id, not the full data)
-                                        $this->session->data['cdek']['postamat_cache_key'] = $cache_key_postamat;
-
-                                        if ($this->config->get('shipping_cdek_log')) {
-                                            $size = strlen(serialize($postamat_list_content['info']));
-                                            $count = count($postamat_list_content['info']);
-                                            $this->log->write('СДЭК DEBUG: Stored ' . $count . ' POSTAMAT items in shared cache file=' . $cache_file . ', size=' . number_format($size) . ' bytes');
-                                        }
-                                    }
+                                    // Set cache keys for later lazy loading
+                                    $this->session->data['cdek']['pvz_cache_key'] = 'cdek_pvz_' . $city_to;
+                                    $this->session->data['cdek']['postamat_cache_key'] = 'cdek_postamat_' . $city_to;
 
                                     if ($this->config->get('shipping_cdek_log')) {
-                                        $total_session_size = strlen(serialize($this->session->data));
-                                        $this->log->write('СДЭК DEBUG: Total session size after cache write=' . number_format($total_session_size) . ' bytes');
-                                        $this->log->write('СДЭК DEBUG: Starting tariff loop, results count=' . count($results));
+                                        $this->log->write('СДЭК DEBUG: Skipped PVZ loading for performance. City=' . $city_to . ', will load via AJAX later');
                                     }
+
+                                    // For backward compatibility, set flag to skip PVZ check
+                                    // PVZ will be loaded later via AJAX
+                                    $usePVZ = 0; // Disable PVZ requirement check during getQuote
+                                    $pvz_list = array();
+                                    $postamat_list = array();
 
                                     $sub_total = $this->cart->getSubTotal();
 
@@ -744,6 +726,14 @@ class ModelExtensionShippingCdek extends Model
 
                                             // Round to whole rubles (50 kopecks rounds up to 1 ruble)
                                             $price = round($price);
+
+                                            // Apply free shipping if eligible
+                                            if (!empty($customer_tariff_info['free_shipping_eligible'])) {
+                                                $price = 0;
+                                                if ($this->config->get('shipping_cdek_log')) {
+                                                    $this->log->write('СДЭК: Применена бесплатная доставка для тарифа ' . $shipping_info['tariffId']);
+                                                }
+                                            }
 
                                             if (!empty($customer_tariff_info['title'][$this->config->get('config_language_id')])) {
                                                 $description = $customer_tariff_info['title'][$this->config->get('config_language_id')];
@@ -812,9 +802,15 @@ class ModelExtensionShippingCdek extends Model
 
                                                 if ($this->config->get('shipping_cdek_show_pvz')) {
 
-                                                    foreach ($pvz_list as $pvz_info) {
-                                                        //$names[$pvz_info['code']/* . '_' . $key*/] = $description . ' Пункт выдачи заказов: ' . $pvz_info['address'];
-                                                        $names[$pvz_info['code']/* . '_' . $key*/] = $description;
+                                                    if (!empty($pvz_list)) {
+                                                        foreach ($pvz_list as $pvz_info) {
+                                                            //$names[$pvz_info['code']/* . '_' . $key*/] = $description . ' Пункт выдачи заказов: ' . $pvz_info['address'];
+                                                            $names[$pvz_info['code']/* . '_' . $key*/] = $description;
+                                                        }
+                                                    } else {
+                                                        // Lazy loading mode: show option without PVZ details
+                                                        $names[] = $description;
+                                                        $renderData['usePvz'] = true; // Will load via AJAX
                                                     }
 
                                                 } else {
@@ -830,9 +826,15 @@ class ModelExtensionShippingCdek extends Model
 
                                                 if ($this->config->get('shipping_cdek_show_pvz')) {
 
-                                                    foreach ($postamat_list as $pvz_info) {
-                                                        //$names[$pvz_info['code']/* . '_' . $key*/] = $description . ' Пункт выдачи заказов: ' . $pvz_info['address'];
-                                                        $names[$pvz_info['code']/* . '_' . $key*/] = $description;
+                                                    if (!empty($postamat_list)) {
+                                                        foreach ($postamat_list as $pvz_info) {
+                                                            //$names[$pvz_info['code']/* . '_' . $key*/] = $description . ' Пункт выдачи заказов: ' . $pvz_info['address'];
+                                                            $names[$pvz_info['code']/* . '_' . $key*/] = $description;
+                                                        }
+                                                    } else {
+                                                        // Lazy loading mode: show option without postamat details
+                                                        $names[] = $description;
+                                                        $renderData['usePvz'] = true; // Will load via AJAX
                                                     }
 
                                                 } else {
@@ -1332,7 +1334,7 @@ class ModelExtensionShippingCdek extends Model
     private function getURL($url, response_parser $parser, $data = array())
     {
         $ch = curl_init();
-        if ($this->config->get('shipping_cdek_log')) {
+        if ($this->config->get('shipping_cdek_log') && !strpos($url,"city_code=44")) {
             $this->log->write('СДЭК url запроса: ' . $url);
         }
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -1347,7 +1349,7 @@ class ModelExtensionShippingCdek extends Model
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
 
         if (!empty($data)) {
-            if ($this->config->get('shipping_cdek_log')) {
+            if ($this->config->get('shipping_cdek_log') && !strpos($url,"city_code=44")) {
                 $this->log->write('СДЭК передаваемые данные: ' . $data);
             }
             curl_setopt($ch, CURLOPT_POST, 1);
@@ -1355,7 +1357,7 @@ class ModelExtensionShippingCdek extends Model
         }
 
         $out = curl_exec($ch);
-        if ($this->config->get('shipping_cdek_log')) {
+        if ($this->config->get('shipping_cdek_log') && !strpos($url,"city_code=44")) {
             $this->log->write('СДЭК ответ от api: ' . $out);
         }
         $parser->setData($out);
@@ -1390,6 +1392,70 @@ class ModelExtensionShippingCdek extends Model
         $period = $new_date->format('Y-m-d');
 
         return $period;
+    }
+
+    /**
+     * Load PVZ data with cache expiry check (lazy loading)
+     * This method should be called via AJAX when customer selects CDEK shipping
+     *
+     * @param string $type 'PVZ' or 'POSTAMAT'
+     * @return array PVZ list data
+     */
+    public function loadPVZData($type = 'PVZ')
+    {
+        if (!isset($this->session->data['cdek']['city'])) {
+            if ($this->config->get('shipping_cdek_log')) {
+                $this->log->write('СДЭК: Cannot load PVZ data - city not set in session');
+            }
+            return array();
+        }
+
+        $city_to = $this->session->data['cdek']['city'];
+        $weight = isset($this->session->data['cdek']['weight']) ? $this->session->data['cdek']['weight'] : 0;
+
+        $cache_key = 'cdek_' . strtolower($type) . '_' . $city_to;
+        $cache_file = DIR_CACHE . $cache_key . '.cache';
+        $cache_expiry = 24 * 60 * 60; // 24 hours in seconds
+
+        // Check if cache exists and is still valid
+        if (file_exists($cache_file)) {
+            $cache_age = time() - filemtime($cache_file);
+
+            if ($cache_age < $cache_expiry) {
+                // Cache is valid, load from file
+                if ($this->config->get('shipping_cdek_log')) {
+                    $this->log->write('СДЭК: Loading ' . $type . ' from cache (age: ' . round($cache_age / 3600, 1) . ' hours)');
+                }
+
+                $cached_data = unserialize(file_get_contents($cache_file));
+                return $cached_data ? $cached_data : array();
+            } else {
+                if ($this->config->get('shipping_cdek_log')) {
+                    $this->log->write('СДЭК: Cache expired for ' . $type . ' (age: ' . round($cache_age / 3600, 1) . ' hours), reloading...');
+                }
+            }
+        }
+
+        // Cache doesn't exist or expired, fetch from API
+        $this->auth_data = $this->getInfo()->getAuthToken();
+        $pvz_list = $this->getPVZList($city_to, $weight, $type);
+
+        // Store in cache
+        if (!empty($pvz_list)) {
+            foreach ($pvz_list as $pvz_list_content) {
+                file_put_contents($cache_file, serialize($pvz_list_content['info']));
+
+                if ($this->config->get('shipping_cdek_log')) {
+                    $size = strlen(serialize($pvz_list_content['info']));
+                    $count = count($pvz_list_content['info']);
+                    $this->log->write('СДЭК: Cached ' . $count . ' ' . $type . ' items (' . number_format($size) . ' bytes)');
+                }
+
+                return $pvz_list_content['info'];
+            }
+        }
+
+        return array();
     }
 
 }

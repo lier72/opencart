@@ -42,30 +42,16 @@ class ControllerExtensionShippingCdek extends Controller {
 
 		$tariff_type = $this->request->post['tariff_type'];
 
-		// Read PVZ data from shared cache files (using cache key from session)
-		if ($tariff_type == 'PVZ') {
-			$cache_key = isset($this->session->data['cdek']['pvz_cache_key']) ?
-						 $this->session->data['cdek']['pvz_cache_key'] :
-						 'cdek_pvz_' . $this->session->data['cdek']['city'];
-			$cache_file = DIR_CACHE . $cache_key . '.cache';
+		// Load PVZ data with cache expiry check (lazy loading)
+		$this->load->model('extension/shipping/cdek');
 
-			if (file_exists($cache_file)) {
-				$pvz_list = unserialize(file_get_contents($cache_file));
+		if ($tariff_type == 'PVZ' || $tariff_type == 'POSTAMAT') {
+			$pvz_list = $this->model_extension_shipping_cdek->loadPVZData($tariff_type);
+
+			if (!empty($pvz_list)) {
 				$this->jsonRespone(true, 'Список пунктов выдачи', $pvz_list);
 			} else {
-				$this->jsonRespone(false, 'Нет списка пвз в кеше');
-			}
-		} elseif ($tariff_type == 'POSTAMAT') {
-			$cache_key = isset($this->session->data['cdek']['postamat_cache_key']) ?
-						 $this->session->data['cdek']['postamat_cache_key'] :
-						 'cdek_postamat_' . $this->session->data['cdek']['city'];
-			$cache_file = DIR_CACHE . $cache_key . '.cache';
-
-			if (file_exists($cache_file)) {
-				$postamat_list = unserialize(file_get_contents($cache_file));
-				$this->jsonRespone(true, 'Список пунктов выдачи', $postamat_list);
-			} else {
-				$this->jsonRespone(false, 'Нет списка постаматов в кеше');
+				$this->jsonRespone(false, 'Не удалось загрузить список пунктов выдачи');
 			}
 		} else {
 			$this->jsonRespone(true, 'Список пунктов выдачи', array());
