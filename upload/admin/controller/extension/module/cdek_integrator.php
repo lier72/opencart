@@ -4190,7 +4190,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		// Add order history with payment information
 		// Don't change order status, just add a comment (status_id = 0 means keep current status)
-		echo "Order #$order_id: Adding COD payment info (Paid: {$payment_sum} руб, Return: " . ($return_amount > 0 ? $return_amount : 0) . " руб)" . PHP_EOL;
+		echo "Order #$order_id: Adding COD payment info (Paid: {$payment_sum} руб" . PHP_EOL;
 
 		// Use model's statusApi method to add order history
 		$this->model_extension_module_cdek_integrator->statusApi(
