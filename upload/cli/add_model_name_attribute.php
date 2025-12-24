@@ -17,6 +17,7 @@ define('VERSION', '3.0.3.6');
  * Usage:
  *   php add_model_name_attribute.php --product_id=123       # Process single product
  *   php add_model_name_attribute.php --all                  # Process all products in configured categories
+ *   php add_model_name_attribute.php --date=2024-01-01      # Process products created after specified date (YYYY-MM-DD)
  *   php add_model_name_attribute.php --dry-run              # Test without saving
  */
 
@@ -57,17 +58,26 @@ foreach ($query->rows as $setting) {
 }
 
 // Parse command line arguments
-$options = getopt('', array('product_id:', 'all', 'dry-run', 'help'));
+$options = getopt('', array('product_id:', 'all', 'date:', 'dry-run', 'help'));
 
 if (isset($options['help'])) {
 	echo "Usage:\n";
 	echo "  php add_model_name_attribute.php --product_id=123       # Process single product\n";
 	echo "  php add_model_name_attribute.php --all                  # Process all products in Yandex Market categories\n";
-	echo "  php add_model_name_attribute.php --dry-run              # Test without saving\n";
+	echo "  php add_model_name_attribute.php --date=2024-01-01      # Process products created after specified date (YYYY-MM-DD)\n";
+	echo "  php add_model_name_attribute.php --all --date=2024-01-01 # Combine --all with --date filter\n";
+	echo "  php add_model_name_attribute.php --dry-run              # Test without saving (combine with any option above)\n";
 	exit(0);
 }
 
 $dry_run = isset($options['dry-run']);
+$date_filter = isset($options['date']) ? $options['date'] : null;
+
+// Validate date format if provided
+if ($date_filter && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_filter)) {
+	echo "Error: Invalid date format. Please use YYYY-MM-DD format (e.g., 2024-01-01)\n";
+	exit(1);
+}
 
 /**
  * Model Name Parser Class
@@ -334,6 +344,23 @@ function processProduct($db, $product_id, $attribute_id, $parser, $dry_run = fal
 
 	$product = $product_query->row;
 
+	// Check if attribute already exists for this product
+	$existing_query = $db->query("
+		SELECT text
+		FROM " . DB_PREFIX . "product_attribute
+		WHERE product_id = '" . (int)$product_id . "'
+		AND attribute_id = '" . (int)$attribute_id . "'
+		AND language_id = '1'
+		LIMIT 1
+	");
+
+	if ($existing_query->num_rows > 0) {
+		echo "Product ID: {$product['product_id']}\n";
+		echo "  Name: {$product['name']}\n";
+		echo "  ⊘ Skipped - Attribute 'Модель' already exists: {$existing_query->row['text']}\n\n";
+		return true;
+	}
+
 	// Parse model name
 	$model_name = $parser->parseModelName($product['name'], $product['manufacturer'], $product['model']);
 
@@ -343,9 +370,6 @@ function processProduct($db, $product_id, $attribute_id, $parser, $dry_run = fal
 	echo "  Parsed Model: $model_name\n";
 
 	if (!$dry_run) {
-		// Delete existing model_name attribute for this product
-		$db->query("DELETE FROM " . DB_PREFIX . "product_attribute WHERE product_id = '" . (int)$product_id . "' AND attribute_id = '" . (int)$attribute_id . "'");
-
 		// Add model_name attribute for both languages
 		// Language 1 (English)
 		$db->query("INSERT INTO " . DB_PREFIX . "product_attribute SET
@@ -374,7 +398,7 @@ function processProduct($db, $product_id, $attribute_id, $parser, $dry_run = fal
 /**
  * Process all products in configured categories
  */
-function processAllProducts($db, $config, $attribute_id, $parser, $dry_run = false) {
+function processAllProducts($db, $config, $attribute_id, $parser, $dry_run = false, $date_filter = null) {
 	// Get configured categories from Yandex Market settings
 	$allowed_categories = $config->get('feed_yandex_market_categories');
 
@@ -384,11 +408,21 @@ function processAllProducts($db, $config, $attribute_id, $parser, $dry_run = fal
 		return;
 	}
 
-	echo "Processing products in categories: $allowed_categories\n\n";
+	echo "Processing products in categories: $allowed_categories\n";
+	if ($date_filter) {
+		echo "Date filter: Products created after $date_filter\n";
+	}
+	echo "\n";
+
+	// Build date filter SQL
+	$date_filter_sql = '';
+	if ($date_filter) {
+		$date_filter_sql = " AND p.date_added >= '" . $db->escape($date_filter) . " 00:00:00'";
+	}
 
 	// Get products from allowed categories
 	$products_query = $db->query("
-		SELECT DISTINCT p.product_id, pd.name, p.model, m.name as manufacturer
+		SELECT DISTINCT p.product_id, pd.name, p.model, m.name as manufacturer, p.date_added
 		FROM " . DB_PREFIX . "product p
 		LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id)
 		LEFT JOIN " . DB_PREFIX . "manufacturer m ON (p.manufacturer_id = m.manufacturer_id)
@@ -396,18 +430,28 @@ function processAllProducts($db, $config, $attribute_id, $parser, $dry_run = fal
 		WHERE pd.language_id = '1'
 		AND p2c.category_id IN (" . $allowed_categories . ")
 		AND p.status = '1'
+		" . $date_filter_sql . "
 		ORDER BY p.product_id ASC
 	");
 
 	echo "Found {$products_query->num_rows} products to process\n\n";
 
 	$processed = 0;
+	$skipped = 0;
 	foreach ($products_query->rows as $product) {
-		processProduct($db, $product['product_id'], $attribute_id, $parser, $dry_run);
-		$processed++;
+		$result = processProduct($db, $product['product_id'], $attribute_id, $parser, $dry_run);
+		if ($result) {
+			$processed++;
+		} else {
+			$skipped++;
+		}
 	}
 
-	echo "\nProcessed $processed products\n";
+	echo "\nProcessed $processed products";
+	if ($skipped > 0) {
+		echo " ($skipped skipped - attribute already exists)";
+	}
+	echo "\n";
 }
 
 // Main execution
@@ -425,11 +469,11 @@ if (isset($options['product_id'])) {
 	$product_id = (int)$options['product_id'];
 	echo "Processing single product ID: $product_id\n\n";
 	processProduct($db, $product_id, $attribute_id, $parser, $dry_run);
-} elseif (isset($options['all'])) {
+} elseif (isset($options['all']) || isset($options['date'])) {
 	echo "Processing all products in configured categories\n\n";
-	processAllProducts($db, $config, $attribute_id, $parser, $dry_run);
+	processAllProducts($db, $config, $attribute_id, $parser, $dry_run, $date_filter);
 } else {
-	echo "Error: Please specify --product_id=123 or --all\n";
+	echo "Error: Please specify --product_id=123, --all, or --date=YYYY-MM-DD\n";
 	echo "Use --help for usage information\n";
 	exit(1);
 }
