@@ -108,7 +108,14 @@ class ModelExtensionModuleOdooProductMapping extends Model {
         }
     }
 
-    private function getOpenCartProduct($product_id) {
+    private function getOpenCartProduct($product_id, $language_id = null) {
+        // Get language_id from parameter or fall back to config
+        if ($language_id === null) {
+            $language_id = (int)$this->config->get('config_language_id');
+        } else {
+            $language_id = (int)$language_id;
+        }
+
         $product_query = $this->db->query("SELECT p.product_id, p.price, p.model, p.ean,
             pd.name, pd.description, pd.meta_title, pd.meta_description,
             pd.meta_keyword, pd.tag,
@@ -120,11 +127,11 @@ class ModelExtensionModuleOdooProductMapping extends Model {
         LEFT JOIN " . DB_PREFIX . "seo_url su
             ON (su.query = CONCAT('product_id=', p.product_id)
                 AND su.store_id = '0'
-                AND su.language_id = '" . (int)$this->config->get('config_language_id') . "')
+                AND su.language_id = '" . $language_id . "')
         LEFT JOIN " . DB_PREFIX . "product_to_category ptc
             ON (p.product_id = ptc.product_id)
         WHERE p.product_id = '" . (int)$product_id . "'
-            AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+            AND pd.language_id = '" . $language_id . "'");
 
         if ($product_query->num_rows) {
             return array(
@@ -381,12 +388,19 @@ class ModelExtensionModuleOdooProductMapping extends Model {
         }
     }
 
-    private function getProductMapping($odoo_product_id = null, $opencart_product_id = null) {
-        $sql = "SELECT opvm.*, p.model as opencart_model, pd.name as opencart_name, p.weight as weight, p.length as length, p.height as height, p.width as width 
+    private function getProductMapping($odoo_product_id = null, $opencart_product_id = null, $language_id = null) {
+        // Get language_id from parameter or fall back to config
+        if ($language_id === null) {
+            $language_id = (int)$this->config->get('config_language_id');
+        } else {
+            $language_id = (int)$language_id;
+        }
+
+        $sql = "SELECT opvm.*, p.model as opencart_model, pd.name as opencart_name, p.weight as weight, p.length as length, p.height as height, p.width as width
             FROM " . DB_PREFIX . "odoo_product_variant_map opvm
-            LEFT JOIN " . DB_PREFIX . "product p ON p.product_id = opvm.opencart_product_id 
-            LEFT JOIN " . DB_PREFIX . "product_description pd ON pd.product_id = p.product_id 
-            WHERE 1=1";
+            LEFT JOIN " . DB_PREFIX . "product p ON p.product_id = opvm.opencart_product_id
+            LEFT JOIN " . DB_PREFIX . "product_description pd ON pd.product_id = p.product_id
+            WHERE pd.language_id = '" . $language_id . "'";
 
         if ($odoo_product_id) {
             $sql .= " AND opvm.odoo_product_id = '" . (int)$odoo_product_id . "'";
@@ -400,17 +414,23 @@ class ModelExtensionModuleOdooProductMapping extends Model {
         return $query->num_rows ? $query->row : false;
     }
 
-    function createProductMapping($odoo_product_id, $opencart_product_id, $odoo_template_id) {
+    function createProductMapping($odoo_product_id, $opencart_product_id, $odoo_template_id, $language_id = null) {
+        // Get language_id from parameter or fall back to config
+        if ($language_id === null) {
+            $language_id = (int)$this->config->get('config_language_id');
+        } else {
+            $language_id = (int)$language_id;
+        }
+
         // Get OpenCart product data including options if any
         $product_query = $this->db->query("SELECT p.model, pd.name, pov.product_option_value_id,
         CONCAT(od.name, ': ', ovd.name) as option_description
         FROM " . DB_PREFIX . "product p
-        LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id)
+        LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id AND pd.language_id = '" . $language_id . "')
         LEFT JOIN " . DB_PREFIX . "product_option_value pov ON (p.product_id = pov.product_id)
-        LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id)
-        LEFT JOIN " . DB_PREFIX . "option_description od ON (ovd.option_id = od.option_id)
-        WHERE p.product_id = '" . (int)$opencart_product_id . "'
-        AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+        LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id AND ovd.language_id = '" . $language_id . "')
+        LEFT JOIN " . DB_PREFIX . "option_description od ON (ovd.option_id = od.option_id AND od.language_id = '" . $language_id . "')
+        WHERE p.product_id = '" . (int)$opencart_product_id . "'");
 
         if ($product_query->num_rows) {
             $product_data = $product_query->row;
@@ -453,14 +473,17 @@ class ModelExtensionModuleOdooProductMapping extends Model {
 
 
     public function getTotalMappedProducts($data = array()) {
+        // Get language_id from data array or fall back to config
+        $language_id = isset($data['language_id']) ? (int)$data['language_id'] : (int)$this->config->get('config_language_id');
+
         $sql = "SELECT COUNT(DISTINCT opm.id) AS total FROM " . DB_PREFIX . "odoo_product_variant_map opm";
         $sql .= " LEFT JOIN " . DB_PREFIX . "product p ON (opm.opencart_product_id = p.product_id)";
-        $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id)";
+        $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id AND pd.language_id = '" . $language_id . "')";
         $sql .= " LEFT JOIN " . DB_PREFIX . "product_option_value pov ON (opm.opencart_product_option_id = pov.product_option_value_id)";
-        $sql .= " LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id)";
-        $sql .= " LEFT JOIN " . DB_PREFIX . "option_description od ON (ovd.option_id = od.option_id)";
+        $sql .= " LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id AND ovd.language_id = '" . $language_id . "')";
+        $sql .= " LEFT JOIN " . DB_PREFIX . "option_description od ON (ovd.option_id = od.option_id AND od.language_id = '" . $language_id . "')";
 
-        $sql .= " WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+        $sql .= " WHERE 1=1";
 
 
         if (!empty($data['filter_product_id'])) {
@@ -492,16 +515,19 @@ class ModelExtensionModuleOdooProductMapping extends Model {
     // very complcated SQL requestm but it might be better to store the status as a correspondent status number in
     // odoo_product_variant, so we can keep the code lighter and easier to read?
     public function getMappedProducts($data = array()) {
+        // Get language_id from data array or fall back to config
+        $language_id = isset($data['language_id']) ? (int)$data['language_id'] : (int)$this->config->get('config_language_id');
+
         $sql = "SELECT opm.*, p.product_id, p.model, p.price, pd.name AS product_name,";
         $sql .= " od.name AS option_name, ovd.name AS option_value_name";
         $sql .= " FROM " . DB_PREFIX . "odoo_product_variant_map opm";
         $sql .= " LEFT JOIN " . DB_PREFIX . "product p ON (opm.opencart_product_id = p.product_id)";
-        $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id)";
+        $sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id AND pd.language_id = '" . $language_id . "')";
         $sql .= " LEFT JOIN " . DB_PREFIX . "product_option_value pov ON (opm.opencart_product_option_id = pov.product_option_value_id)";
-        $sql .= " LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id)";
-        $sql .= " LEFT JOIN " . DB_PREFIX . "option_description od ON (ovd.option_id = od.option_id)";
+        $sql .= " LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id AND ovd.language_id = '" . $language_id . "')";
+        $sql .= " LEFT JOIN " . DB_PREFIX . "option_description od ON (ovd.option_id = od.option_id AND od.language_id = '" . $language_id . "')";
 
-        $sql .= " WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+        $sql .= " WHERE 1=1";
 
 //        if ($this->debug) $this->log->write("Info odoo_product_mapping getMappedProducts: " . serialize($data));
 
@@ -698,12 +724,15 @@ class ModelExtensionModuleOdooProductMapping extends Model {
     // Individual product syncing history information
     //
     public function getProductSyncHistory($product_id, $data = array()) {
-        $sql = "SELECT psl.*, pd.name as product_name, p.model 
-                FROM " . DB_PREFIX . "odoo_product_sync_log psl 
+        // Get language_id from data array or fall back to config
+        $language_id = isset($data['language_id']) ? (int)$data['language_id'] : (int)$this->config->get('config_language_id');
+
+        $sql = "SELECT psl.*, pd.name as product_name, p.model
+                FROM " . DB_PREFIX . "odoo_product_sync_log psl
                 LEFT JOIN " . DB_PREFIX . "product p ON (psl.product_id = p.product_id)
                 LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id)
                 WHERE psl.product_id = '" . (int)$product_id . "'
-                AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+                AND pd.language_id = '" . $language_id . "'";
 
         $sort_data = array(
             'psl.created_on',
@@ -747,14 +776,21 @@ class ModelExtensionModuleOdooProductMapping extends Model {
         return $query->row['total'];
     }
 
-    public function getProductInfo($product_id) {
-        $query = $this->db->query("SELECT p.*, pd.name, 
+    public function getProductInfo($product_id, $language_id = null) {
+        // Get language_id from parameter or fall back to config
+        if ($language_id === null) {
+            $language_id = (int)$this->config->get('config_language_id');
+        } else {
+            $language_id = (int)$language_id;
+        }
+
+        $query = $this->db->query("SELECT p.*, pd.name,
             opm.odoo_product_id, opm.odoo_product_tmpl_id, opm.is_synch
-            FROM " . DB_PREFIX . "product p 
+            FROM " . DB_PREFIX . "product p
             LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id)
             LEFT JOIN " . DB_PREFIX . "odoo_product_variant_map opm ON (p.product_id = opm.opencart_product_id)
-            WHERE p.product_id = '" . (int)$product_id . "' 
-            AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+            WHERE p.product_id = '" . (int)$product_id . "'
+            AND pd.language_id = '" . $language_id . "'");
 
         if ($query->num_rows) {
             $product_data = $query->row;

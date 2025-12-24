@@ -1,0 +1,109 @@
+{{ header }}{{ column_left }}
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="pull-right">
+                <button type="submit" form="form-attribute-mapping" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+                <a href="{{ refresh_odoo }}" data-toggle="tooltip" title="{{ button_refresh }}" class="btn btn-info"><i class="fa fa-refresh"></i></a>
+                <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+            </div>
+            <h1>{{ heading_title }}</h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="container-fluid">
+        {% if error_warning %}
+        <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        {% endif %}
+        {% if success %}
+        <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        {% endif %}
+
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="fa fa-link"></i> Odoo Attribute ↔ OpenCart Option Mapping</h3>
+            </div>
+            <div class="panel-body">
+                {% if not odoo_connected %}
+                <div class="alert alert-warning">
+                    <i class="fa fa-warning"></i> <strong>Warning:</strong> Not connected to Odoo. Please configure Odoo connection settings first.
+                </div>
+                {% endif %}
+
+                <div class="alert alert-info">
+                    <i class="fa fa-info-circle"></i> <strong>Info:</strong> Map Odoo product attributes to OpenCart product options. This mapping is required for creating products with variants via the API.
+                </div>
+
+                <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-attribute-mapping">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <td class="text-left"><strong>{{ text_odoo_attribute }}</strong></td>
+                                    <td class="text-left"><strong>{{ text_opencart_option }}</strong></td>
+                                    <td class="text-center"><strong>Status</strong></td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if odoo_attributes %}
+                                    {% for attribute in odoo_attributes %}
+                                    <tr>
+                                        <td class="text-left">
+                                            <strong>{{ attribute.display_name }}</strong><br>
+                                            <small class="text-muted">Odoo ID: {{ attribute.id }}</small>
+                                        </td>
+                                        <td class="text-left">
+                                            <select name="mappings[{{ attribute.id }}]" class="form-control">
+                                                <option value="0">{{ text_no_mapping }}</option>
+                                                {% for option in oc_options %}
+                                                <option value="{{ option.option_id }}" {% if mappings[attribute.id] and mappings[attribute.id].opencart_option_id == option.option_id %}selected="selected"{% endif %}>
+                                                    {{ option.name }} (ID: {{ option.option_id }})
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if mappings[attribute.id] %}
+                                            <span class="label label-success"><i class="fa fa-check"></i> Mapped</span>
+                                            {% else %}
+                                            <span class="label label-warning"><i class="fa fa-times"></i> Not Mapped</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">
+                                            {% if not odoo_connected %}
+                                            <em>Cannot load Odoo attributes. Please check Odoo connection.</em>
+                                            {% else %}
+                                            <em>No Odoo attributes found.</em>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+
+                {% if mappings %}
+                <div class="well" style="margin-top: 20px;">
+                    <h4><i class="fa fa-database"></i> Current Mappings Summary</h4>
+                    <p>Total mappings configured: <strong>{{ mappings|length }}</strong></p>
+                    <small class="text-muted">These mappings are stored in the <code>ocus_odoo_config</code> table with keys like <code>odoo_attribute_X</code></small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{{ footer }}

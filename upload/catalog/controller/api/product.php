@@ -272,7 +272,127 @@ class ControllerApiProduct extends Controller {
     }
 
     /**
+     * Create a new product via the API.
      *
+     * This method allows creating a new product in the catalog with full support for product variants/options.
+     * It accepts JSON input containing the product details and automatically creates:
+     * - The base product
+     * - Product options (e.g., Size, Color) if provided
+     * - Product option values (e.g., Small, Medium, Large)
+     * - Odoo variant mappings for synchronization
+     *
+     * **Request Parameters**:
+     * - `data` (JSON, required): The JSON input containing product details.
+     *      - `odoo_product_id` (int, optional): Odoo product variant ID for mapping
+     *      - `odoo_product_tmpl_id` (int, optional): Odoo product template ID for mapping
+     *      - `name` (string, required): Product name
+     *      - `default_code` (string, required): Product model/SKU
+     *      - `price` (float, optional): Product price
+     *      - `barcode` (string, optional): Product EAN/barcode
+     *      - `oc_description` (string, optional): HTML product description
+     *      - `oc_tag` (string, optional): Product tags (comma-separated)
+     *      - `oc_website_meta_title` (string, optional): SEO meta title
+     *      - `oc_website_meta_description` (string, optional): SEO meta description
+     *      - `oc_website_meta_keyword` (string, optional): SEO keywords
+     *      - `oc_seo_url` (string, optional): SEO-friendly URL slug
+     *      - `oc_category_ids` (string, optional): Category IDs (comma-separated)
+     *      - `product_length` (float, optional): Product length in cm
+     *      - `product_width` (float, optional): Product width in cm
+     *      - `product_height` (float, optional): Product height in cm
+     *      - `weight` (float, optional): Product weight in kg
+     *      - `options` (object, optional): Product options/variants structure
+     *          - `odoo_attribute_id` (int, required): Odoo attribute ID (from product.attribute table)
+     *              This ID is mapped to OpenCart option_id via odoo_config table
+     *              Config entry format: key="odoo_attribute_{id}", value="{opencart_option_id}"
+     *          - `option_name` (string, optional): Attribute name for logging (e.g., "Size")
+     *          - `option_values` (array): Array of option values
+     *              - `odoo_variant_id` (int): Odoo product variant ID
+     *              - `default_code` (string): Variant SKU/model
+     *              - `option_value_name` (string): Value display name (e.g., "Small")
+     *              - `option_value_code` (string, required): Value code used for matching OpenCart option values
+     *                  Matched using LIKE '%{code}%' against OpenCart option value names
+     *
+     * **Output**:
+     * - On success: Returns a JSON object with `success` message and `product_id`
+     * - On failure: Returns a JSON object with an `error` message
+     *
+     * **Example Request**:
+     * ```json
+     * {
+     *     "data": {
+     *         "odoo_product_id": 456,
+     *         "odoo_product_tmpl_id": 123,
+     *         "name": "T-Shirt ABC",
+     *         "price": 29.99,
+     *         "default_code": "ABC",
+     *         "oc_description": "<p>Cotton t-shirt</p>",
+     *         "oc_tag": "casual, apparel",
+     *         "oc_website_meta_title": "ABC T-Shirt",
+     *         "oc_website_meta_description": "Comfortable cotton t-shirt",
+     *         "oc_website_meta_keyword": "t-shirt, cotton, casual",
+     *         "oc_seo_url": "abc-tshirt",
+     *         "oc_category_ids": "12,34",
+     *         "product_length": 0.0,
+     *         "product_width": 0.0,
+     *         "product_height": 0.0,
+     *         "weight": 0.2,
+     *         "barcode": "1234567890123",
+     *         "options": {
+     *             "odoo_attribute_id": 5,
+     *             "option_name": "Size",
+     *             "option_values": [
+     *                 {
+     *                     "odoo_variant_id": 789,
+     *                     "default_code": "ABC_S",
+     *                     "option_value_name": "Small",
+     *                     "option_value_code": "S"
+     *                 },
+     *                 {
+     *                     "odoo_variant_id": 790,
+     *                     "default_code": "ABC_M",
+     *                     "option_value_name": "Medium",
+     *                     "option_value_code": "M"
+     *                 },
+     *                 {
+     *                     "odoo_variant_id": 791,
+     *                     "default_code": "ABC_L",
+     *                     "option_value_name": "Large",
+     *                     "option_value_code": "L"
+     *                 }
+     *             ]
+     *         }
+     *     }
+     * }
+     * ```
+     *
+     * **Example Response**:
+     * - Success:
+     *   ```json
+     *   {
+     *       "success": "The product has been created successfully.",
+     *       "product_id": 123
+     *   }
+     *   ```
+     * - Error:
+     *   ```json
+     *   {
+     *       "error": "Product with model ABC already exists.",
+     *       "existing_product_id": 456
+     *   }
+     *   ```
+     *
+     * **Notes**:
+     * - Products are created with status=0 (disabled) by default
+     * - **IMPORTANT**: Before using product options, you must configure attribute mappings in odoo_config table
+     *   Example: INSERT INTO ocus_odoo_config (`key`, `value`) VALUES ('odoo_attribute_5', '13');
+     *   This maps Odoo attribute_id 5 to OpenCart option_id 13
+     * - Option values are matched using LIKE '%{option_value_code}%' against existing OpenCart option values
+     * - No new options or option values are created automatically - they must exist in OpenCart
+     * - Variant mappings are stored in odoo_product_variant_map table
+     * - The method creates mappings between Odoo variant IDs and OpenCart product_option_value_ids
+     *
+     * @throws \Exception If an error occurs during the creation process.
+     * @return void Outputs a JSON response directly to the client.
      */
     public function create() {
         $this->load->language('api/product');
@@ -290,7 +410,6 @@ class ControllerApiProduct extends Controller {
         if (!class_exists('ModelCatalogManufacturerAdmin')) {
             class_alias('ModelCatalogManufacturer', 'ModelCatalogManufacturerAdmin');
         }
-
 
         // Instantiate admin models
         $this->adminProduct = new ModelCatalogProductAdmin($this->registry);
@@ -338,6 +457,27 @@ class ControllerApiProduct extends Controller {
                             $this->log->write("API Product Create - Successfully created product ID: " . $product_id);
                             $json['success'] = $this->language->get('text_success');
                             $json['product_id'] = $product_id;
+
+                            // Create variant mappings if we have Odoo product information
+                            if (isset($input_json['data']['odoo_product_id'])) {
+                                $odoo_product_id = $input_json['data']['odoo_product_id'];
+                                $odoo_template_id = isset($input_json['data']['odoo_product_tmpl_id']) ?
+                                    $input_json['data']['odoo_product_tmpl_id'] : $odoo_product_id;
+
+                                // If product has options/variants, we need to map each variant
+                                if (isset($input_json['data']['options']) && !empty($input_json['data']['options']['option_values'])) {
+                                    $this->createVariantMappings($product_id, $input_json['data'], $odoo_template_id);
+                                } else {
+                                    // For products without variants, create a simple mapping
+                                    $this->createSimpleProductMapping(
+                                        $odoo_product_id,
+                                        $product_id,
+                                        $odoo_template_id
+                                    );
+                                    $this->log->write("API Product Create - Created product mapping for product ID: " . $product_id);
+                                }
+                            }
+
                             // 4. Update sync status in mapping table
                             $this->logSync(
                                 $product_id,
@@ -345,8 +485,6 @@ class ControllerApiProduct extends Controller {
                                 'synced',
                                 'from_odoo'
                             );
-                            // Add product mapping using admin model
-                            //$this->adminOdooProductMapping->createProductMapping($input_json['data'][]);
                         } else {
                             throw new Exception($this->language->get('error_create_failed'));
                         }
@@ -515,6 +653,12 @@ class ControllerApiProduct extends Controller {
         $product_data['weight_class_id'] = 1; // Default weight class
         $product_data['tax_class_id'] = 0;    // No tax class
         $product_data['sort_order'] = 0;
+
+        // Handle product options if provided
+        if (isset($data['options']) && !empty($data['options'])) {
+            $product_data['product_option'] = $this->prepareProductOptions($data['options']);
+            $this->log->write("API Product Create - Prepared product options: " . print_r($product_data['product_option'], true));
+        }
 
         return $product_data;
     }
@@ -1195,11 +1339,287 @@ class ControllerApiProduct extends Controller {
         return empty($this->error);
     }
 
+    /**
+     * Create simple product mapping (for products without variants)
+     *
+     * @param int $odoo_product_id Odoo product ID
+     * @param int $opencart_product_id OpenCart product ID
+     * @param int $odoo_template_id Odoo product template ID
+     * @throws Exception
+     */
+    protected function createSimpleProductMapping($odoo_product_id, $opencart_product_id, $odoo_template_id) {
+        // Get OpenCart product data
+        $product_query = $this->db->query("SELECT p.model, pd.name
+            FROM " . DB_PREFIX . "product p
+            LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id)
+            WHERE p.product_id = '" . (int)$opencart_product_id . "'
+            AND pd.language_id = '" . (int)$this->default_language_id . "'
+            LIMIT 1");
+
+        if (!$product_query->num_rows) {
+            throw new Exception('OpenCart product ' . $opencart_product_id . ' not found');
+        }
+
+        $product_data = $product_query->row;
+
+        // Create mapping entry with no option (product_option_value_id = -1 for simple products)
+        $this->db->query("INSERT INTO " . DB_PREFIX . "odoo_product_variant_map SET
+            odoo_product_id = '" . (int)$odoo_product_id . "',
+            opencart_product_id = '" . (int)$opencart_product_id . "',
+            opencart_product_option_id = -1,
+            opencart_product_name = '" . $this->db->escape($product_data['model']) . "',
+            opencart_product_option_description = '" . $this->db->escape($product_data['name']) . "',
+            odoo_product_tmpl_id = '" . (int)$odoo_template_id . "',
+            created_by = 'api_product_create',
+            created_on = NOW(),
+            is_synch = 1
+            ON DUPLICATE KEY UPDATE
+            opencart_product_option_id = -1,
+            opencart_product_name = '" . $this->db->escape($product_data['model']) . "',
+            opencart_product_option_description = '" . $this->db->escape($product_data['name']) . "',
+            odoo_product_tmpl_id = '" . (int)$odoo_template_id . "',
+            is_synch = 1");
+
+        $this->log->write(sprintf(
+            "API Product Create - Created simple product mapping: Odoo ID %d -> OC product_id %d",
+            $odoo_product_id,
+            $opencart_product_id
+        ));
+    }
+
+    /**
+     * Create variant mappings for products with options
+     *
+     * @param int $product_id OpenCart product ID
+     * @param array $data Product data from Odoo including options
+     * @param int $odoo_template_id Odoo product template ID
+     * @throws Exception
+     */
+    protected function createVariantMappings($product_id, $data, $odoo_template_id) {
+        $this->log->write("API Product Create - Creating variant mappings for product ID: " . $product_id);
+
+        if (!isset($data['options']['option_values']) || empty($data['options']['option_values'])) {
+            throw new Exception('No option values found for variant mapping');
+        }
+
+        // Get the created product options from database
+        $option_query = $this->db->query("SELECT po.product_option_id, po.option_id
+            FROM " . DB_PREFIX . "product_option po
+            WHERE po.product_id = '" . (int)$product_id . "'
+            LIMIT 1");
+
+        if (!$option_query->num_rows) {
+            throw new Exception('Product options not found after product creation');
+        }
+
+        $product_option_id = $option_query->row['product_option_id'];
+
+        // Map each Odoo variant to OpenCart product option value
+        foreach ($data['options']['option_values'] as $variant_data) {
+            if (!isset($variant_data['odoo_variant_id'])) {
+                $this->log->write("API Product Create - Skipping variant without odoo_variant_id: " . print_r($variant_data, true));
+                continue;
+            }
+
+            // Use option_value_code for LIKE matching (same as prepareProductOptions)
+            if (!isset($variant_data['option_value_code'])) {
+                $this->log->write("API Product Create - Skipping variant without option_value_code: " . print_r($variant_data, true));
+                continue;
+            }
+
+            $variant_code = $variant_data['option_value_code'];
+
+            // Find the corresponding product_option_value_id by LIKE matching the code (same as prepareProductOptions)
+            // Use parentheses pattern to prevent partial matches (e.g., "9" matching "9,5")
+            $pov_query = $this->db->query("SELECT pov.product_option_value_id, pov.option_value_id, ovd.name
+                FROM " . DB_PREFIX . "product_option_value pov
+                LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id)
+                WHERE pov.product_id = '" . (int)$product_id . "'
+                AND pov.product_option_id = '" . (int)$product_option_id . "'
+                AND (ovd.name LIKE '%(" . $this->db->escape($variant_code) . ")%' OR ovd.name LIKE '%[" . $this->db->escape($variant_code) . "]%')
+                AND ovd.language_id = '" . (int)$this->default_language_id . "'
+                LIMIT 1");
+
+            if ($pov_query->num_rows) {
+                $product_option_value_id = $pov_query->row['product_option_value_id'];
+                $matched_option_name = $pov_query->row['name'];
+
+                // Create mapping entry for this variant
+                $this->db->query("INSERT INTO " . DB_PREFIX . "odoo_product_variant_map SET
+                    odoo_product_id = '" . (int)$variant_data['odoo_variant_id'] . "',
+                    opencart_product_id = '" . (int)$product_id . "',
+                    opencart_product_option_id = '" . (int)$product_option_value_id . "',
+                    opencart_product_name = '" . $this->db->escape($data['default_code']) . "',
+                    opencart_product_option_description = '" . $this->db->escape($matched_option_name) . "',
+                    odoo_product_tmpl_id = '" . (int)$odoo_template_id . "',
+                    created_by = 'api_product_create',
+                    created_on = NOW(),
+                    is_synch = 1
+                    ON DUPLICATE KEY UPDATE
+                    opencart_product_option_id = '" . (int)$product_option_value_id . "',
+                    opencart_product_name = '" . $this->db->escape($data['default_code']) . "',
+                    opencart_product_option_description = '" . $this->db->escape($matched_option_name) . "',
+                    odoo_product_tmpl_id = '" . (int)$odoo_template_id . "',
+                    is_synch = 1");
+
+                $this->log->write(sprintf(
+                    "API Product Create - Mapped Odoo variant %d (code: '%s') to OC product_option_value_id %d ('%s')",
+                    $variant_data['odoo_variant_id'],
+                    $variant_code,
+                    $product_option_value_id,
+                    $matched_option_name
+                ));
+            } else {
+                $this->log->write(sprintf(
+                    "API Product Create - Warning: Could not find product_option_value for variant code '%s'",
+                    $variant_code
+                ));
+            }
+        }
+
+        $this->log->write("API Product Create - Completed variant mappings for product ID: " . $product_id);
+    }
+
+    /**
+     * Prepare product options from Odoo data
+     *
+     * Maps Odoo attributes to OpenCart options using configuration stored in odoo_config table.
+     * Config format: key = "odoo_attribute_{odoo_attribute_id}", value = "{opencart_option_id}"
+     * Example: odoo_attribute_5 = 13 (maps Odoo attribute_id 5 to OpenCart option_id 13)
+     *
+     * @param array $options_data Options data from Odoo
+     * @return array Formatted product options for OpenCart
+     * @throws Exception
+     */
+    protected function prepareProductOptions($options_data) {
+        $product_options = array();
+
+        // Get Odoo attribute ID
+        if (!isset($options_data['odoo_attribute_id'])) {
+            throw new Exception('odoo_attribute_id is required in options data');
+        }
+
+        $odoo_attribute_id = (int)$options_data['odoo_attribute_id'];
+        $odoo_attribute_name = isset($options_data['option_name']) ? $options_data['option_name'] : 'Unknown';
+
+        // Look up the mapping in odoo_config table
+        $config_key = 'odoo_attribute_' . $odoo_attribute_id;
+        $mapping_query = $this->db->query("SELECT value FROM " . DB_PREFIX . "odoo_config
+            WHERE `key` = '" . $this->db->escape($config_key) . "'
+            LIMIT 1");
+
+        if (!$mapping_query->num_rows) {
+            throw new Exception(sprintf(
+                'No OpenCart option mapping found for Odoo attribute_id %d ("%s"). Please configure in odoo_config table: key="%s", value="<opencart_option_id>"',
+                $odoo_attribute_id,
+                $odoo_attribute_name,
+                $config_key
+            ));
+        }
+
+        $option_id = (int)$mapping_query->row['value'];
+
+        // Verify the option exists in OpenCart
+        $option_check = $this->db->query("SELECT o.option_id, od.name
+            FROM " . DB_PREFIX . "option o
+            LEFT JOIN " . DB_PREFIX . "option_description od ON (o.option_id = od.option_id)
+            WHERE o.option_id = '" . (int)$option_id . "'
+            AND od.language_id = '" . (int)$this->default_language_id . "'
+            LIMIT 1");
+
+        if (!$option_check->num_rows) {
+            throw new Exception(sprintf(
+                'Mapped OpenCart option_id %d not found (from Odoo attribute_id %d "%s")',
+                $option_id,
+                $odoo_attribute_id,
+                $odoo_attribute_name
+            ));
+        }
+
+        $this->log->write(sprintf(
+            "API Product Options - Mapped Odoo attribute_id %d (\"%s\") -> OpenCart option '%s' (ID: %d)",
+            $odoo_attribute_id,
+            $odoo_attribute_name,
+            $option_check->row['name'],
+            $option_id
+        ));
+
+        // Prepare option values using same matching approach as update_product_quantity.php
+        // Match by searching option value description with LIKE '%{code}%'
+        $option_values = array();
+        if (isset($options_data['option_values']) && is_array($options_data['option_values'])) {
+            foreach ($options_data['option_values'] as $value_data) {
+                if (!isset($value_data['option_value_code'])) {
+                    $this->log->write(sprintf(
+                        "API Product Options - WARNING: option_value_code not provided for variant: %s",
+                        isset($value_data['option_value_name']) ? $value_data['option_value_name'] : 'N/A'
+                    ));
+                    continue;
+                }
+
+                $variant_code = $value_data['option_value_code'];
+
+                // Search for matching option value using LIKE with parentheses for precise matching
+                // This prevents "9" from matching "9,5" by looking for "(9)" pattern
+                // For clothing sizes without numbers, falls back to regular LIKE matching
+                $query = $this->db->query("SELECT ov.option_value_id, ovd.name
+                    FROM " . DB_PREFIX . "option_value ov
+                    LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (ov.option_value_id = ovd.option_value_id)
+                    WHERE ov.option_id = '" . (int)$option_id . "'
+                    AND (ovd.name LIKE '%(" . $this->db->escape($variant_code) . ")%' OR ovd.name LIKE '%[" . $this->db->escape($variant_code) . "]%')
+                    AND ovd.language_id = '" . (int)$this->default_language_id . "'
+                    LIMIT 1");
+
+                if ($query->num_rows) {
+                    $option_value_id = $query->row['option_value_id'];
+
+                    $option_values[] = array(
+                        'option_value_id' => $option_value_id,
+                        'quantity' => 0,  // Will be updated by quantity sync
+                        'subtract' => 1,
+                        'price' => 0.00,
+                        'price_prefix' => '+',
+                        'points' => 0,
+                        'points_prefix' => '+',
+                        'weight' => 0.00000000,
+                        'weight_prefix' => '+'
+                    );
+
+                    $this->log->write(sprintf(
+                        "API Product Options - Matched option value: Odoo '%s' -> OC '%s' (option_value_id: %d)",
+                        $variant_code,
+                        $query->row['name'],
+                        $option_value_id
+                    ));
+                } else {
+                    $this->log->write(sprintf(
+                        "API Product Options - ERROR: No matching option value found for code '%s' in option %s (option_id: %d)",
+                        $variant_code,
+                        $option_check->row['name'],
+                        $option_id
+                    ));
+                }
+            }
+        }
+
+        // Return the product option structure
+        if (!empty($option_values)) {
+            $product_options[] = array(
+                'option_id' => $option_id,
+                'type' => 'select',  // Default to select type
+                'required' => 1,
+                'product_option_value' => $option_values
+            );
+        }
+
+        return $product_options;
+    }
+
     private function getProductMapping($odoo_product_id = null, $opencart_product_id = null) {
-        $sql = "SELECT opvm.*, p.model as opencart_model, pd.name as opencart_name, p.weight as weight, p.length as length, p.height as height, p.width as width 
+        $sql = "SELECT opvm.*, p.model as opencart_model, pd.name as opencart_name, p.weight as weight, p.length as length, p.height as height, p.width as width
             FROM " . DB_PREFIX . "odoo_product_variant_map opvm
-            LEFT JOIN " . DB_PREFIX . "product p ON p.product_id = opvm.opencart_product_id 
-            LEFT JOIN " . DB_PREFIX . "product_description pd ON pd.product_id = p.product_id 
+            LEFT JOIN " . DB_PREFIX . "product p ON p.product_id = opvm.opencart_product_id
+            LEFT JOIN " . DB_PREFIX . "product_description pd ON pd.product_id = p.product_id
             WHERE 1=1";
 
         if ($odoo_product_id) {
