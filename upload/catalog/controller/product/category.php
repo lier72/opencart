@@ -286,21 +286,21 @@ class ControllerProductCategory extends Controller {
 
 			// Add newest products sorting
 			$data['sorts'][] = array(
-				'text'  => 'Newest First',
+				'text'  => $this->language->get('text_newest_first'),
 				'value' => 'p.date_added-DESC',
 				'href'  => $this->url->link('product/category', 'path=' . $this->request->get['path'] . '&sort=p.date_added&order=DESC' . $url)
 			);
 
 			// Add bestseller sorting (by number of sales)
 			$data['sorts'][] = array(
-				'text'  => 'Bestsellers',
+				'text'  => $this->language->get('text_bessteller_first'),
 				'value' => 'sales-DESC',
 				'href'  => $this->url->link('product/category', 'path=' . $this->request->get['path'] . '&sort=sales&order=DESC' . $url)
 			);
 
 			// Add in-stock first sorting
 			$data['sorts'][] = array(
-				'text'  => 'In Stock First',
+				'text'  => $this->language->get('text_instock_first'),
 				'value' => 'p.quantity-DESC',
 				'href'  => $this->url->link('product/category', 'path=' . $this->request->get['path'] . '&sort=p.quantity&order=DESC' . $url)
 			);

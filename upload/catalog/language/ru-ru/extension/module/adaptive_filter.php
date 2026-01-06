@@ -13,6 +13,9 @@ $_['text_your_preferences'] = 'Ваши предпочтения:';
 $_['text_preferences_subtitle'] = 'Мы думаем, что вам нравится';
 $_['text_add_preference'] = 'Добавить предпочтение...';
 $_['text_no_results_found'] = 'Ничего не найдено';
+$_['text_newest_first'] = 'Сначала новые';
+$_['text_bessteller_first'] = 'Бестселлеры';
+$_['text_instock_first'] = 'Сначала большие количества';
 
 // Gender values
 $_['gender_men']       = 'Мужской';

@@ -13,6 +13,9 @@ $_['text_your_preferences'] = 'Your Preferences:';
 $_['text_preferences_subtitle'] = 'We suppose that you like';
 $_['text_add_preference'] = 'Add preference...';
 $_['text_no_results_found'] = 'No results found';
+$_['text_newest_first'] = 'Newest First';
+$_['text_bessteller_first'] = 'Bestsellers';
+$_['text_instock_first'] = 'In Stock First';
 
 // Gender values
 $_['gender_men']       = 'Men';
