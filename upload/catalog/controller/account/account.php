@@ -34,7 +34,14 @@ class ControllerAccountAccount extends Controller {
 		$data['edit'] = $this->url->link('account/edit', '', true);
 		$data['password'] = $this->url->link('account/password', '', true);
 		$data['address'] = $this->url->link('account/address', '', true);
-		
+
+		// Adaptive preferences link (only if module is enabled)
+		if ($this->config->get('module_adaptive_filter_status')) {
+			$data['adaptive_preferences'] = $this->url->link('account/adaptive_preferences', '', true);
+		} else {
+			$data['adaptive_preferences'] = '';
+		}
+
 		$data['credit_cards'] = array();
 		
 		$files = glob(DIR_APPLICATION . 'controller/extension/credit_card/*.php');

@@ -1,0 +1,80 @@
+{# Mobile Preferences Button - Renders as direct child of body tag #}
+{# Only the mobile sliding button and panel - Desktop widget is separate #}
+
+<div class="adaptive-preferences-mobile" id="adaptive-prefs-mobile-container">
+  {# Sliding Preferences Button - Overlaps Journal3 Filter button on right #}
+  <div class="adaptive-prefs-fab" id="adaptive-prefs-trigger">
+    <div class="adaptive-prefs-fab-inner">
+      <div class="fab-icon-section">
+        <span class="fab-icon">▼</span>
+      </div>
+      <div class="fab-slide-hint"></div>
+    </div>
+  </div>
+
+  {# Right Slide-in Panel #}
+  <div class="adaptive-prefs-panel-overlay" id="adaptive-prefs-modal">
+    <div class="adaptive-prefs-panel">
+      <div class="panel-header">
+        <h3>{{ text_your_preferences }}</h3>
+        <button class="panel-close" id="adaptive-prefs-close">&times;</button>
+      </div>
+      <div class="panel-body">
+        <p class="modal-subtitle">{{ text_preferences_subtitle }}</p>
+
+        <div class="preferences-tags">
+          {% if user_preferences.sizes %}
+            {% for size, count in user_preferences.sizes %}
+              <span class="pref-tag pref-size" data-type="size" data-value="{{ size }}">
+                {% if size matches '/US\\s*\\(/i' %}{{ shoe_size_icon }}{% else %}{{ apparel_size_icon }}{% endif %} {{ size }}
+                <button class="remove-pref" aria-label="Remove preference">&times;</button>
+              </span>
+            {% endfor %}
+          {% endif %}
+          {% if user_preferences.colors %}
+            {% for color, count in user_preferences.colors %}
+              {% set color_parts = color|split('(#') %}
+              {% set color_name = color_parts[0]|trim %}
+              <span class="pref-tag pref-color" data-type="color" data-value="{{ color }}">
+                {{ color_icon }} {{ color_name }}
+                <button class="remove-pref" aria-label="Remove preference">&times;</button>
+              </span>
+            {% endfor %}
+          {% endif %}
+          {% if user_preferences.genders %}
+            {% for gender, count in user_preferences.genders %}
+              <span class="pref-tag pref-gender" data-type="gender" data-value="{{ gender }}">
+                {% if gender == 'Men' %}♂{% elseif gender == 'Women' %}♀{% else %}⚧{% endif %} {{ gender_labels[gender] ?? gender }}
+                <button class="remove-pref" aria-label="Remove preference">&times;</button>
+              </span>
+            {% endfor %}
+          {% endif %}
+          {% if user_preferences.sports %}
+            {% for sport, count in user_preferences.sports %}
+              <span class="pref-tag pref-sport" data-type="sport" data-value="{{ sport }}">
+                {{ sport_icons[sport] ?? default_sport_icon }} {{ sport }}
+                <button class="remove-pref" aria-label="Remove preference">&times;</button>
+              </span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <div class="modal-add-section">
+          <button class="add-pref-btn-mobile" id="show-add-preference-mobile">
+            + {{ text_add_preference }}
+          </button>
+          <div class="preferences-add-mobile">
+            <div class="add-preference-wrapper">
+              <input type="text" id="add-preference-input-mobile" class="form-control" placeholder="{{ text_add_preference }}" autocomplete="off">
+              <div id="preference-autocomplete-mobile" class="preference-autocomplete-dropdown"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="disable-smart-sorting-btn" id="disable-smart-sorting">
+          {{ text_disable_smart_sorting }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

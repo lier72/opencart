@@ -100,6 +100,7 @@
       {% endif %}
       <div class="main-products-wrapper">
       {% if products %}
+      {{ adaptive_filter_preferences }}
       {% if journal3.get('sortBarStatus') %}
       <div class="products-filter">
         <div class="grid-list">
@@ -154,4 +155,5 @@
     {{ column_right }}</div>
 </div>
 {{ journal3_rich_snippets }}
+{{ adaptive_filter_assets }}
 {{ footer }} 

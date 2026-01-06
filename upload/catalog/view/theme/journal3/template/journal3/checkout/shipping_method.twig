@@ -13,6 +13,9 @@
               <span class="shipping-quote-desc" v-if="quote.desc" v-html="quote.desc"></span>
             </label>
           </div>
+          <div v-if="shipping_method.error && Object.keys(shipping_method.quote).length === 0" class="alert alert-info" style="margin-top: 10px;">
+            <i class="fa fa-info-circle"></i> <span v-html="shipping_method.error"></span>
+          </div>
         </div>
       </div>
     </div>

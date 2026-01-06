@@ -7,6 +7,7 @@ class ModelExtensionShippingCdek extends Model
     private $weight_class_id = 1; // kg
     private $api;
     private $auth_data;
+    private $error_reason = '';
 
     function __construct($registry)
     {
@@ -60,6 +61,7 @@ class ModelExtensionShippingCdek extends Model
                 $this->log->write('СДЭК: не выбран магазин!');
             }
 
+            $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Store not configured' : 'Магазин не настроен';
             $status = FALSE;
         }
 
@@ -69,6 +71,7 @@ class ModelExtensionShippingCdek extends Model
                 $this->log->write('СДЭК: в системе не найдена валюта "RUB"!');
             }
 
+            $this->error_reason = $this->language->get('config_language_id') == 1 ? 'RUB currency not found in system' : 'В системе не найдена валюта "RUB"';
             $status = FALSE;
         }
 
@@ -78,6 +81,7 @@ class ModelExtensionShippingCdek extends Model
                 $this->log->write('СДЭК: не выбран город отправки!');
             }
 
+            $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Sender city not configured' : 'Не выбран город отправки';
             $status = FALSE;
         }
 
@@ -106,6 +110,7 @@ class ModelExtensionShippingCdek extends Model
                 $this->log->write('СДЭК: превышены ограничения по весу!');
             }
 
+            $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Order weight exceeds limits' : 'Превышены ограничения по весу';
             $status = FALSE;
         }
 
@@ -125,6 +130,7 @@ class ModelExtensionShippingCdek extends Model
                 $this->log->write('СДЭК: превышены ограничения по стоимости!');
             }
 
+            $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Order total exceeds limits' : 'Превышены ограничения по стоимости';
             $status = FALSE;
         }
 
@@ -138,11 +144,11 @@ class ModelExtensionShippingCdek extends Model
 
         $to_data = $this->db->query("SELECT name FROM " . DB_PREFIX . "country WHERE country_id = '" . (int)$address['country_id'] . "' LIMIT 1")->row;
 
-        if ($to_data) {
-            $countries = $this->prepareCountry($to_data['name']);
-        } else {
-            $empty_country = TRUE;
-        }
+        // if ($to_data) {
+        //     $countries = $this->prepareCountry($to_data['name']);
+        // } else {
+        //     $empty_country = TRUE;
+        // }
 
         $empty_zone = FALSE;
 
@@ -155,14 +161,74 @@ class ModelExtensionShippingCdek extends Model
         }
 
         if (!$address['city'] && $address['zone']) {
-            $zoneNameParts = trim(str_replace(array("ская Республика", "Республика", "АО", "- Югра"), "", $address['zone']));
-            $cdekZoneData = $this->db->query("SELECT cityName FROM `" . DB_PREFIX . "cdek_city` WHERE (`regionName` LIKE '%" . $this->db->escape($zoneNameParts) . "%' OR `cityName` LIKE '%" . $this->db->escape($zoneNameParts) . "%') AND `center` = '1' LIMIT 1")->row;
+            // Expand АО abbreviations for database lookup
+            $normalizedZone = $this->normalizeRegionName($address['zone'], false);
+
+            // First try exact match with the normalized region name
+            $cdekZoneData = $this->db->query("SELECT cityName FROM `" . DB_PREFIX . "cdek_city` WHERE `regionName` = '" . $this->db->escape($normalizedZone) . "' AND `center` = '1' LIMIT 1")->row;
 
             if ($this->config->get('shipping_cdek_log')) {
-                $this->log->write("CDEK Info: SELECT cityName FROM `" . DB_PREFIX . "cdek_city` WHERE (`regionName` LIKE '%" . $this->db->escape($zoneNameParts) . "%' OR `cityName` LIKE '%" . $this->db->escape($zoneNameParts) . "%') AND `center` = '1' LIMIT 1");
-                $this->log->write('СДЭК INFO: zone (покупатель): ' . $zoneNameParts);
-                $this->log->write('СДЭК INFO: город (покупатель): ' . $cdekZoneData['cityName']);
+                $this->log->write("CDEK Info: Trying exact match for region: " . $address['zone'] . " (normalized: " . $normalizedZone . ")");
             }
+
+            // If exact match fails, try with simplified region name (remove common suffixes)
+            if (!$cdekZoneData) {
+                // First, handle specific regional mappings that need exact database region names
+                $specific_mappings = [
+                    'Республика Кабардино-Балкария'   => 'Кабардино-Балкария',
+                    'Карачаево-Черкеcсия' => 'Карачаево-Черкесская Республика',
+                    'Кемеровская область' => 'Кемеровская область - Кузбасс',
+                    'Удмуртская Республика' => 'Удмуртия',
+                    'Чувашская Республика' => 'Чувашская Республика - Чувашия',
+                ];
+
+                $zoneNameParts = $normalizedZone;
+
+                // Check if this region has a specific mapping
+                if (isset($specific_mappings[$normalizedZone])) {
+                    $zoneNameParts = $specific_mappings[$normalizedZone];
+                } else {
+                    // Apply generic cleanup replacements
+                    $generic_replacements = [
+                        'ская Республика'     => '',
+                        'Республика'         => '',
+                        '- Югра'              => '',
+                        'область'             => '',
+                        'республика'         => '',
+                        'ая республика'         => '',
+                        'автономный округ'    => '', // Remove this since we already expanded АО
+                        'автономная область'  => ''
+                    ];
+                    $zoneNameParts = trim(str_replace(
+                        array_keys($generic_replacements),
+                        array_values($generic_replacements),
+                        $normalizedZone
+                    ));
+                }
+
+                // Use LIKE pattern to match regions with additional suffixes like "(Якутия)" or "- Алания"
+                // Match patterns: exact, "name (...)", "name - ...", or as part of longer name
+                $cdekZoneData = $this->db->query("SELECT cityName FROM `" . DB_PREFIX . "cdek_city` WHERE (
+                    `regionName` = '" . $this->db->escape($zoneNameParts) . "'
+                    OR `regionName` LIKE '%" . $this->db->escape($zoneNameParts) . " (%'
+                    OR `regionName` LIKE '%" . $this->db->escape($zoneNameParts) . " - %'
+                    OR `cityName` = '" . $this->db->escape($zoneNameParts) . "'
+                ) AND `center` = '1' LIMIT 1")->row;
+
+                if ($this->config->get('shipping_cdek_log')) {
+                    $this->log->write("CDEK Info: Trying simplified region name with patterns: " . $zoneNameParts);
+                }
+            }
+
+            if ($this->config->get('shipping_cdek_log')) {
+                if ($cdekZoneData) {
+                    $this->log->write('СДЭК INFO: zone (покупатель): ' . $address['zone']);
+                    $this->log->write('СДЭК INFO: город (определен как столица региона): ' . $cdekZoneData['cityName']);
+                } else {
+                    $this->log->write('СДЭК WARNING: Не удалось найти столицу для региона: ' . $address['zone']);
+                }
+            }
+
             if ($cdekZoneData) {
                 $address['city'] = $cdekZoneData['cityName'];
             }
@@ -172,15 +238,20 @@ class ModelExtensionShippingCdek extends Model
 
         if ($to_data && $address['city']) {
 
-            $regions = array();
-
-            if (!$empty_zone) {
-                $regions = $this->prepareRegion($to_data['name']);
-            }
-
             $cities = array(trim($address['city']));
             $cities[] = preg_replace('|[^a-zа-яё]|isu', ' ', $address['city']);
             $cities[] = preg_replace('|[^a-zа-яё]|isu', '-', $address['city']);
+
+            // Add variant with "ё" for cities commonly typed with "е"
+            $city_with_yo = $this->convertYeToYo($address['city']);
+            if ($city_with_yo !== $address['city']) {
+                if ($this->config->get('shipping_cdek_log')) {
+                    $this->log->write('СДЭК INFO: Converting city "' . $address['city'] . '" to "' . $city_with_yo . '" for search');
+                }
+                $cities[] = $city_with_yo;
+                $cities[] = preg_replace('|[^a-zа-яё]|isu', ' ', $city_with_yo);
+                $cities[] = preg_replace('|[^a-zа-яё]|isu', '-', $city_with_yo);
+            }
 
             foreach ($cities as $city) {
                 $city = trim(preg_replace('/\s+/', ' ', $city)); // нормализуем пробелы
@@ -193,7 +264,7 @@ class ModelExtensionShippingCdek extends Model
 
             }
 
-            if (is_array($cdek_cities)) {
+            if (is_array($cdek_cities) && !empty($cdek_cities)) {
 
                 $available = array();
                 $address['city'] = $this->_clear($address['city']);
@@ -210,6 +281,7 @@ class ModelExtensionShippingCdek extends Model
                 }
 
                 if (in_array($address['city'], $city_ignore)) {
+                    $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Delivery to this city is not available' : 'Доставка в этот город недоступна';
                     $status = FALSE;
                 }
 
@@ -228,35 +300,47 @@ class ModelExtensionShippingCdek extends Model
                 }
 
                 if ($this->config->get('shipping_cdek_use_region_russia')) {
-                    $address['zone'] = $this->ocToCdek($address['zone']);
-                    $sql = "SELECT regionName FROM  `" . DB_PREFIX . "cdek_city` WHERE `regionName` = '" . $this->db->escape($address['zone']) . "' OR cityName = '" . $this->db->escape($address['zone']) . "' LIMIT 1";
-                    $zoneQuery = $this->db->query($sql);
-                    if ($zoneQuery->num_rows) {
-                        $newAvailable = array();
+                    // Filter cities by region using CDEK API response
+                    // Normalize both region names by removing common prefixes/suffixes
+                    $zone_normalized = $this->normalizeRegionName($address['zone']);
+                    $newAvailable = array();
 
-                        foreach ($available as $key => $available_value) {
-                            if (!isset($available_value['region'])) {
-                                continue;
-                            }
+                    if ($this->config->get('shipping_cdek_log')) {
+                        $this->log->write('СДЭК INFO: Фильтрация по региону: "' . $address['zone'] . '" (нормализовано: "' . $zone_normalized . '")');
+                    }
 
-                            if ($available_value['region'] == $zoneQuery->row['regionName']) {
-                                $newAvailable[] = $available_value;
-                            }
+                    foreach ($available as $key => $available_value) {
+                        if (!isset($available_value['region'])) {
+                            continue;
                         }
 
-                        if (count($newAvailable)) {
-                            $available = $newAvailable;
-                        } else {
+                        $api_region_normalized = $this->normalizeRegionName($available_value['region']);
+
+                        // Compare normalized region names
+                        if ($api_region_normalized === $zone_normalized) {
+                            $newAvailable[] = $available_value;
                             if ($this->config->get('shipping_cdek_log')) {
-                                $this->log->write('СДЭК WARNING: не удалось отфильтровать города по региону!');
-                                $this->log->write('СДЭК WARNING: город: ' . $address['city']);
-                                $this->log->write('СДЭК WARNING: регион: ' . $address['zone']);
+                                $this->log->write('СДЭК INFO: ✓ Найден город "' . $available_value['city'] . '" в регионе "' . $available_value['region'] . '" (нормализовано: "' . $api_region_normalized . '")');
                             }
+                        }
+                    }
+
+                    if (count($newAvailable)) {
+                        $available = $newAvailable;
+                        if ($this->config->get('shipping_cdek_log')) {
+                            $this->log->write('СДЭК INFO: Успешно отфильтровано ' . count($newAvailable) . ' городов по региону');
                         }
                     } else {
+                        // No cities found in the selected region
                         if ($this->config->get('shipping_cdek_log')) {
-                            $this->log->write('СДЭК WARNING: не найден регион ' . $address['zone']);
+                            $this->log->write('СДЭК WARNING: Город найден в ответе API, но ни один не соответствует региону "' . $address['zone'] . '"');
+                            $this->log->write('СДЭК WARNING: Искомый регион (нормализовано): "' . $zone_normalized . '"');
+                            foreach ($available as $city_info) {
+                                $normalized_api_region = $this->normalizeRegionName($city_info['region']);
+                                $this->log->write('СДЭК WARNING: Найденный город: "' . $city_info['city'] . '" в регионе "' . $city_info['region'] . '" (нормализовано: "' . $normalized_api_region . '")');
+                            }
                         }
+                        $available = array(); // Clear to trigger "city not found in region" error
                     }
                 }
 
@@ -294,8 +378,22 @@ class ModelExtensionShippingCdek extends Model
 
                     $available_city = reset($available);
 
+                    // Check if the found city is in the wrong country (not Russia)
+                    if (isset($available_city['country_code']) && $available_city['country_code'] != 'RU') {
+                        if ($this->config->get('shipping_cdek_log')) {
+                            $this->log->write('СДЭК WARNING: найден город "' . $available_city['city'] . '" в стране ' . $available_city['country'] . ' (' . $available_city['country_code'] . '), но доставка возможна только по России');
+                        }
+                        $this->error_reason = $this->language->get('config_language_id') == 1 ?
+                            'City found in ' . $available_city['country'] . ', but delivery is only available within Russia' :
+                            'Найден город "' . $available_city['city'] . '" в стране ' . $available_city['country'] . ', но доставка возможна только по России';
+                        $available = array(); // Clear available to trigger error
+                        $count = 0;
+                    } else {
+                        $city_to = $available_city['code'];
+                    }
+                }
 
-                    $city_to = $available_city['code'];
+                if ($count > 0) {
 
                     if ($this->config->get('shipping_cdek_log')) {
                         $this->log->write('СДЭК INFO: город (покупатель): ' . $address['city']);
@@ -449,6 +547,7 @@ class ModelExtensionShippingCdek extends Model
                                 $this->log->write('СДЭК: список тарифов пуст!');
                             }
 
+                            $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Tariff list is empty' : 'Список тарифов пуст';
                             $status = FALSE;
                         }
 
@@ -547,6 +646,7 @@ class ModelExtensionShippingCdek extends Model
                                     $this->log->write('СДЭК: Не сформирован список тарифов для текущей географической зоны!');
                                 }
 
+                                $this->error_reason = $this->language->get('config_language_id') == 1 ? 'No tariffs available for your geographic zone' : 'Не сформирован список тарифов для текущей географической зоны';
                                 $status = FALSE;
                             }
 
@@ -886,6 +986,8 @@ class ModelExtensionShippingCdek extends Model
                                         $this->log->write('СДЭК: нет результатов для вывода!');
                                     }
 
+                                    $this->error_reason = $this->language->get('config_language_id') == 1 ? 'No delivery options available (no PVZ found or delivery calculation failed)' : 'Нет доступных вариантов доставки (не найдены ПВЗ или не удалось рассчитать доставку)';
+
                                 }
                             }
                         }
@@ -897,6 +999,8 @@ class ModelExtensionShippingCdek extends Model
                         $this->log->write('СДЭК: не определен подходящий город!');
                     }
 
+                    $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Suitable city not found' : 'Не определен подходящий город';
+
                 }
 
             } else {
@@ -905,6 +1009,8 @@ class ModelExtensionShippingCdek extends Model
                     $this->log->write('СДЭК: город доставки не определен!');
                 }
 
+                $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Delivery city not found' : 'Город доставки не определен';
+
             }
 
         } else {
@@ -912,6 +1018,8 @@ class ModelExtensionShippingCdek extends Model
             if ($this->config->get('shipping_cdek_log')) {
                 $this->log->write('СДЭК: город доставки не найден!');
             }
+
+            $this->error_reason = $this->language->get('config_language_id') == 1 ? 'Delivery city not found' : 'Город доставки не найден';
 
         }
 
@@ -963,6 +1071,23 @@ class ModelExtensionShippingCdek extends Model
                 'quote' => $quote_data,
                 'sort_order' => (int)$this->config->get('shipping_cdek_sort_order'),
                 'error' => false
+            );
+        } elseif (!empty($this->error_reason)) {
+            // Show info message when CDEK delivery is not available
+            $title_info = $this->config->get('shipping_cdek_title');
+
+            if (!empty($title_info[$this->config->get('config_language_id')])) {
+                $title = $title_info[$this->config->get('config_language_id')];
+            } else {
+                $title = $this->language->get('text_title');
+            }
+
+            $method_data = array(
+                'code' => 'cdek',
+                'title' => $title,
+                'quote' => array(),
+                'sort_order' => (int)$this->config->get('shipping_cdek_sort_order'),
+                'error' => sprintf($this->language->get('text_no_delivery_available'), $this->error_reason)
             );
         }
 
@@ -1159,85 +1284,33 @@ class ModelExtensionShippingCdek extends Model
         return $discounts;
     }
 
-    private function prepareRegion($name = '')
-    {
-        $regions = array();
 
-        $parts = explode(' ', $name);
-        $parts = array_map(array($this, '_clear'), $parts);
-
-        if (in_array($parts[0], array('московская', 'москва'))) {
-            $regions[] = 'москва';
-            $regions[] = 'московская';
-        } elseif (in_array($parts[0], array('ленинградская', 'санкт-петербург'))) {
-            $regions[] = 'санкт-петербург';
-            $regions[] = 'ленинградская';
-        } elseif (mb_strpos($parts[0], 'респ') === 0) {
-            $regions[] = $parts[1];
-        } elseif (in_array($parts[0], array('киев', 'киевская'))) { // Украина
-            $regions[] = 'киевская';
-            $regions[] = 'киев';
-        } elseif (in_array($parts[0], array('винница', 'винницкая'))) { // Украина
-            $regions[] = 'винница';
-            $regions[] = 'винницкая';
-        } elseif (in_array($parts[0], array('днепропетровск', 'днепропетровская'))) { // Украина
-            $regions[] = 'днепропетровск';
-            $regions[] = 'днепропетровская';
-        } elseif (in_array($parts[0], array('чувашская'))) {
-            $regions[] = 'чувашия';
-        } elseif (in_array($parts[0], array('удмуртская'))) {
-            $regions[] = 'удмуртия';
-        } else {
-            $regions = $parts;
-        }
-
-        return $regions;
-    }
-
-    private function prepareCountry($name = '')
-    {
-
-        $countries = array();
-
-        $name = $this->_clear($name);
-
-        if (in_array($name, array('российская федерация', 'россия', 'russia', 'russian', 'russian federation'))) {
-            $countries[] = 'россия';
-        } elseif (in_array($name, array('украина', 'ukraine'))) {
-            $countries[] = 'украина';
-        } elseif (in_array($name, array('белоруссия', 'белоруссия (беларусь)', 'беларусь', '(беларусь)', 'belarus'))) {
-            $countries[] = 'беларусь';
-        } elseif (in_array($name, array('казахстан', 'kazakhstan'))) {
-            $countries[] = 'казахстан';
-        } elseif (in_array($name, array('сша', 'соединенные штаты америки', 'соединенные штаты', 'usa', 'united states'))) {
-            $countries[] = 'сша';
-        } elseif (in_array($name, array('aзербайджан', 'azerbaijan'))) {
-            $countries[] = 'aзербайджан';
-        } elseif (in_array($name, array('узбекистан', 'uzbekistan'))) {
-            $countries[] = 'узбекистан';
-        } elseif (in_array($name, array('китайская народная республика', 'сhina'))) {
-            $countries[] = 'китай (кнр)';
-        } else {
-            $countries[] = $name;
-        }
-
-        return $countries;
-    }
-
-    private function ocToCdek($region_name = '')
-    {
-        
-         if ($region_name) {
-//            $region_name = str_replace('обл.', 'область', $region_name);
-            $region_name = str_replace('АО', 'автономный округ', $region_name);
-/*             if (strpos($region_name, 'Республика') !== FALSE) {
-                $region_name = str_replace('Республика', '', $region_name);
-                $region_name .= " респ.";
-            }
- */        }
-        
-        return trim($region_name);
-    }
+    // Commented out - obsolete function, replaced by normalizeRegionName()
+    // private function prepareCountry($name = '')
+    // {
+    //     $countries = array();
+    //     $name = $this->_clear($name);
+    //     if (in_array($name, array('российская федерация', 'россия', 'russia', 'russian', 'russian federation'))) {
+    //         $countries[] = 'россия';
+    //     } elseif (in_array($name, array('украина', 'ukraine'))) {
+    //         $countries[] = 'украина';
+    //     } elseif (in_array($name, array('белоруссия', 'белоруссия (беларусь)', 'беларусь', '(беларусь)', 'belarus'))) {
+    //         $countries[] = 'беларусь';
+    //     } elseif (in_array($name, array('казахстан', 'kazakhstan'))) {
+    //         $countries[] = 'казахстан';
+    //     } elseif (in_array($name, array('сша', 'соединенные штаты америки', 'соединенные штаты', 'usa', 'united states'))) {
+    //         $countries[] = 'сша';
+    //     } elseif (in_array($name, array('aзербайджан', 'azerbaijan'))) {
+    //         $countries[] = 'aзербайджан';
+    //     } elseif (in_array($name, array('узбекистан', 'uzbekistan'))) {
+    //         $countries[] = 'узбекистан';
+    //     } elseif (in_array($name, array('китайская народная республика', 'сhina'))) {
+    //         $countries[] = 'китай (кнр)';
+    //     } else {
+    //         $countries[] = $name;
+    //     }
+    //     return $countries;
+    // }
 
     private function getWeight()
     {
@@ -1314,15 +1387,21 @@ class ModelExtensionShippingCdek extends Model
         return $weight;
     }
 
-    private function _normalizeDate($value = '')
-    {
-        return str_replace('-', '.', $value);
-    }
+    // private function _normalizeDate($value = '')
+    // {
+    //     return str_replace('-', '.', $value);
+    // }
 
+    /**
+     * Normalize string: lowercase, ё→е, trim
+     * Used for city/region comparison
+     */
     private function _clear($value)
     {
-        $value = mb_convert_case($value, MB_CASE_LOWER, "UTF-8");
-        return trim($value);
+        $value = mb_strtolower(trim($value), 'UTF-8');
+        // Normalize ё to е for consistent comparison
+        $value = str_replace('ё', 'е', $value);
+        return $value;
     }
 
     private function declination($number, $titles)
@@ -1363,6 +1442,124 @@ class ModelExtensionShippingCdek extends Model
         $parser->setData($out);
 
         return $parser->getData();
+    }
+
+    /**
+     * Convert common Russian city names with "е" to "ё"
+     * This helps find cities like Орёл when user types Орел
+     */
+    private function convertYeToYo($city_name)
+    {
+        // Map of cities commonly typed with "е" that should have "ё"
+        $replacements = array(
+            // City name pattern (case-insensitive) => Correct spelling with ё
+            'орел' => 'Орёл',
+            'оренбург' => 'Оренбург', // This one stays with е
+            'белгород' => 'Белгород', // This one stays with е
+            'королев' => 'Королёв',
+            'березники' => 'Берёзники',
+            'алексеевка' => 'Алексеевка', // Stays with е
+            'семилуки' => 'Семилуки', // Stays with е
+            'черкесск' => 'Черкесск', // Stays with е
+            'чебоксары' => 'Чебоксары', // Stays with е
+            'елец' => 'Елец', // Stays with е
+            'пенза' => 'Пенза', // Stays with е
+            'тверь' => 'Тверь', // Stays with е
+            'елабуга' => 'Елабуга', // Stays with е
+            'ёлабуга' => 'Елабуга', // Convert ё to е
+        );
+
+        $city_lower = mb_strtolower(trim($city_name), 'UTF-8');
+
+        // Check if we have a specific replacement for this city
+        if (isset($replacements[$city_lower])) {
+            return $replacements[$city_lower];
+        }
+
+        // For Орел specifically, always convert to Орёл
+        if ($city_lower === 'орел') {
+            return 'Орёл';
+        }
+
+        return $city_name;
+    }
+
+    /**
+     * Normalize region name for comparison and CDEK database lookup
+     * Handles АО expansion, removes common prefixes/suffixes to match CDEK API format
+     * Example: "Республика Марий Эл" -> "марий эл"
+     * Example: "Республика Саха (Якутия)" -> "саха"
+     * Example: "Еврейская АО" -> "еврейская автономная область"
+     *
+     * @param string $region_name Region name from OpenCart
+     * @param bool $for_comparison If true, returns shortened form for comparison; if false, returns expanded form for DB lookup
+     * @return string Normalized region name
+     */
+    private function normalizeRegionName($region_name, $for_comparison = true)
+    {
+        if (!$region_name) {
+            return '';
+        }
+
+        // First, expand АО abbreviations (needed for database lookups)
+        // Special case: Еврейская АО uses feminine "автономная область"
+        if ($region_name === 'Еврейская АО') {
+            $region_name = 'Еврейская автономная область';
+        } else {
+            // All other АО regions use masculine "автономный округ"
+            $region_name = str_replace('АО', 'автономный округ', $region_name);
+        }
+
+        // If not for comparison, return the expanded form (for database lookups)
+        if (!$for_comparison) {
+            return trim($region_name);
+        }
+
+        // For comparison: normalize to lowercase + ё→е + trim
+        $normalized = $this->_clear($region_name);
+
+        // Special mappings for regions with additional qualifiers
+        // OpenCart zone name => base name to match against CDEK API variations
+        $special_cases = array(
+            'республика саха (якутия)' => 'саха',
+            'республика северная осетия - алания' => 'северная осетия',
+            'чувашская республика - чувашия' => 'чувашия',
+            'чувашская республика' => 'чувашия',
+            'удмуртская республика' => 'удмуртия',
+            'кемеровская область - кузбасс' => 'кемеров',
+            'кемеровская область' => 'кемеров',
+            'ханты-мансийский автономный округ - югра' => 'ханты-мансийский',
+            'карачаево-черкеcсия' => 'карачаево-черкес', // Fix Latin 'c' encoding issue
+            'карачаево-черкесская республика' => 'карачаево-черкес',
+            'еврейская автономная область' => 'еврейская'
+        );
+
+        if (isset($special_cases[$normalized])) {
+            return $special_cases[$normalized];
+        }
+
+        // Remove common prefixes and suffixes
+        $patterns = array(
+            'республика ',
+            ' республика',
+            ' респ.',
+            ' респ',
+            'область',
+            'автономный округ',
+            'автономная область',
+            'край',
+            ' обл.',
+            ' обл',
+            ' ао',
+            'город ',
+            ' г.',
+        );
+
+        foreach ($patterns as $pattern) {
+            $normalized = str_replace($pattern, '', $normalized);
+        }
+
+        return trim($normalized);
     }
 
     private function mb_ucfirst($str, $enc = 'utf-8')
@@ -1470,7 +1667,7 @@ abstract class response_parser
         $this->data = $data;
     }
 
-    abstract protected function getData();
+    abstract public function getData();
 }
 
 class parser_json extends response_parser

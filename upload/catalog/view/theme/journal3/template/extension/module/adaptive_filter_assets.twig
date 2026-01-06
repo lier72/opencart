@@ -1,0 +1,1091 @@
+{# Adaptive Filter Assets - CSS and JavaScript #}
+{% if user_preferences and (user_preferences.sizes or user_preferences.colors or user_preferences.genders or user_preferences.sports) %}
+<style>
+.adaptive-preferences-widget {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  /* border-radius: 8px; */
+  padding: 15px;
+  margin-bottom: 20px;
+}
+.preferences-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.preferences-header strong {
+  font-size: 15px;
+  color: #333;
+}
+.preferences-subtitle {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.add-pref-hint {
+  margin-left: auto;
+  color: #4CAF50;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+}
+.add-pref-hint:hover {
+  color: #45a049;
+  text-decoration: underline;
+}
+.preferences-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pref-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #555;
+  transition: all 0.2s ease;
+}
+.pref-tag:hover {
+  border-color: #999;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.pref-size { border-left: 3px solid #4CAF50; }
+.pref-color { border-left: 3px solid #FF9800; }
+.pref-gender { border-left: 3px solid #2196F3; }
+.pref-sport { border-left: 3px solid #9C27B0; }
+
+.remove-pref {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  margin-left: 4px;
+  transition: color 0.2s ease;
+}
+.remove-pref:hover {
+  color: #f44336;
+}
+.preferences-add {
+  display: none;
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 200px;
+  max-width: 300px;
+}
+.preferences-add.active {
+  display: block;
+}
+.add-preference-wrapper {
+  position: relative;
+}
+#add-preference-input {
+  width: 100%;
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 15px;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+#add-preference-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+.preference-autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 15px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  z-index: 1000;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+.preference-autocomplete-dropdown.show {
+  display: block;
+}
+.autocomplete-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+}
+.autocomplete-item:hover {
+  background: #f8f9fa;
+}
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+.autocomplete-no-results {
+  padding: 10px 12px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Desktop Disable Smart Sorting button - Small button in bottom right */
+.disable-smart-sorting-btn-desktop {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  padding: 4px 8px;
+  background: #fff;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 3px;
+  color: #dc3545;
+  font-size: 10px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-block;
+  opacity: 0.7;
+}
+
+.disable-smart-sorting-btn-desktop:hover {
+  background: #dc3545;
+  color: #fff;
+  border-color: #dc3545;
+  opacity: 1;
+}
+
+/* Make parent container position relative for absolute positioning */
+.adaptive-preferences-widget {
+  position: relative;
+  padding-bottom: 25px; /* Add space for the button */
+}
+
+/* Mobile Floating Action Button & Right Slide Panel */
+.adaptive-preferences-desktop {
+  display: block !important;
+}
+
+/* Use ID selector for higher specificity to override any parent rules */
+#adaptive-prefs-mobile-container {
+  display: none; /* Hidden by default, shown on mobile by JS */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+#adaptive-prefs-mobile-container.show {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Use Journal3's breakpoint: 760px for tablet/mobile */
+@media only screen and (max-width: 760px) {
+  /* Hide desktop on mobile */
+  .adaptive-preferences-desktop {
+    display: none !important;
+  }
+
+  /* Sliding Preferences Button - Overlaps right side of Journal3 filter button */
+  .adaptive-prefs-fab {
+    position: fixed !important;
+    bottom: 10px !important;
+    left: 50% !important;
+    transform: translateX(12px) !important; /* Position to the right of 50% */
+    z-index: 999 !important; /* Below modal but above other content */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  /* Match Journal3's bottom menu offset */
+  .has-bottom-menu .adaptive-prefs-fab {
+    margin-bottom: 45px;
+  }
+
+  /* Main button container - fixed size, positioned to right of 50% */
+  .adaptive-prefs-fab-inner {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 44px; /* Fixed width */
+    height: 44px; /* Fixed height */
+    background: rgba(0,0,0,0.2);
+    border-radius: 22px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); */
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .adaptive-prefs-fab:active .adaptive-prefs-fab-inner {
+    transform: translateX(-3px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Icon section (always visible) - fixed size */
+  .fab-icon-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    background: inherit;
+    position: relative;
+  }
+
+  .fab-icon {
+    font-size: 16px;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.7);
+    transform: scaleX(1.5) translateY(5px); /* Make wider and move down */
+    display: inline-block;
+  }
+
+  /* Slide indicator (arrow hint) */
+  .fab-slide-hint {
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-right: 6px solid rgba(0, 0, 0, 0.1);
+    animation: slideHint 2s ease-in-out infinite;
+  }
+
+  @keyframes slideHint {
+    0%, 100% { right: -8px; opacity: 0.3; }
+    50% { right: -12px; opacity: 0.7; }
+  }
+
+  /* Panel Overlay - Match Journal3 mobile header overlay */
+  .adaptive-prefs-panel-overlay {
+    display: none;
+    position: fixed;
+    z-index: 49999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    -webkit-transition: all 0.2s ease-out;
+    transition: all 0.2s ease-out;
+  }
+
+  .adaptive-prefs-panel-overlay.show {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  /* Right Slide-in Panel - Match Journal3 mobile-container style */
+  .adaptive-prefs-panel {
+    display: none;
+    position: fixed;
+    z-index: 50000;
+    max-width: 85%;
+    width: 300px;
+    height: 100%;
+    top: 0;
+    right: 0;
+    left: auto;
+    background: #fff;
+    box-shadow: -3px 0 15px rgba(0, 0, 0, 0.2);
+    -webkit-transform: translate3d(100%, 0, 0);
+    transform: translate3d(100%, 0, 0);
+    -webkit-transition: -webkit-transform .35s ease-in-out;
+    transition: transform .35s ease-in-out;
+    transition: transform .35s ease-in-out, -webkit-transform .35s ease-in-out;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make panel visible when overlay is shown */
+  .adaptive-prefs-panel-overlay.show .adaptive-prefs-panel {
+    display: flex;
+  }
+
+  /* Slide panel in when animating */
+  .adaptive-prefs-panel.animating {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* Panel header - match Journal3 style */
+  .adaptive-prefs-panel .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0px 12px;
+    /* border-bottom: 1px solid rgba(0, 0, 0, 0.1); */
+    background: #fff;
+    flex-shrink: 0;
+    min-height: 40px;
+  }
+
+  .adaptive-prefs-panel .panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+  }
+
+  .adaptive-prefs-panel .panel-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 5px;
+    width: 45px;
+    height: 45px;
+    color: rgba(225,90,40,1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: -5px -10px -5px 10px;
+  }
+
+  /* .adaptive-prefs-panel .panel-close:hover {
+    opacity: 1;
+  } */
+
+  /* Panel body */
+  .adaptive-prefs-panel .panel-body {
+    padding: 0px 12px;
+    flex: 1;
+    overflow-y: visible; /* Let panel handle scroll */
+  }
+
+  .adaptive-prefs-panel .modal-subtitle {
+    font-size: 13px;
+    opacity: 0.7;
+    font-weight: 300;
+    margin: 0 0 20px 0;
+    line-height: 1.6;
+  }
+
+  .adaptive-prefs-panel .panel-body .preferences-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .adaptive-prefs-panel .panel-body .pref-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    transition: all 0.15s ease;
+  }
+
+  .adaptive-prefs-panel .panel-body .pref-tag:hover {
+    border-color: rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Add preference section - match Journal3 button style */
+  .adaptive-prefs-panel .modal-add-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .add-pref-btn-mobile {
+    width: 100%;
+    border: none;
+    border-radius: 2px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .preferences-add-mobile {
+    display: none;
+    margin-top: 15px;
+  }
+
+  .preferences-add-mobile.active {
+    display: block;
+  }
+
+  .preferences-add-mobile .add-preference-wrapper {
+    position: relative;
+  }
+
+  .preferences-add-mobile #add-preference-input-mobile {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+    font-size: 14px;
+    line-height: 1.5;
+    transition: all 0.15s ease;
+    font-weight: 300;
+  }
+
+  .preferences-add-mobile #add-preference-input-mobile:focus {
+    outline: none;
+    border-color: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+
+  .preferences-add-mobile .preference-autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 1002;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  }
+
+  .preferences-add-mobile .autocomplete-item {
+    padding: 12px 15px;
+    font-size: 13px;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+
+  .preferences-add-mobile .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+
+  .preferences-add-mobile .autocomplete-item:hover {
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  .preferences-add-mobile .autocomplete-no-results {
+    padding: 12px 15px;
+    font-size: 13px;
+    opacity: 0.5;
+  }
+
+  /* Disable Smart Sorting button */
+  .disable-smart-sorting-btn {
+    width: 100%;
+    margin-top: 25px;
+    padding: 12px 20px;
+    background: #fff;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 2px;
+    color: #dc3545;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+  }
+
+  .disable-smart-sorting-btn:hover {
+    background: #dc3545;
+    color: #fff;
+    border-color: #dc3545;
+  }
+}
+
+/* Journal3 phone breakpoint: 470px - Responsive overrides removed for fixed sizing */
+@media only screen and (max-width: 470px) {
+  /* Button maintains fixed size across all viewports */
+
+  .adaptive-prefs-panel {
+    width: 90%; /* More of the screen on small phones */
+    max-width: 320px;
+  }
+
+  .panel-header {
+    padding: 12px 15px;
+    min-height: 50px;
+  }
+
+  .panel-header h3 {
+    font-size: 15px;
+  }
+
+  .panel-body {
+    padding: 15px;
+  }
+
+  .panel-body .pref-tag {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+</style>
+
+<script>
+// Debug flag - set to true to enable console logging
+var ADAPTIVE_FILTER_DEBUG = true;
+
+// Intercept sorting dropdown to handle "Enable Smart Sorting" option
+// Need to intercept BEFORE navigation happens
+document.addEventListener('DOMContentLoaded', function() {
+  var sortDropdown = document.getElementById('input-sort') || document.querySelector('select[name="sort"]');
+
+  if (sortDropdown) {
+    // Intercept change event
+    sortDropdown.addEventListener('change', function(e) {
+      var selectedValue = this.value;
+      if (ADAPTIVE_FILTER_DEBUG) console.log('Sort dropdown changed, value:', selectedValue);
+
+      // Check if user selected "Enable Smart Sorting"
+      if (selectedValue.indexOf('enable-personalized') !== -1) {
+        if (ADAPTIVE_FILTER_DEBUG) console.log('Enable Smart Sorting selected, calling API...');
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        // Call enable API
+        fetch('index.php?route=extension/module/adaptive_filter/enableSmartSorting', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (ADAPTIVE_FILTER_DEBUG) console.log('Enable Smart Sorting API response:', data);
+          if (data.success) {
+            if (ADAPTIVE_FILTER_DEBUG) console.log('Success! Redirecting to personalized sort...');
+            // Redirect to personalized sort instead of just reloading
+            // Replace 'enable-personalized' with 'personalized' in URL
+            var currentUrl = window.location.href;
+            var newUrl = currentUrl.replace('sort=enable-personalized', 'sort=personalized');
+            if (ADAPTIVE_FILTER_DEBUG) console.log('Redirecting from', currentUrl, 'to', newUrl);
+            window.location.href = newUrl;
+          } else {
+            console.error('Failed to enable Smart Sorting:', data.message);
+            alert('Failed to enable Smart Sorting: ' + (data.message || 'Unknown error'));
+          }
+        })
+        .catch(error => {
+          console.error('Error enabling Smart Sorting:', error);
+          alert('An error occurred while enabling Smart Sorting');
+        });
+
+        return false;
+      }
+    }, true); // Use capture phase to run before other handlers
+  } else {
+    if (ADAPTIVE_FILTER_DEBUG) console.log('Sort dropdown not found on page load');
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Show/hide mobile FAB based on viewport width AND sort selection
+  // Button only visible on mobile when "Smart sorting" (personalized) is selected
+  // Use Journal3's breakpoint: 760px
+  function updateMobileDisplay() {
+    var mobileContainer = document.getElementById('adaptive-prefs-mobile-container');
+    if (mobileContainer) {
+      // Check viewport width
+      var isMobile = window.innerWidth <= 760;
+
+      // Check if personalized sort is active
+      var urlParams = new URLSearchParams(window.location.search);
+      var sortParam = urlParams.get('sort');
+      var isPersonalizedSort = false;
+      var isPersonalizedDefault = {{ is_personalized_default ? 'true' : 'false' }};
+
+      if (ADAPTIVE_FILTER_DEBUG) {
+        console.log('Mobile button check:', {
+          isMobile: isMobile,
+          sortParam: sortParam,
+          isPersonalizedDefault: isPersonalizedDefault,
+          currentURL: window.location.search
+        });
+      }
+
+      // First try: Check URL parameter
+      if (sortParam) {
+        isPersonalizedSort = sortParam === 'personalized';
+        if (ADAPTIVE_FILTER_DEBUG) console.log('Using URL sort param:', sortParam, 'isPersonalized:', isPersonalizedSort);
+      }
+      // Second try: Check dropdown value (for AJAX updates where URL might not be updated yet)
+      else {
+        var sortDropdown = document.getElementById('input-sort') || document.querySelector('select[name="sort"]');
+        if (sortDropdown && sortDropdown.value) {
+          var sortValue = sortDropdown.value;
+          if (ADAPTIVE_FILTER_DEBUG) console.log('Checking dropdown value:', sortValue);
+
+          // Journal3 uses full URLs as option values
+          if (sortValue.indexOf('http') === 0 || sortValue.indexOf('index.php') === 0) {
+            var dropdownUrlParams = new URLSearchParams(sortValue.split('?')[1]);
+            var dropdownSortParam = dropdownUrlParams.get('sort');
+            if (dropdownSortParam) {
+              isPersonalizedSort = dropdownSortParam === 'personalized';
+              if (ADAPTIVE_FILTER_DEBUG) console.log('Using dropdown sort param:', dropdownSortParam, 'isPersonalized:', isPersonalizedSort);
+            } else {
+              // Fallback to server default
+              isPersonalizedSort = isPersonalizedDefault;
+              if (ADAPTIVE_FILTER_DEBUG) console.log('No sort in dropdown URL, using server default:', isPersonalizedSort);
+            }
+          } else {
+            // Simple value (not URL-based)
+            isPersonalizedSort = sortValue === 'personalized';
+            if (ADAPTIVE_FILTER_DEBUG) console.log('Using simple dropdown value:', sortValue, 'isPersonalized:', isPersonalizedSort);
+          }
+        } else {
+          // No dropdown or URL - use server-side default
+          isPersonalizedSort = isPersonalizedDefault;
+          if (ADAPTIVE_FILTER_DEBUG) console.log('No URL param or dropdown, using server default:', isPersonalizedSort);
+        }
+      }
+
+      // Show button only if mobile AND personalized sort is selected
+      if (isMobile && isPersonalizedSort) {
+        if (ADAPTIVE_FILTER_DEBUG) console.log('SHOWING mobile button');
+        mobileContainer.classList.add('show');
+      } else {
+        if (ADAPTIVE_FILTER_DEBUG) console.log('HIDING mobile button');
+        mobileContainer.classList.remove('show');
+      }
+    } else {
+      if (ADAPTIVE_FILTER_DEBUG) console.log('Mobile container not found!');
+    }
+  }
+
+  // Initial check
+  updateMobileDisplay();
+
+  // Add a small delay to ensure DOM is fully ready
+  setTimeout(updateMobileDisplay, 100);
+
+  // Update on window resize (with debounce)
+  var resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(updateMobileDisplay, 150);
+  });
+
+  // Listen for Journal3 AJAX completion (for sorting/filtering without page reload)
+  if (typeof jQuery !== 'undefined') {
+    jQuery(document).on('ajaxComplete', function() {
+      if (ADAPTIVE_FILTER_DEBUG) console.log('Journal3 AJAX completed, updating button visibility');
+      setTimeout(updateMobileDisplay, 100);
+    });
+  }
+
+  // MOBILE PANEL FUNCTIONALITY
+  var trigger = document.getElementById('adaptive-prefs-trigger');
+  var overlay = document.getElementById('adaptive-prefs-modal');
+  var panel = overlay ? overlay.querySelector('.adaptive-prefs-panel') : null;
+  var closeBtn = document.getElementById('adaptive-prefs-close');
+  var showAddBtnMobile = document.getElementById('show-add-preference-mobile');
+  var addDivMobile = document.querySelector('.preferences-add-mobile');
+  var addInputMobile = document.getElementById('add-preference-input-mobile');
+  var dropdownMobile = document.getElementById('preference-autocomplete-mobile');
+
+  if (trigger && overlay && panel) {
+    // Open panel with sliding animation
+    trigger.addEventListener('click', function() {
+      // First make overlay visible
+      overlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
+
+      // Force browser reflow to ensure display:flex is applied before transform
+      panel.offsetHeight;
+
+      // Add animating class to trigger slide-in transition
+      setTimeout(function() {
+        panel.classList.add('animating');
+      }, 10);
+    });
+
+    // Close panel with sliding animation
+    function closePanel() {
+      // Remove animating class to slide out
+      panel.classList.remove('animating');
+
+      // After transition completes, hide the overlay
+      setTimeout(function() {
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+      }, 350); // Match transition duration (0.35s)
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closePanel);
+    }
+
+    // Close on overlay click
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        closePanel();
+      }
+    });
+  }
+
+  // Mobile add preference button
+  if (showAddBtnMobile && addDivMobile && addInputMobile) {
+    showAddBtnMobile.addEventListener('click', function() {
+      addDivMobile.classList.add('active');
+      this.style.display = 'none';
+      setTimeout(function() {
+        addInputMobile.focus();
+      }, 100);
+    });
+  }
+
+  // Mobile autocomplete
+  if (addInputMobile && dropdownMobile) {
+    var debounceTimer;
+
+    addInputMobile.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      var search = this.value.trim();
+
+      if (search.length < 1) {
+        dropdownMobile.classList.remove('show');
+        dropdownMobile.innerHTML = '';
+        return;
+      }
+
+      debounceTimer = setTimeout(function() {
+        fetch('index.php?route=extension/module/adaptive_filter/getAvailableValues&search=' + encodeURIComponent(search))
+          .then(response => response.json())
+          .then(data => {
+            dropdownMobile.innerHTML = '';
+
+            if (!data || data.length === 0) {
+              dropdownMobile.innerHTML = '<div class="autocomplete-no-results">{{ text_no_results_found|escape('js') }}</div>';
+              dropdownMobile.classList.add('show');
+            } else {
+              data.forEach(function(item) {
+                var div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.textContent = item.label;
+                div.dataset.type = item.type;
+                div.dataset.value = item.value;
+
+                div.addEventListener('click', function() {
+                  addInputMobile.value = '';
+                  dropdownMobile.innerHTML = '';
+                  dropdownMobile.classList.remove('show');
+
+                  fetch('index.php?route=extension/module/adaptive_filter/addPreference', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'type=' + encodeURIComponent(this.dataset.type) + '&value=' + encodeURIComponent(this.dataset.value)
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    if (data.success) {
+                      window.location.reload();
+                    }
+                  });
+                });
+
+                dropdownMobile.appendChild(div);
+              });
+              dropdownMobile.classList.add('show');
+            }
+          });
+      }, 300);
+    });
+  }
+
+  // DISABLE SMART SORTING BUTTON
+  var disableBtn = document.getElementById('disable-smart-sorting');
+  if (disableBtn) {
+    disableBtn.addEventListener('click', function() {
+      if (!confirm('{{ text_disable_confirm|escape('js') }}')) {
+        return;
+      }
+
+      fetch('index.php?route=extension/module/adaptive_filter/disableSmartSorting', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Close the panel
+          if (panel) {
+            panel.classList.remove('show');
+            document.body.style.overflow = '';
+          }
+
+          // Redirect to same page with default sort (remove personalized sort)
+          var currentUrl = window.location.href;
+          var url = new URL(currentUrl);
+
+          // Remove sort and order parameters to use default
+          url.searchParams.delete('sort');
+          url.searchParams.delete('order');
+
+          // Reload page with new URL
+          window.location.href = url.toString();
+        } else {
+          alert('Failed to disable Smart Sorting: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error disabling Smart Sorting:', error);
+        alert('An error occurred while disabling Smart Sorting');
+      });
+    });
+  }
+
+  // DESKTOP: SHOW ADD PREFERENCE INPUT FUNCTIONALITY
+  var showAddBtn = document.getElementById('show-add-preference');
+  var addDiv = document.querySelector('.preferences-add');
+  var addInput = document.getElementById('add-preference-input');
+
+  if (showAddBtn && addDiv && addInput) {
+    showAddBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      addDiv.classList.add('active');
+      // Focus input after animation completes
+      setTimeout(function() {
+        addInput.focus();
+      }, 100);
+      // Hide the hint link
+      this.style.display = 'none';
+    });
+  }
+
+  // REMOVE PREFERENCE FUNCTIONALITY
+  document.querySelectorAll('.remove-pref').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+
+      var tag = this.closest('.pref-tag');
+      var type = tag.getAttribute('data-type');
+      var value = tag.getAttribute('data-value');
+
+      // Send AJAX request to remove preference
+      fetch('index.php?route=extension/module/adaptive_filter/removePreference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'type=' + encodeURIComponent(type) + '&value=' + encodeURIComponent(value)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Fade out and remove the tag
+          tag.style.opacity = '0';
+          tag.style.transform = 'scale(0.8)';
+          setTimeout(function() {
+            tag.remove();
+
+            // If no tags left, remove the whole widget
+            var widget = document.querySelector('.adaptive-preferences-widget');
+            if (widget && widget.querySelectorAll('.pref-tag').length === 0) {
+              widget.style.opacity = '0';
+              setTimeout(function() {
+                widget.remove();
+              }, 300);
+            }
+
+            // Reload the page to update product sorting
+            // This will re-sort products based on updated preferences
+            window.location.reload();
+          }, 300);
+        } else {
+          alert('Failed to remove preference: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error removing preference:', error);
+        alert('Error removing preference');
+      });
+    });
+  });
+
+  // DESKTOP DISABLE SMART SORTING BUTTON
+  var disableBtnDesktop = document.getElementById('disable-smart-sorting-desktop');
+  if (disableBtnDesktop) {
+    disableBtnDesktop.addEventListener('click', function() {
+      if (!confirm('{{ text_disable_confirm|escape('js') }}')) {
+        return;
+      }
+
+      fetch('index.php?route=extension/module/adaptive_filter/disableSmartSorting', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Redirect to same page with default sort (remove personalized sort)
+          var currentUrl = window.location.href;
+          var url = new URL(currentUrl);
+
+          // Remove sort and order parameters to use default
+          url.searchParams.delete('sort');
+          url.searchParams.delete('order');
+
+          // Reload page with new URL
+          window.location.href = url.toString();
+        } else {
+          alert('Failed to disable Smart Sorting: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error disabling Smart Sorting:', error);
+        alert('An error occurred while disabling Smart Sorting');
+      });
+    });
+  }
+
+  // AUTOCOMPLETE FUNCTIONALITY
+  var input = document.getElementById('add-preference-input');
+  var dropdown = document.getElementById('preference-autocomplete');
+
+  if (input && dropdown) {
+    var debounceTimer;
+
+    input.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      var search = this.value.trim();
+
+      if (search.length < 1) {
+        dropdown.classList.remove('show');
+        dropdown.innerHTML = '';
+        return;
+      }
+
+      debounceTimer = setTimeout(function() {
+        fetch('index.php?route=extension/module/adaptive_filter/getAvailableValues&search=' + encodeURIComponent(search))
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('HTTP error ' + response.status);
+            }
+            return response.text();
+          })
+          .then(text => {
+            try {
+              return JSON.parse(text);
+            } catch (e) {
+              console.error('JSON parse error:', e);
+              console.error('Response text:', text);
+              throw new Error('Invalid JSON response');
+            }
+          })
+          .then(data => {
+            dropdown.innerHTML = '';
+
+            if (data.error) {
+              dropdown.innerHTML = '<div class="autocomplete-no-results">Error: ' + data.error + '</div>';
+              dropdown.classList.add('show');
+            } else if (!data || data.length === 0) {
+              dropdown.innerHTML = '<div class="autocomplete-no-results">{{ text_no_results_found|escape('js') }}</div>';
+              dropdown.classList.add('show');
+            } else {
+              data.forEach(function(item) {
+                var div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.textContent = item.label;
+                div.dataset.type = item.type;
+                div.dataset.value = item.value;
+
+                div.addEventListener('click', function() {
+                  // Clear input and hide dropdown immediately
+                  input.value = '';
+                  dropdown.innerHTML = '';
+                  dropdown.classList.remove('show');
+
+                  // Add preference via AJAX
+                  fetch('index.php?route=extension/module/adaptive_filter/addPreference', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'type=' + encodeURIComponent(this.dataset.type) + '&value=' + encodeURIComponent(this.dataset.value)
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    if (data.success) {
+                      // Reload page to show new preference
+                      window.location.reload();
+                    } else {
+                      alert('Failed to add preference: ' + (data.message || 'Unknown error'));
+                    }
+                  })
+                  .catch(error => {
+                    console.error('Error adding preference:', error);
+                    alert('Error adding preference');
+                  });
+                });
+
+                dropdown.appendChild(div);
+              });
+              dropdown.classList.add('show');
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching autocomplete data:', error);
+          });
+      }, 300); // 300ms debounce
+    });
+
+    // Close dropdown and hide input when clicking outside
+    document.addEventListener('click', function(e) {
+      var addDiv = document.querySelector('.preferences-add');
+      var showAddBtn = document.getElementById('show-add-preference');
+
+      if (!input.contains(e.target) && !dropdown.contains(e.target) && !showAddBtn.contains(e.target)) {
+        dropdown.classList.remove('show');
+
+        // Hide input and show "+ Add preference..." link again
+        if (addDiv && addDiv.classList.contains('active')) {
+          addDiv.classList.remove('active');
+          showAddBtn.style.display = '';
+          input.value = '';
+        }
+      }
+    });
+  }
+});
+</script>
+{% endif %}

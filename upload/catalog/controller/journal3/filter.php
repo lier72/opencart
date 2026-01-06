@@ -505,6 +505,86 @@ class ControllerJournal3Filter extends ModuleController {
 
 			array_multisort($sort_order, SORT_ASC, $this->settings['items']);
 		}
+
+		// Capture filter selections for Adaptive Filter module (simple version)
+		$this->captureFilterSelections();
+	}
+
+	/**
+	 * Capture filter selections for Adaptive Filter module
+	 */
+	protected function captureFilterSelections() {
+		// Check if adaptive filter module is enabled
+		if (!$this->config->get('module_adaptive_filter_status')) {
+			return;
+		}
+
+		// Load adaptive filter model
+		$this->load->model('extension/module/adaptive_filter');
+
+		$preferences = array();
+
+		$this->log->write('[Adaptive Filter - Journal3] Checking for filter selections in URL: ' . http_build_query($this->request->get));
+
+		// Get configured size option IDs (comma-separated)
+		$size_option_ids = $this->config->get('module_adaptive_filter_size_option_ids') ?? '';
+		$size_option_ids_array = array_filter(array_map('trim', explode(',', $size_option_ids)));
+
+		// Check URL parameters for selected size options (fo22, fo23, fo26, etc.)
+		foreach ($this->request->get as $key => $value) {
+			if (strpos($key, 'fo') === 0 && is_numeric(substr($key, 2))) {
+				$option_id = substr($key, 2);
+
+				// Is this one of our configured size options?
+				if (in_array($option_id, $size_option_ids_array)) {
+					// Get the selected value name
+					$values = explode(',', $value);
+					foreach ($values as $option_value_id) {
+						$value_query = $this->db->query("
+							SELECT ovd.name
+							FROM " . DB_PREFIX . "option_value_description ovd
+							WHERE ovd.option_value_id = '" . (int)$option_value_id . "'
+							AND ovd.language_id = '" . (int)$this->config->get('config_language_id') . "'
+						");
+
+						if ($value_query->num_rows) {
+							$preferences['size'] = $value_query->row['name'];
+							break 2;
+						}
+					}
+				}
+			}
+		}
+
+		// Get configured color attribute IDs
+		$color_attribute_ids = $this->config->get('module_adaptive_filter_color_attribute_ids') ?? '';
+		$color_attribute_ids_array = array_filter(array_map('trim', explode(',', $color_attribute_ids)));
+
+		// Check URL parameters for selected color attributes (fa63, etc.)
+		foreach ($this->request->get as $key => $value) {
+			if (strpos($key, 'fa') === 0 && is_numeric(substr($key, 2))) {
+				$attribute_id = substr($key, 2);
+
+				// Is this one of our configured color attributes?
+				if (in_array($attribute_id, $color_attribute_ids_array)) {
+					// Value is URL-encoded attribute value
+					$preferences['color'] = urldecode($value);
+					break;
+				}
+			}
+		}
+
+		// Note: Gender is now detected from product categories, not from filter selections
+		// Sports are also detected from product categories, not from filter selections
+
+		// If we captured any preferences, record them with weight 4 (explicit filter selection)
+		if (!empty($preferences)) {
+			$this->log->write('[Adaptive Filter - Journal3] Captured preferences: ' . json_encode($preferences));
+			$this->model_extension_module_adaptive_filter->recordSignal('filter_selection', $preferences, 4);
+			$this->log->write('[Adaptive Filter - Journal3] Preferences recorded successfully');
+		} else {
+			$this->log->write('[Adaptive Filter - Journal3] No filter selections found in URL parameters');
+		}
 	}
 
 	protected function afterRender() {

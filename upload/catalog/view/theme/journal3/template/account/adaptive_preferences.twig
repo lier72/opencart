@@ -1,0 +1,407 @@
+{{ header }}
+{% if journal3.get('pageTitlePosition') == 'top' %}
+  <h1 class="title page-title {{ journal3.get('title_color_scheme') }}"><span class="page-title-text">{{ heading_title }}</span></h1>
+{% endif %}
+<div class="breadcrumbs {{ journal3.get('breadcrumbs_color_scheme') }}">
+  <ul class="breadcrumb">
+    {% for breadcrumb in breadcrumbs %}
+      <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{{ journal3_top }}
+<div id="account-adaptive-preferences" class="container">
+  {% if success %}
+  <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+  </div>
+  {% endif %}
+  {% if error %}
+  <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error }}
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+  </div>
+  {% endif %}
+  <div class="row">{{ column_left }}
+    {% if column_left and column_right %}
+    {% set class = 'col-sm-6' %}
+    {% elseif column_left or column_right %}
+    {% set class = 'col-sm-9' %}
+    {% else %}
+    {% set class = 'col-sm-12' %}
+    {% endif %}
+    <div id="content" class="{{ class }}">
+      {% if journal3.get('pageTitlePosition') == 'default' %}
+      <h1 class="title page-title">{{ heading_title }}</h1>
+      {% endif %}
+      {{ content_top }}
+
+      <div class="preferences-info">
+        <p>{{ text_preferences_info }}</p>
+      </div>
+
+      {# Smart Sorting Toggle #}
+      <div class="smart-sorting-toggle-panel">
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="toggle-container">
+              <div class="toggle-info">
+                <h4>{{ text_smart_sorting }}</h4>
+                <p class="help-text">{{ text_smart_sorting_info }}</p>
+              </div>
+              <div class="toggle-switch-wrapper">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="smart-sorting-toggle" {% if smart_sorting_enabled %}checked{% endif %}>
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label" id="toggle-status-label">
+                  {% if smart_sorting_enabled %}{{ text_enabled }}{% else %}{{ text_disabled }}{% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if user_preferences.sizes or user_preferences.colors or user_preferences.genders or user_preferences.sports %}
+      <div class="adaptive-preferences-panel">
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            <h3 class="panel-title">{{ text_your_preferences }}</h3>
+          </div>
+          <div class="panel-body">
+            <div class="preferences-grid">
+              {% if user_preferences.sizes %}
+              <div class="pref-category">
+                <h4>{{ text_size }}</h4>
+                <div class="pref-items">
+                  {% for size, count in user_preferences.sizes %}
+                  <span class="pref-badge pref-size" data-type="size" data-value="{{ size }}">
+                    {% if size matches '/US\\s*\\(/i' %}{{ shoe_size_icon }}{% else %}{{ apparel_size_icon }}{% endif %} {{ size }}
+                    <button class="btn-remove-pref" data-type="size" data-value="{{ size }}" aria-label="Remove">×</button>
+                  </span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if user_preferences.colors %}
+              <div class="pref-category">
+                <h4>{{ text_color }}</h4>
+                <div class="pref-items">
+                  {% for color, count in user_preferences.colors %}
+                  {% set color_parts = color|split('(#') %}
+                  {% set color_name = color_parts[0]|trim %}
+                  <span class="pref-badge pref-color" data-type="color" data-value="{{ color }}">
+                    {{ color_icon }} {{ color_name }}
+                    <button class="btn-remove-pref" data-type="color" data-value="{{ color }}" aria-label="Remove">×</button>
+                  </span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if user_preferences.genders %}
+              <div class="pref-category">
+                <h4>{{ text_gender }}</h4>
+                <div class="pref-items">
+                  {% for gender, count in user_preferences.genders %}
+                  <span class="pref-badge pref-gender" data-type="gender" data-value="{{ gender }}">
+                    {% if gender == 'Men' %}♂{% elseif gender == 'Women' %}♀{% else %}⚧{% endif %} {{ gender_labels[gender] ?? gender }}
+                    <button class="btn-remove-pref" data-type="gender" data-value="{{ gender }}" aria-label="Remove">×</button>
+                  </span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if user_preferences.sports %}
+              <div class="pref-category">
+                <h4>{{ text_sport }}</h4>
+                <div class="pref-items">
+                  {% for sport, count in user_preferences.sports %}
+                  <span class="pref-badge pref-sport" data-type="sport" data-value="{{ sport }}">
+                    {{ sport_icons[sport] ?? default_sport_icon }} {{ sport }}
+                    <button class="btn-remove-pref" data-type="sport" data-value="{{ sport }}" aria-label="Remove">×</button>
+                  </span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="preferences-actions">
+              <a href="{{ action_clear_all }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to clear all preferences?');">
+                <i class="fa fa-trash"></i> {{ button_clear_all }}
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert alert-info">
+        <i class="fa fa-info-circle"></i> {{ text_no_preferences }}
+      </div>
+      {% endif %}
+
+      <div class="buttons clearfix">
+        <div class="pull-left"><a href="{{ back }}" class="btn btn-default">{{ button_back }}</a></div>
+      </div>
+
+      {{ content_bottom }}
+    </div>
+    {{ column_right }}
+  </div>
+</div>
+
+<style>
+.preferences-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-left: 4px solid #4CAF50;
+}
+
+.smart-sorting-toggle-panel {
+  margin-bottom: 20px;
+}
+
+.toggle-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.toggle-info {
+  flex: 1;
+}
+
+.toggle-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.toggle-info .help-text {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.toggle-switch-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  margin: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #4CAF50;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  min-width: 80px;
+}
+
+.adaptive-preferences-panel {
+  margin-bottom: 20px;
+}
+
+.preferences-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.pref-category h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.pref-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pref-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #555;
+  transition: all 0.2s ease;
+}
+
+.pref-badge:hover {
+  border-color: #999;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pref-size { border-left-color: #4CAF50; border-left-width: 4px; }
+.pref-color { border-left-color: #FF9800; border-left-width: 4px; }
+.pref-gender { border-left-color: #2196F3; border-left-width: 4px; }
+.pref-sport { border-left-color: #9C27B0; border-left-width: 4px; }
+
+.btn-remove-pref {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  margin-left: 4px;
+  transition: color 0.2s ease;
+}
+
+.btn-remove-pref:hover {
+  color: #f44336;
+}
+
+.preferences-actions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Smart Sorting Toggle
+  var toggleCheckbox = document.getElementById('smart-sorting-toggle');
+  var statusLabel = document.getElementById('toggle-status-label');
+
+  if (toggleCheckbox) {
+    toggleCheckbox.addEventListener('change', function() {
+      var enabled = this.checked;
+      var endpoint = enabled ?
+        'index.php?route=extension/module/adaptive_filter/enableSmartSorting' :
+        'index.php?route=extension/module/adaptive_filter/disableSmartSorting';
+
+      // Disable toggle while processing
+      toggleCheckbox.disabled = true;
+
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Update status label
+          statusLabel.textContent = enabled ? '{{ text_enabled }}' : '{{ text_disabled }}';
+          // Re-enable toggle
+          toggleCheckbox.disabled = false;
+        } else {
+          // Revert toggle on error
+          toggleCheckbox.checked = !enabled;
+          toggleCheckbox.disabled = false;
+          alert('Failed to update smart sorting: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error updating smart sorting:', error);
+        // Revert toggle on error
+        toggleCheckbox.checked = !enabled;
+        toggleCheckbox.disabled = false;
+        alert('Error updating smart sorting');
+      });
+    });
+  }
+
+  // Remove individual preference
+  document.querySelectorAll('.btn-remove-pref').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var type = this.getAttribute('data-type');
+      var value = this.getAttribute('data-value');
+
+      fetch('index.php?route=extension/module/adaptive_filter/removePreference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'type=' + encodeURIComponent(type) + '&value=' + encodeURIComponent(value)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Reload page to show updated preferences
+          window.location.reload();
+        } else {
+          alert('Failed to remove preference: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error removing preference:', error);
+        alert('Error removing preference');
+      });
+    });
+  });
+});
+</script>
+
+{{ footer }}

@@ -1,0 +1,866 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="submit" form="form-module" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a></div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+      </div>
+      <div class="panel-body">
+        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-module" class="form-horizontal">
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-status">{{ entry_status }}</label>
+            <div class="col-sm-10">
+              <select name="module_adaptive_filter_status" id="input-status" class="form-control">
+                {% if module_adaptive_filter_status %}
+                <option value="1" selected="selected">{{ text_enabled }}</option>
+                <option value="0">{{ text_disabled }}</option>
+                {% else %}
+                <option value="1">{{ text_enabled }}</option>
+                <option value="0" selected="selected">{{ text_disabled }}</option>
+                {% endif %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-debug-mode">
+              <span data-toggle="tooltip" title="Enable detailed debug logging to error.log (user preferences, top 5 scored products, score breakdowns)">Debug Mode</span>
+            </label>
+            <div class="col-sm-10">
+              <select name="module_adaptive_filter_debug_mode" id="input-debug-mode" class="form-control">
+                {% if module_adaptive_filter_debug_mode %}
+                <option value="1" selected="selected">{{ text_enabled }}</option>
+                <option value="0">{{ text_disabled }}</option>
+                {% else %}
+                <option value="1">{{ text_enabled }}</option>
+                <option value="0" selected="selected">{{ text_disabled }}</option>
+                {% endif %}
+              </select>
+              <div class="help-block">
+                <strong>⚠️ Production Warning:</strong> Debug mode logs sensitive user preference data to <code>/storage/logs/error.log</code><br>
+                • User preferences (sizes, colors, genders, sports)<br>
+                • Top 5 scored products with detailed breakdowns<br>
+                • Performance metrics<br>
+                <strong>Disable this in production</strong> to avoid log bloat and exposing scoring algorithm.
+              </div>
+            </div>
+          </div>
+
+          <hr>
+          <h4>Icon Configuration</h4>
+          <p class="help-block">Configure emoji icons for different preference types. These will be displayed in the preferences widget and autocomplete.</p>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-shoe-size-icon">
+              <span data-toggle="tooltip" title="Icon displayed for shoe size preferences (sizes containing 'US(')">Shoe Size Icon</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="text" name="module_adaptive_filter_shoe_size_icon" value="{{ module_adaptive_filter_shoe_size_icon }}" placeholder="👟" id="input-shoe-size-icon" class="form-control" />
+              <div class="help-block">Icon for shoe sizes (sizes containing "US(" pattern). Default: 👟 (sneaker)</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-apparel-size-icon">
+              <span data-toggle="tooltip" title="Icon displayed for apparel size preferences (sizes not containing 'US(')">Apparel Size Icon</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="text" name="module_adaptive_filter_apparel_size_icon" value="{{ module_adaptive_filter_apparel_size_icon }}" placeholder="👕" id="input-apparel-size-icon" class="form-control" />
+              <div class="help-block">Icon for apparel sizes (sizes NOT containing "US(" pattern). Default: 👕 (t-shirt)</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-color-icon">
+              <span data-toggle="tooltip" title="Icon displayed for color preferences">Color Icon</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="text" name="module_adaptive_filter_color_icon" value="{{ module_adaptive_filter_color_icon }}" placeholder="🎨" id="input-color-icon" class="form-control" />
+              <div class="help-block">Enter an emoji icon for color preferences. Default: 🎨 (palette)</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-sport-icon">
+              <span data-toggle="tooltip" title="Default icon for sport preferences when no specific sport icon is defined">Default Sport Icon</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="text" name="module_adaptive_filter_sport_icon" value="{{ module_adaptive_filter_sport_icon }}" placeholder="🎾" id="input-sport-icon" class="form-control" />
+              <div class="help-block">
+                <strong>Default fallback icon for sports.</strong> Default: 🎾 (tennis racket)<br>
+                <strong>Sport-specific icons:</strong> Each sport can have its own icon defined in language files.<br>
+                To add custom sport icons, edit:<br>
+                • <code>catalog/language/ru-ru/extension/module/adaptive_filter.php</code><br>
+                • <code>catalog/language/en-gb/extension/module/adaptive_filter.php</code><br>
+                Example: <code>$_['sport_icon_Бег'] = '🏃';</code> (for Russian "Бег" = Running)<br>
+                Currently configured: Бадминтон 🏸, Бег 🏃, Баскетбол 🏀, Волейбол 🏐, Футбол ⚽, Теннис 🎾, and more.
+              </div>
+            </div>
+          </div>
+
+          <hr>
+          <h4>Weight Configuration</h4>
+          <p class="help-block">Configure weights for different user actions. Higher weights = stronger signals of user preference.</p>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-weight-view">
+              <span data-toggle="tooltip" title="Weight applied when user views a product">Product View Weight</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="number" name="module_adaptive_filter_weight_view" value="{{ module_adaptive_filter_weight_view }}" placeholder="1" id="input-weight-view" class="form-control" min="0" step="1" />
+              <div class="help-block">Weight for product views. Default: 1</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-weight-cart">
+              <span data-toggle="tooltip" title="Weight applied when user adds product to cart">Add to Cart Weight</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="number" name="module_adaptive_filter_weight_cart" value="{{ module_adaptive_filter_weight_cart }}" placeholder="5" id="input-weight-cart" class="form-control" min="0" step="1" />
+              <div class="help-block">Weight for adding to cart. Default: 5</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-weight-manual">
+              <span data-toggle="tooltip" title="Weight applied when user manually adds a preference">Manual Preference Weight</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="number" name="module_adaptive_filter_weight_manual" value="{{ module_adaptive_filter_weight_manual }}" placeholder="10" id="input-weight-manual" class="form-control" min="0" step="1" />
+              <div class="help-block">Weight for manually added preferences. Default: 10 (highest - explicit user choice)</div>
+            </div>
+          </div>
+
+          <hr>
+          <h4>Score Configuration</h4>
+          <p class="help-block">Configure scores for matching preferences during product sorting. Higher scores = higher ranking in personalized results.</p>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-score-size">
+              <span data-toggle="tooltip" title="Score multiplier for size matches">Size Match Score</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="number" name="module_adaptive_filter_score_size" value="{{ module_adaptive_filter_score_size }}" placeholder="10" id="input-score-size" class="form-control" min="0" step="1" />
+              <div class="help-block">Score for size matches. Default: 10 (highest priority)</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-score-color">
+              <span data-toggle="tooltip" title="Score multiplier for color matches">Color Match Score</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="number" name="module_adaptive_filter_score_color" value="{{ module_adaptive_filter_score_color }}" placeholder="5" id="input-score-color" class="form-control" min="0" step="1" />
+              <div class="help-block">Score for color matches. Default: 5</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-score-gender">
+              <span data-toggle="tooltip" title="Score multiplier for gender matches">Gender Match Score</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="number" name="module_adaptive_filter_score_gender" value="{{ module_adaptive_filter_score_gender }}" placeholder="2" id="input-score-gender" class="form-control" min="0" step="1" />
+              <div class="help-block">Score for gender matches. Default: 2</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-score-sport">
+              <span data-toggle="tooltip" title="Score multiplier for sport matches">Sport Match Score</span>
+            </label>
+            <div class="col-sm-10">
+              <input type="number" name="module_adaptive_filter_score_sport" value="{{ module_adaptive_filter_score_sport }}" placeholder="1" id="input-score-sport" class="form-control" min="0" step="1" />
+              <div class="help-block">Score for sport matches. Default: 1</div>
+            </div>
+          </div>
+
+          <hr>
+          <h4>Journal3 Filter Configuration</h4>
+          <p class="help-block">Select which product options and attributes to track when users click Journal3 filters.</p>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-size-options">
+              <span data-toggle="tooltip" title="Select product options that represent size (e.g., Размер обуви унисекс, Размер одежды)">Size Options</span>
+            </label>
+            <div class="col-sm-10">
+              <select name="module_adaptive_filter_size_option_ids[]" id="input-size-options" class="form-control" multiple size="10">
+                {% set selected_size_options = module_adaptive_filter_size_option_ids|split(',') %}
+                {% for option in available_options %}
+                <option value="{{ option.option_id }}" {% if option.option_id in selected_size_options %}selected="selected"{% endif %}>
+                  {{ option.name }} (ID: {{ option.option_id }})
+                </option>
+                {% endfor %}
+              </select>
+              <div class="help-block">Hold Ctrl (Cmd on Mac) to select multiple options. These will be tracked when users click size filters.</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-color-attributes">
+              <span data-toggle="tooltip" title="Select product attributes that represent color">Color Attributes</span>
+            </label>
+            <div class="col-sm-10">
+              <select name="module_adaptive_filter_color_attribute_ids[]" id="input-color-attributes" class="form-control" multiple size="10">
+                {% set selected_color_attributes = module_adaptive_filter_color_attribute_ids|split(',') %}
+                {% for attribute in available_attributes %}
+                <option value="{{ attribute.attribute_id }}" {% if attribute.attribute_id in selected_color_attributes %}selected="selected"{% endif %}>
+                  {{ attribute.name }} ({{ attribute.group_name }}) - ID: {{ attribute.attribute_id }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="help-block">Hold Ctrl (Cmd on Mac) to select multiple attributes. These will be tracked when users click color filters.</div>
+            </div>
+          </div>
+
+          <hr>
+          <h4>Gender Detection (Category-based)</h4>
+          <p class="help-block">Map categories to gender. Products in multiple gender categories (e.g., Men, Women, Children) are considered universal/unisex.</p>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label">Men's Categories</label>
+            <div class="col-sm-10">
+              <input type="text" name="module_adaptive_filter_gender_men_categories" value="{{ module_adaptive_filter_gender_men_categories }}" placeholder="61,62,63" class="form-control" />
+              <div class="help-block">Comma-separated category IDs for men's products (e.g., "61,62,63")</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label">Women's Categories</label>
+            <div class="col-sm-10">
+              <input type="text" name="module_adaptive_filter_gender_women_categories" value="{{ module_adaptive_filter_gender_women_categories }}" placeholder="64,65,66" class="form-control" />
+              <div class="help-block">Comma-separated category IDs for women's products (e.g., "64,65,66")</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="col-sm-2 control-label">Children's Categories</label>
+            <div class="col-sm-10">
+              <input type="text" name="module_adaptive_filter_gender_children_categories" value="{{ module_adaptive_filter_gender_children_categories }}" placeholder="67,68,69" class="form-control" />
+              <div class="help-block">Comma-separated category IDs for children's products (e.g., "67,68,69")</div>
+            </div>
+          </div>
+
+          <hr>
+          <h4>Sport Category Mapping</h4>
+          <p class="help-block">Map categories to specific sports. When users browse these categories, the system will learn their sport preferences.</p>
+
+          <div class="form-group">
+            <div class="col-sm-12">
+              <div class="well">
+                <h5>Add Sport Mapping</h5>
+                <div class="row">
+                  <div class="col-sm-5">
+                    <select id="sport-category" class="form-control">
+                      <option value="">-- Select Category --</option>
+                      {% for category in available_categories %}
+                      <option value="{{ category.category_id }}">{{ category.name }} (ID: {{ category.category_id }})</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-sm-4">
+                    <input type="text" id="sport-name" class="form-control" placeholder="Sport name (e.g., Badminton, Football)" />
+                  </div>
+                  <div class="col-sm-2">
+                    <input type="number" id="sport-weight" class="form-control" placeholder="Weight" value="1.0" step="0.1" min="0" max="10" />
+                  </div>
+                  <div class="col-sm-1">
+                    <button type="button" id="add-sport-mapping" class="btn btn-success"><i class="fa fa-plus"></i></button>
+                  </div>
+                </div>
+              </div>
+
+              <table class="table table-striped table-bordered" id="sport-mappings-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Sport</th>
+                    <th>Weight</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if sport_mappings %}
+                    {% for mapping in sport_mappings %}
+                    <tr data-category-id="{{ mapping.category_id }}">
+                      <td>{{ mapping.category_name }} (ID: {{ mapping.category_id }})</td>
+                      <td>{{ mapping.sport }}</td>
+                      <td>{{ mapping.weight }}</td>
+                      <td><button type="button" class="btn btn-danger btn-sm delete-sport-mapping" data-category-id="{{ mapping.category_id }}"><i class="fa fa-trash"></i></button></td>
+                    </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr id="no-mappings">
+                      <td colspan="4" class="text-center">No sport mappings configured yet</td>
+                    </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <hr>
+          <h4>Smart Interleaving - Category Sales Mix</h4>
+          <p class="help-block">Configure product mix percentages based on actual sales data. This determines how products from different subcategories are interleaved in parent category views.</p>
+
+          <div class="form-group">
+            <div class="col-sm-12">
+              <div class="well">
+                <h5>Calculate Sales Mix</h5>
+                <div class="row">
+                  <div class="col-sm-3">
+                    <label for="sales-mix-days">Analyze last N days:</label>
+                    <input type="number" id="sales-mix-days" class="form-control" value="90" min="1" max="365" />
+                  </div>
+                  <div class="col-sm-3">
+                    <label>&nbsp;</label>
+                    <button type="button" id="calculate-sales-mix" class="btn btn-primary btn-block"><i class="fa fa-calculator"></i> Calculate Sales Mix</button>
+                  </div>
+                  <div class="col-sm-3">
+                    <label>&nbsp;</label>
+                    <button type="button" id="save-all-changes" class="btn btn-success btn-block" style="display:none;"><i class="fa fa-save"></i> Save All Changes</button>
+                  </div>
+                  <div class="col-sm-3">
+                    <div id="sales-mix-status" class="alert" style="display:none; margin-top: 25px;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <table class="table table-striped table-bordered" id="sales-mix-table">
+                <thead>
+                  <tr>
+                    <th>Parent Category</th>
+                    <th>Subcategory</th>
+                    <th>Calculated %</th>
+                    <th>Active %</th>
+                    <th>Revenue</th>
+                    <th>Quantity</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if sales_mix %}
+                    {% set current_parent_id = 0 %}
+                    {% for mix in sales_mix %}
+                    <tr data-parent-id="{{ mix.parent_category_id }}" data-subcat-id="{{ mix.subcategory_id }}">
+                      {% if current_parent_id != mix.parent_category_id %}
+                        <td style="background: #f5f5f5; font-weight: bold;">{{ mix.parent_name }} (ID: {{ mix.parent_category_id }})</td>
+                        {% set current_parent_id = mix.parent_category_id %}
+                      {% else %}
+                        <td></td>
+                      {% endif %}
+                      <td>{{ mix.subcategory_name }} (ID: {{ mix.subcategory_id }})</td>
+                      <td class="calculated-pct">
+                        <span class="text-muted">{{ mix.calculated_percentage|number_format(2) }}%</span>
+                      </td>
+                      <td class="active-pct">
+                        {% if mix.is_manual == 1 %}
+                          <input type="number" class="form-control input-sm percentage-input" value="{{ mix.sales_percentage|number_format(2) }}" min="0" max="100" step="0.01" style="width: 80px; display: inline-block;">
+                          <span class="label label-warning">Manual</span>
+                        {% else %}
+                          <strong>{{ mix.sales_percentage|number_format(2) }}%</strong>
+                        {% endif %}
+                      </td>
+                      <td class="revenue">{{ mix.total_revenue|number_format(2) }}</td>
+                      <td class="quantity">{{ mix.total_quantity }}</td>
+                      <td>
+                        {% if mix.is_manual == 1 %}
+                          <button class="btn btn-xs btn-default reset-percentage" title="Reset to Calculated"><i class="fa fa-undo"></i></button>
+                        {% else %}
+                          <button class="btn btn-xs btn-primary edit-percentage" title="Edit"><i class="fa fa-edit"></i></button>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr id="no-sales-mix">
+                      <td colspan="7" class="text-center">No sales mix data yet. Click "Calculate Sales Mix" to generate.</td>
+                    </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+
+              <div class="help-block">
+                <strong>How it works:</strong><br>
+                - <strong>Revenue-Based:</strong> Percentages calculated from total sales revenue (not just quantity)<br>
+                - <strong>Calculated %:</strong> Automatic percentage based on sales data<br>
+                - <strong>Active %:</strong> Current percentage used for interleaving (calculated or manual)<br>
+                - <strong>Editable:</strong> Click Edit to override automatic calculations for promotions or strategy<br>
+                - <strong>12-Product Pattern:</strong> Products interleaved based on these percentages<br>
+                - <strong>Example:</strong> If Men's Shoes = 60%, Apparel = 30%, Socks = 10% → first 12 products show 7 shoes, 4 apparel, 1 sock<br>
+                - <strong>Manual Override:</strong> Use to promote new product lines or seasonal changes
+              </div>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+// Sport Mapping Management
+$(document).ready(function() {
+  // Add sport mapping
+  $('#add-sport-mapping').on('click', function() {
+    var categoryId = $('#sport-category').val();
+    var sportName = $('#sport-name').val().trim();
+    var weight = $('#sport-weight').val();
+
+    if (!categoryId || !sportName) {
+      alert('Please select a category and enter a sport name');
+      return;
+    }
+
+    $.ajax({
+      url: 'index.php?route=extension/module/adaptive_filter/addSportMapping&user_token={{ user_token }}',
+      type: 'post',
+      data: {
+        category_id: categoryId,
+        sport: sportName,
+        weight: weight
+      },
+      dataType: 'json',
+      success: function(json) {
+        if (json.error) {
+          alert(json.error);
+        } else {
+          // Refresh table
+          refreshSportMappingsTable(json.mappings);
+          // Clear inputs
+          $('#sport-category').val('');
+          $('#sport-name').val('');
+          $('#sport-weight').val('1.0');
+        }
+      },
+      error: function(xhr, ajaxOptions, thrownError) {
+        alert('Error: ' + thrownError);
+      }
+    });
+  });
+
+  // Delete sport mapping
+  $(document).on('click', '.delete-sport-mapping', function() {
+    if (!confirm('Are you sure you want to delete this sport mapping?')) {
+      return;
+    }
+
+    var categoryId = $(this).data('category-id');
+
+    $.ajax({
+      url: 'index.php?route=extension/module/adaptive_filter/deleteSportMapping&user_token={{ user_token }}',
+      type: 'post',
+      data: {
+        category_id: categoryId
+      },
+      dataType: 'json',
+      success: function(json) {
+        if (json.error) {
+          alert(json.error);
+        } else {
+          // Refresh table
+          refreshSportMappingsTable(json.mappings);
+        }
+      },
+      error: function(xhr, ajaxOptions, thrownError) {
+        alert('Error: ' + thrownError);
+      }
+    });
+  });
+
+  function refreshSportMappingsTable(mappings) {
+    var tbody = $('#sport-mappings-table tbody');
+    tbody.empty();
+
+    if (mappings && mappings.length > 0) {
+      mappings.forEach(function(mapping) {
+        var row = '<tr data-category-id="' + mapping.category_id + '">' +
+          '<td>' + mapping.category_name + ' (ID: ' + mapping.category_id + ')</td>' +
+          '<td>' + mapping.sport + '</td>' +
+          '<td>' + mapping.weight + '</td>' +
+          '<td><button type="button" class="btn btn-danger btn-sm delete-sport-mapping" data-category-id="' + mapping.category_id + '"><i class="fa fa-trash"></i></button></td>' +
+          '</tr>';
+        tbody.append(row);
+      });
+    } else {
+      tbody.append('<tr id="no-mappings"><td colspan="4" class="text-center">No sport mappings configured yet</td></tr>');
+    }
+  }
+
+  // Sales Mix Calculation
+  $('#calculate-sales-mix').on('click', function() {
+    var days = $('#sales-mix-days').val();
+    var $btn = $(this);
+    var $status = $('#sales-mix-status');
+
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Calculating...');
+    $status.hide();
+
+    $.ajax({
+      url: 'index.php?route=extension/module/adaptive_filter/calculateSalesMix&user_token={{ user_token }}',
+      type: 'post',
+      data: {
+        days: days
+      },
+      dataType: 'json',
+      success: function(json) {
+        $btn.prop('disabled', false).html('<i class="fa fa-calculator"></i> Calculate Sales Mix');
+
+        if (json.error) {
+          $status.removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Error:</strong> ' + json.error)
+            .show();
+        } else {
+          // Show success message
+          var message = '<strong>Success!</strong> Processed ' + json.results.categories_processed + ' parent categories.';
+          if (json.results.errors && json.results.errors.length > 0) {
+            message += '<br><strong>Errors:</strong><br>' + json.results.errors.join('<br>');
+          }
+
+          $status.removeClass('alert-danger').addClass('alert-success')
+            .html(message)
+            .show();
+
+          // Refresh the table
+          refreshSalesMixTable(json.sales_mix);
+        }
+      },
+      error: function(xhr, ajaxOptions, thrownError) {
+        $btn.prop('disabled', false).html('<i class="fa fa-calculator"></i> Calculate Sales Mix');
+        $status.removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Error:</strong> ' + thrownError)
+          .show();
+      }
+    });
+  });
+
+  function refreshSalesMixTable(salesMix) {
+    var tbody = $('#sales-mix-table tbody');
+    tbody.empty();
+
+    if (salesMix && salesMix.length > 0) {
+      var currentParentId = 0;
+      salesMix.forEach(function(mix) {
+        var parentCell = '';
+        if (currentParentId !== mix.parent_category_id) {
+          parentCell = '<td style="background: #f5f5f5; font-weight: bold;">' + mix.parent_name + ' (ID: ' + mix.parent_category_id + ')</td>';
+          currentParentId = mix.parent_category_id;
+        } else {
+          parentCell = '<td></td>';
+        }
+
+        var activePctCell = '';
+        var actionsCell = '';
+
+        if (mix.is_manual == 1) {
+          activePctCell = '<input type="number" class="form-control input-sm percentage-input" value="' + parseFloat(mix.sales_percentage).toFixed(2) + '" min="0" max="100" step="0.01" style="width: 80px; display: inline-block;"> ' +
+            '<span class="label label-warning">Manual</span>';
+          actionsCell = '<button class="btn btn-xs btn-default reset-percentage" title="Reset to Calculated"><i class="fa fa-undo"></i></button>';
+        } else {
+          activePctCell = '<strong>' + parseFloat(mix.sales_percentage).toFixed(2) + '%</strong>';
+          actionsCell = '<button class="btn btn-xs btn-primary edit-percentage" title="Edit"><i class="fa fa-edit"></i></button>';
+        }
+
+        var row = '<tr data-parent-id="' + mix.parent_category_id + '" data-subcat-id="' + mix.subcategory_id + '">' +
+          parentCell +
+          '<td>' + mix.subcategory_name + ' (ID: ' + mix.subcategory_id + ')</td>' +
+          '<td class="calculated-pct"><span class="text-muted">' + parseFloat(mix.calculated_percentage).toFixed(2) + '%</span></td>' +
+          '<td class="active-pct">' + activePctCell + '</td>' +
+          '<td class="revenue">' + parseFloat(mix.total_revenue).toFixed(2) + '</td>' +
+          '<td class="quantity">' + mix.total_quantity + '</td>' +
+          '<td>' + actionsCell + '</td>' +
+          '</tr>';
+        tbody.append(row);
+      });
+    } else {
+      tbody.append('<tr id="no-sales-mix"><td colspan="7" class="text-center">No sales mix data yet. Click "Calculate Sales Mix" to generate.</td></tr>');
+    }
+  }
+
+  // Edit percentage button
+  $(document).on('click', '.edit-percentage', function(e) {
+    e.preventDefault(); // Prevent any form submission
+    e.stopPropagation();
+
+    var $row = $(this).closest('tr');
+    var currentPct = $row.find('.active-pct strong').text().replace('%', '');
+
+    // Replace with input
+    $row.find('.active-pct').html(
+      '<input type="number" class="form-control input-sm percentage-input" value="' + currentPct + '" min="0" max="100" step="0.01" style="width: 80px; display: inline-block;"> ' +
+      '<span class="label label-warning">Editing</span>'
+    );
+
+    // Replace actions - remove individual save, keep reset
+    $(this).closest('td').html(
+      '<button class="btn btn-xs btn-default cancel-edit" title="Cancel"><i class="fa fa-times"></i></button> ' +
+      '<button class="btn btn-xs btn-default reset-percentage" title="Reset to Calculated"><i class="fa fa-undo"></i></button>'
+    );
+
+    // Focus on the input field
+    $row.find('.percentage-input').focus().select();
+
+    // Update "Save All" button visibility
+    updateSaveAllButton();
+
+    return false;
+  });
+
+  // Cancel edit button
+  $(document).on('click', '.cancel-edit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    var $row = $(this).closest('tr');
+
+    // Restore original display
+    var originalPct = $row.find('.calculated-pct span').text().replace('%', '');
+    $row.find('.active-pct').html('<strong>' + originalPct + '%</strong>');
+    $row.find('td:last').html('<button class="btn btn-xs btn-primary edit-percentage" title="Edit"><i class="fa fa-edit"></i></button>');
+
+    // Update "Save All" button visibility
+    updateSaveAllButton();
+
+    return false;
+  });
+
+  // Save All Changes button
+  $('#save-all-changes').on('click', function(e) {
+    e.preventDefault();
+
+    // Find all rows with input fields (both "Editing" and "Manual")
+    var $rowsWithInputs = $('#sales-mix-table tbody tr').filter(function() {
+      return $(this).find('.percentage-input').length > 0;
+    });
+
+    if ($rowsWithInputs.length === 0) {
+      alert('No changes to save');
+      return;
+    }
+
+    var changes = [];
+    $rowsWithInputs.each(function() {
+      var $row = $(this);
+      changes.push({
+        parent_category_id: $row.data('parent-id'),
+        subcategory_id: $row.data('subcat-id'),
+        percentage: $row.find('.percentage-input').val(),
+        $row: $row
+      });
+    });
+
+    console.log('Saving ' + changes.length + ' changes:', changes);
+
+    // Disable button during save
+    var $btn = $(this);
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+
+    // Save all changes sequentially
+    var savedCount = 0;
+    var errorCount = 0;
+    var errors = [];
+
+    function saveNext(index) {
+      if (index >= changes.length) {
+        // All done
+        $btn.prop('disabled', false).html('<i class="fa fa-save"></i> Save All Changes');
+
+        if (errorCount === 0) {
+          alert('Successfully saved ' + savedCount + ' changes!');
+          // Refresh the entire table to get updated data
+          $.ajax({
+            url: 'index.php?route=extension/module/adaptive_filter/getSalesMixData&user_token={{ user_token }}',
+            type: 'get',
+            dataType: 'json',
+            success: function(json) {
+              refreshSalesMixTable(json.sales_mix);
+            }
+          });
+        } else {
+          alert('Saved ' + savedCount + ' changes.\n\nErrors: ' + errorCount + '\n\n' + errors.join('\n'));
+        }
+        return;
+      }
+
+      var change = changes[index];
+
+      $.ajax({
+        url: 'index.php?route=extension/module/adaptive_filter/updateManualPercentage&user_token={{ user_token }}',
+        type: 'post',
+        data: {
+          parent_category_id: change.parent_category_id,
+          subcategory_id: change.subcategory_id,
+          percentage: change.percentage
+        },
+        dataType: 'json',
+        success: function(json) {
+          if (json.error) {
+            errorCount++;
+            errors.push('Category ' + change.subcategory_id + ': ' + json.error);
+            console.error('Error saving row:', json.error);
+          } else if (json.success) {
+            savedCount++;
+            // Show brief success indicator
+            change.$row.css('background-color', '#dff0d8');
+            setTimeout(function() {
+              change.$row.css('background-color', '');
+            }, 1500);
+          }
+          // Continue to next
+          saveNext(index + 1);
+        },
+        error: function(xhr, ajaxOptions, thrownError) {
+          errorCount++;
+          errors.push('Category ' + change.subcategory_id + ': ' + thrownError);
+          console.error('AJAX Error:', xhr, thrownError);
+          // Continue to next despite error
+          saveNext(index + 1);
+        }
+      });
+    }
+
+    // Start saving from first change
+    saveNext(0);
+  });
+
+  // Update Save All button visibility
+  function updateSaveAllButton() {
+    // Count all rows with input fields (both "Editing" and "Manual")
+    var $rowsWithInputs = $('#sales-mix-table tbody tr').filter(function() {
+      return $(this).find('.percentage-input').length > 0;
+    });
+
+    if ($rowsWithInputs.length > 0) {
+      $('#save-all-changes').show().text('Save All Changes (' + $rowsWithInputs.length + ')').prepend('<i class="fa fa-save"></i> ');
+    } else {
+      $('#save-all-changes').hide();
+    }
+  }
+
+  // Reset percentage button
+  $(document).on('click', '.reset-percentage', function(e) {
+    e.preventDefault(); // Prevent any form submission
+    e.stopPropagation();
+
+    if (!confirm('Reset to calculated percentage?')) {
+      return false;
+    }
+
+    var $row = $(this).closest('tr');
+    var parentId = $row.data('parent-id');
+    var subcatId = $row.data('subcat-id');
+
+    console.log('Resetting to calculated:', {
+      parent_category_id: parentId,
+      subcategory_id: subcatId
+    });
+
+    // Disable button during reset
+    var $btn = $(this);
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+    $.ajax({
+      url: 'index.php?route=extension/module/adaptive_filter/resetToCalculated&user_token={{ user_token }}',
+      type: 'post',
+      data: {
+        parent_category_id: parentId,
+        subcategory_id: subcatId
+      },
+      dataType: 'json',
+      success: function(json) {
+        console.log('Response:', json);
+        $btn.prop('disabled', false).html('<i class="fa fa-undo"></i>');
+
+        if (json.error) {
+          alert('Error: ' + json.error);
+        } else if (json.success) {
+          // Update only this row instead of refreshing entire table
+          updateSingleRow($row, json.sales_mix, parentId, subcatId);
+          // Update "Save All" button visibility
+          updateSaveAllButton();
+        } else {
+          alert('Unexpected response format');
+          console.error('Unexpected JSON:', json);
+        }
+      },
+      error: function(xhr, ajaxOptions, thrownError) {
+        console.error('AJAX Error:', xhr, thrownError);
+        console.error('Response Text:', xhr.responseText);
+        $btn.prop('disabled', false).html('<i class="fa fa-undo"></i>');
+        alert('Error: ' + thrownError + '\n\nCheck browser console for details.\n\nStatus: ' + xhr.status + '\nResponse: ' + xhr.responseText.substring(0, 200));
+      }
+    });
+
+    return false; // Extra prevention
+  });
+
+  // Update a single row after save/reset (preserves other edited rows)
+  function updateSingleRow($row, salesMix, parentId, subcatId) {
+    // Find the updated data for this specific row
+    var updatedMix = null;
+    for (var i = 0; i < salesMix.length; i++) {
+      if (salesMix[i].parent_category_id == parentId && salesMix[i].subcategory_id == subcatId) {
+        updatedMix = salesMix[i];
+        break;
+      }
+    }
+
+    if (!updatedMix) {
+      console.error('Could not find updated data for row');
+      return;
+    }
+
+    // Update the row with new data
+    var activePctCell = '';
+    var actionsCell = '';
+
+    if (updatedMix.is_manual == 1) {
+      activePctCell = '<input type="number" class="form-control input-sm percentage-input" value="' + parseFloat(updatedMix.sales_percentage).toFixed(2) + '" min="0" max="100" step="0.01" style="width: 80px; display: inline-block;"> ' +
+        '<span class="label label-warning">Manual</span>';
+      actionsCell = '<button class="btn btn-xs btn-default reset-percentage" title="Reset to Calculated"><i class="fa fa-undo"></i></button>';
+    } else {
+      activePctCell = '<strong>' + parseFloat(updatedMix.sales_percentage).toFixed(2) + '%</strong>';
+      actionsCell = '<button class="btn btn-xs btn-primary edit-percentage" title="Edit"><i class="fa fa-edit"></i></button>';
+    }
+
+    // Update cells
+    $row.find('.calculated-pct').html('<span class="text-muted">' + parseFloat(updatedMix.calculated_percentage).toFixed(2) + '%</span>');
+    $row.find('.active-pct').html(activePctCell);
+    $row.find('.revenue').text(parseFloat(updatedMix.total_revenue).toFixed(2));
+    $row.find('.quantity').text(updatedMix.total_quantity);
+    $row.find('td:last').html(actionsCell);
+
+    // Show brief success indicator
+    $row.css('background-color', '#dff0d8');
+    setTimeout(function() {
+      $row.css('background-color', '');
+    }, 1500);
+  }
+
+  // Initialize Save All button visibility on page load
+  updateSaveAllButton();
+});
+</script>
+
+{{ footer }}

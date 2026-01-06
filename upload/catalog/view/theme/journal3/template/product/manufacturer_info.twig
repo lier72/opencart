@@ -26,6 +26,7 @@
       {{ content_top }}
       <div class="main-products-wrapper">
       {% if products %}
+      {{ adaptive_filter_preferences }}
       {% if journal3.get('sortBarStatus') %}
       <div class="products-filter">
         <div class="grid-list">
@@ -78,4 +79,5 @@
       {{ content_bottom }}</div>
     {{ column_right }}</div>
 </div>
+{{ adaptive_filter_assets }}
 {{ footer }}

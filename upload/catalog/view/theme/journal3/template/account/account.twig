@@ -34,6 +34,9 @@
         <li class="edit-pass"><a href="{{ password }}">{{ text_password }}</a></li>
         <li class="edit-address"><a href="{{ address }}">{{ text_address }}</a></li>
         <li class="edit-wishlist"><a href="{{ wishlist }}">{{ text_wishlist }}</a></li>
+        {% if adaptive_preferences %}
+        <li class="edit-preferences"><a href="{{ adaptive_preferences }}">{{ text_adaptive_preferences }}</a></li>
+        {% endif %}
       </ul>
       </div>
       {% if credit_cards %}

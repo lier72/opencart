@@ -71,6 +71,19 @@ class ControllerProductManufacturer extends Controller {
 
 		if (isset($this->request->get['sort'])) {
 			$sort = $this->request->get['sort'];
+
+			// Handle "Enable Smart Sorting" action
+			if ($sort === 'enable-personalized') {
+				// Load the adaptive filter model
+				$this->load->model('extension/module/adaptive_filter');
+
+				// Enable smart sorting for this user
+				$this->model_extension_module_adaptive_filter->enableSmartSorting();
+
+				// Redirect to personalized sort
+				$redirect_url = str_replace('sort=enable-personalized', 'sort=personalized', $this->request->server['REQUEST_URI']);
+				$this->response->redirect($redirect_url);
+			}
 		} else {
 			$sort = 'p.sort_order';
 		}
@@ -153,6 +166,13 @@ class ControllerProductManufacturer extends Controller {
 
 			$results = $this->model_catalog_product->getProducts($filter_data);
 
+			// Apply personalized sorting if requested
+			if ($sort == 'personalized' && $this->config->get('module_adaptive_filter_status')) {
+				$this->load->model('extension/module/adaptive_filter');
+				// Sort the results by personalization score
+				$results = $this->model_extension_module_adaptive_filter->sortProductsByPersonalization($results);
+			}
+
 			foreach ($results as $result) {
 				if ($result['image']) {
 					$image = $this->model_tool_image->resize($result['image'], $this->config->get('theme_' . $this->config->get('config_theme') . '_image_product_width'), $this->config->get('theme_' . $this->config->get('config_theme') . '_image_product_height'));
@@ -205,6 +225,30 @@ class ControllerProductManufacturer extends Controller {
 			}
 
 			$data['sorts'] = array();
+
+			// Add Smart Sorting option if adaptive filter is enabled
+			if ($this->config->get('module_adaptive_filter_status')) {
+				$this->load->language('extension/module/adaptive_filter');
+				$this->load->model('extension/module/adaptive_filter');
+
+				$is_enabled = $this->model_extension_module_adaptive_filter->isSmartSortingEnabled();
+
+				if ($is_enabled) {
+					// Smart Sorting is enabled - show regular option
+					$data['sorts'][] = array(
+						'text'  => $this->language->get('text_sort_personalized'),
+						'value' => 'personalized-DESC',
+						'href'  => $this->url->link('product/manufacturer/info', 'manufacturer_id=' . $this->request->get['manufacturer_id'] . '&sort=personalized&order=DESC' . $url)
+					);
+				} else {
+					// Smart Sorting is disabled - show "Enable Smart Sorting" (handled by JavaScript)
+					$data['sorts'][] = array(
+						'text'  => $this->language->get('text_sort_enable_personalized'),
+						'value' => 'enable-personalized-DESC',
+						'href'  => $this->url->link('product/manufacturer/info', 'manufacturer_id=' . $this->request->get['manufacturer_id'] . '&sort=enable-personalized&order=DESC' . $url)
+					);
+				}
+			}
 
 			$data['sorts'][] = array(
 				'text'  => $this->language->get('text_default'),
@@ -330,6 +374,15 @@ class ControllerProductManufacturer extends Controller {
 			$data['limit'] = $limit;
 
 			$data['continue'] = $this->url->link('common/home');
+
+			// Render adaptive filter widgets
+			if ($this->config->get('module_adaptive_filter_status')) {
+				$data['adaptive_filter_preferences'] = $this->load->controller('extension/module/adaptive_filter/renderPreferencesWidget');
+				$data['adaptive_filter_assets'] = $this->load->controller('extension/module/adaptive_filter/renderAssets');
+			} else {
+				$data['adaptive_filter_preferences'] = '';
+				$data['adaptive_filter_assets'] = '';
+			}
 
 			$data['column_left'] = $this->load->controller('common/column_left');
 			$data['column_right'] = $this->load->controller('common/column_right');

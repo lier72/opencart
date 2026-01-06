@@ -57,7 +57,14 @@ class ControllerCommonFooter extends Controller {
 		}
 
 		$data['scripts'] = $this->document->getScripts('footer');
-		
+
+		// Render adaptive filter mobile button (body-level element)
+		if ($this->config->get('module_adaptive_filter_status')) {
+			$data['adaptive_filter_mobile_button'] = $this->load->controller('extension/module/adaptive_filter/renderMobileButton');
+		} else {
+			$data['adaptive_filter_mobile_button'] = '';
+		}
+
 		return $this->load->view('common/footer', $data);
 	}
 }
