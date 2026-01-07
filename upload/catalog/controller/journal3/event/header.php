@@ -144,7 +144,10 @@ class ControllerJournal3EventHeader extends Controller {
 			$args['styles'] = $this->journal3_assets->styles($args['styles']);
 
 			foreach ($args['styles'] as $style) {
-				$this->journal3_document->addLink($style['href'], 'preload', ['as' => 'style']);
+				// Disabled CSS preload to prevent "preload not used" warnings
+				// Stylesheets still load normally through regular <link> tags in the head
+				// This has negligible performance impact since they're already in the head
+				// $this->journal3_document->addLink($style['href'], 'preload', ['as' => 'style']);
 
 				if (!JOURNAL3_STATIC_URL && $this->journal3->get('performancePushCSS')) {
 					$this->journal3_response->addPushAsset($style['href'], 'rel=preload; as=style');
