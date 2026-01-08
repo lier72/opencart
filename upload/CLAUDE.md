@@ -40,6 +40,13 @@ Your responses must follow this exact structure given below. Make sure to always
 - Continue until natural resolution
 </contemplator>
 
+## Documenting the process
+[For every method/function developed]
+- write a thorough explanation of it function 
+- write the scope it should be used (for example this method shoudl be called to get the current balance of the reward points from the bonus_management conroller)
+- Never write a separate documnetation file unless you were asked explicitely to do so
+
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
