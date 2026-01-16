@@ -521,10 +521,12 @@ class ControllerJournal3Filter extends ModuleController {
 
 		// Load adaptive filter model
 		$this->load->model('extension/module/adaptive_filter');
+		$debug_mode = (bool)($this->config->get('module_adaptive_filter_debug_mode') ?? false);
 
 		$preferences = array();
-
+		if ($debug_mode) {
 		$this->log->write('[Adaptive Filter - Journal3] Checking for filter selections in URL: ' . http_build_query($this->request->get));
+		}
 
 		// Get configured size option IDs (comma-separated)
 		$size_option_ids = $this->config->get('module_adaptive_filter_size_option_ids') ?? '';
@@ -579,10 +581,14 @@ class ControllerJournal3Filter extends ModuleController {
 
 		// If we captured any preferences, record them with weight 4 (explicit filter selection)
 		if (!empty($preferences)) {
-			$this->log->write('[Adaptive Filter - Journal3] Captured preferences: ' . json_encode($preferences));
+			if ($debug_mode) {
+				$this->log->write('[Adaptive Filter - Journal3] Captured preferences: ' . json_encode($preferences));
+			}
 			$this->model_extension_module_adaptive_filter->recordSignal('filter_selection', $preferences, 4);
-			$this->log->write('[Adaptive Filter - Journal3] Preferences recorded successfully');
-		} else {
+			if ($debug_mode) {
+				$this->log->write('[Adaptive Filter - Journal3] Preferences recorded successfully');
+			}
+		} elseif ($debug_mode) {
 			$this->log->write('[Adaptive Filter - Journal3] No filter selections found in URL parameters');
 		}
 	}

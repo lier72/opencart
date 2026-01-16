@@ -112,6 +112,7 @@ class ControllerJournal3Price extends Controller {
 			} else {
 				$data['retail_price'] = false;
 			}
+			$this->logger->log('AJAX Price Debug: config_customer_group_id=' . $this->config->get('config_customer_group_id') . ', customer_default_group_id=' . $this->config->get('customer_default_group_id') . ', retail_price=' . $product_info['retail_price'] . ', special=' . $product_info['special']);
 			// end of retail price modifications
 
 			// points

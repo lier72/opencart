@@ -912,7 +912,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		$stuck_timeout = 3600; // 1 hour - payment stuck in processing
 
 		// Get the list of all payments
-		$result = $this->model_extension_payment_alfabank->get_alfabank_current_payment_list();
+		$result = $this->model_extension_payment_alfabank->get_alfabank_current_payment_list($order_in_payment_states);
 
 		if ($debug && count($result) > 0) {
 			$this->log->write(sprintf("Alfabank cron: Processing %d payment records", count($result)));

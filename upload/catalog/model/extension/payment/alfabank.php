@@ -135,6 +135,7 @@ class ModelExtensionPaymentAlfabank extends Model
                     $response['actionCode'],
                     $response['actionCodeDescription']
                 ));
+            $response['orderId'] = $orderId;
         } else {
             if ($this->config->get('payment_alfabank_logging'))
                 $this->log->write(sprintf(
@@ -156,6 +157,9 @@ class ModelExtensionPaymentAlfabank extends Model
 
     public function update_alfabank_order($data)
     {
+        // if ($this->config->get('payment_alfabank_logging'))
+        //     $this->log->write("Alfabank update_alfabank_order: was called with data: " . print_r($data, true));
+
         // Extract payment way and payment system if available
         $payment_way = isset($data['paymentWay']) ? $data['paymentWay'] : null;
         $payment_system = isset($data['cardAuthInfo']['paymentSystem']) ? $data['cardAuthInfo']['paymentSystem'] : null;
@@ -277,6 +281,9 @@ class ModelExtensionPaymentAlfabank extends Model
         return (bool)$status['exists_flag'];
     }
 
+    /**
+     * Init Library
+     */
     private function initializeAlfabank()
     {
         $this->library('alfabank/Alfabank');
@@ -284,8 +291,24 @@ class ModelExtensionPaymentAlfabank extends Model
         $this->alfabank->token = $this->config->get('payment_alfabank_merchantToken');
         $this->alfabank->login = $this->config->get('payment_alfabank_merchantLogin');
         $this->alfabank->password = htmlspecialchars_decode($this->config->get('payment_alfabank_merchantPassword'));
+        $this->alfabank->stage = $this->config->get('payment_alfabank_stage');
         $this->alfabank->mode = $this->config->get('payment_alfabank_mode');
         $this->alfabank->logging = $this->config->get('payment_alfabank_logging');
+        $this->alfabank->taxSystem = $this->config->get('payment_alfabank_taxSystem');
+        $this->alfabank->taxType = $this->config->get('payment_alfabank_taxType');
+        $this->alfabank->send_cart = $this->config->get('payment_alfabank_send_cart');
+        $this->alfabank->versionFfd = $this->config->get('payment_alfabank_versionFfd');
+        $this->alfabank->paymentMethodType = $this->config->get('payment_alfabank_paymentMethodType');
+        $this->alfabank->paymentObjectType = $this->config->get('payment_alfabank_paymentObjectType');
+        $this->alfabank->paymentMethodTypeDelivery = $this->config->get('payment_alfabank_paymentMethodTypeDelivery');
+        if (file_exists(DIR_SYSTEM . "library/cacert.cer") && $this->config->get('payment_alfabank_enable_cacert') == true) {
+            $this->alfabank->enable_cacert = $this->config->get('payment_alfabank_enable_cacert');
+            $this->alfabank->cacert_path = DIR_SYSTEM . "library/cacert.cer";
+        } else {
+            $this->alfabank->enable_cacert = (float)$this->config->get('payment_alfabank_enable_cacert');
+        }
+        $this->alfabank->language = substr($this->language->get('code'), 0, 2);
+        $this->alfabank->backToShopURL = $this->config->get('payment_alfabank_backToShopURL');
     }
 
     private function library($library)

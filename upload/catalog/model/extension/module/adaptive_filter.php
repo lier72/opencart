@@ -17,7 +17,7 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
      * Check if debug mode is enabled via admin settings
      * @return bool
      */
-    private function isDebugMode() {
+    public function isDebugMode() {
         return (bool)$this->config->get('module_adaptive_filter_debug_mode');
     }
 
@@ -700,12 +700,12 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         unset($filter_data_all['sort']); // Remove sort parameter
         unset($filter_data_all['order']); // Remove order parameter
 
-        // Log filter data for debugging
-        $this->log->write('[Adaptive Filter] getPersonalizedProducts called with filter_data: ' . json_encode($filter_data_all));
-        $this->log->write('[Adaptive Filter] URL parameters: ' . http_build_query($this->request->get));
-
-        // DEBUG: Log user preferences
         if ($this->isDebugMode()) {
+           // Log filter data for debugging
+            $this->log->write('[Adaptive Filter] getPersonalizedProducts called with filter_data: ' . json_encode($filter_data_all));
+            $this->log->write('[Adaptive Filter] URL parameters: ' . http_build_query($this->request->get));
+
+            // DEBUG: Log user preferences
             $user_type = $this->customer->isLogged() ? 'user' : 'guest';
             $user_id = $this->customer->isLogged() ? $this->customer->getId() : (isset($this->session->data['guest_hash']) ? $this->session->data['guest_hash'] : 'none');
             $this->log->write('=== USER PREFERENCES DEBUG ===');
@@ -724,10 +724,13 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
                 $journal3_filters[$key] = $value;
             }
         }
-        if (!empty($journal3_filters)) {
-            $this->log->write('[Adaptive Filter] Journal3 filter parameters detected: ' . json_encode($journal3_filters));
-        } else {
-            $this->log->write('[Adaptive Filter] No Journal3 filter parameters in URL');
+        
+        if ($this->isDebugMode()) {
+            if (!empty($journal3_filters)) {
+                $this->log->write('[Adaptive Filter] Journal3 filter parameters detected: ' . json_encode($journal3_filters));
+            } else {
+                $this->log->write('[Adaptive Filter] No Journal3 filter parameters in URL');
+            }
         }
 
         // Check if we need to get special products instead of all products
@@ -739,7 +742,9 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         } else {
             $total_count = $this->model_catalog_product->getTotalProducts($filter_data_all);
         }
-        $this->log->write('[Adaptive Filter] Total products after filtering: ' . $total_count . ($is_special ? ' (specials only)' : ''));
+        if ($this->isDebugMode()) {
+            $this->log->write('[Adaptive Filter] Total products after filtering: ' . $total_count . ($is_special ? ' (specials only)' : ''));
+        }
 
         // Now fetch ALL products with filtering applied
         $filter_data_all['start'] = 0;
@@ -753,8 +758,9 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         $this->request->get['limit'] = $total_count;
         $this->request->get['page'] = 1;
 
-        $this->log->write('[Adaptive Filter] Calling ' . ($is_special ? 'getProductSpecials' : 'getProducts') . ' with filter_data: ' . json_encode($filter_data_all));
-
+        if ($this->isDebugMode()) {
+            $this->log->write('[Adaptive Filter] Calling ' . ($is_special ? 'getProductSpecials' : 'getProducts') . ' with filter_data: ' . json_encode($filter_data_all));
+        }
         // Measure standard get time
         $standard_start = microtime(true);
         if ($is_special) {
@@ -775,8 +781,9 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         } else {
             unset($this->request->get['page']);
         }
-
-        $this->log->write('[Adaptive Filter] getProducts returned ' . count($products) . ' products (expected: ' . $total_count . ')');
+        if ($this->isDebugMode()) {
+            $this->log->write('[Adaptive Filter] getProducts returned ' . count($products) . ' products (expected: ' . $total_count . ')');
+        }
 
         // Separate in-stock and out-of-stock products
         $in_stock_products = array();
@@ -861,23 +868,23 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
 
         // Apply pagination - return the requested slice
         $result = array_slice($final_products, $start, $limit);
+        if($this->isDebugMode()){
+            // Calculate total time and log performance comparison
+            $total_time = microtime(true) - $perf_start;
+            $personalized_overhead = $total_time - $standard_time;
+            $overhead_percent = $standard_time > 0 ? ($personalized_overhead / $standard_time * 100) : 0;
 
-        // Calculate total time and log performance comparison
-        $total_time = microtime(true) - $perf_start;
-        $personalized_overhead = $total_time - $standard_time;
-        $overhead_percent = $standard_time > 0 ? ($personalized_overhead / $standard_time * 100) : 0;
-
-        $this->log->write('=== PERFORMANCE COMPARISON ===');
-        $this->log->write(sprintf('Standard getProducts(): %.4f sec', $standard_time));
-        $this->log->write(sprintf('Personalized scoring: %.4f sec', $scoring_time));
-        $this->log->write(sprintf('Personalized sorting: %.4f sec', $sorting_time));
-        $this->log->write(sprintf('Smart interleaving: %.4f sec', $interleaving_time));
-        $this->log->write(sprintf('Total personalized: %.4f sec', $total_time));
-        $this->log->write(sprintf('Overhead: %.4f sec (+%.1f%%)', $personalized_overhead, $overhead_percent));
-        $this->log->write(sprintf('Total products: %d, In-stock: %d, Out-of-stock: %d, Returned: %d',
-            count($products), count($in_stock_products), count($out_of_stock_products), count($result)));
-        $this->log->write('==============================');
-
+            $this->log->write('=== PERFORMANCE COMPARISON ===');
+            $this->log->write(sprintf('Standard getProducts(): %.4f sec', $standard_time));
+            $this->log->write(sprintf('Personalized scoring: %.4f sec', $scoring_time));
+            $this->log->write(sprintf('Personalized sorting: %.4f sec', $sorting_time));
+            $this->log->write(sprintf('Smart interleaving: %.4f sec', $interleaving_time));
+            $this->log->write(sprintf('Total personalized: %.4f sec', $total_time));
+            $this->log->write(sprintf('Overhead: %.4f sec (+%.1f%%)', $personalized_overhead, $overhead_percent));
+            $this->log->write(sprintf('Total products: %d, In-stock: %d, Out-of-stock: %d, Returned: %d',
+                count($products), count($in_stock_products), count($out_of_stock_products), count($result)));
+            $this->log->write('==============================');
+        }
         // DEBUG: Log top 5 scored products with breakdown
         if ($this->isDebugMode() && !empty($scored_products)) {
             $this->log->write('=== TOP 5 SCORED PRODUCTS ===');
@@ -945,12 +952,12 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
 
         // Score each product
         foreach ($products as &$product) {
-            $score = $this->scoreProductWithBulkAttributes(
+            $result = $this->scoreProductWithBulkAttributes(
                 $product['product_id'],
                 $preferences,
                 $bulk_attributes[$product['product_id']]
             );
-            $product['personalization_score'] = $score;
+            $product['personalization_score'] = $result['score'];
         }
 
         // Sort by score (highest first), then by default sort order
@@ -1791,6 +1798,11 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
      */
     public function isSmartSortingEnabled() {
         $user = $this->getUserIdentifier();
+
+        // Return default for bots
+        if ($user === null) {
+            return true;
+        }
 
         if ($user['type'] == 'user') {
             $query = $this->db->query("
