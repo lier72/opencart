@@ -25,16 +25,26 @@ $config->load('default');
 $config->load('catalog');
 $registry->set('config', $config);
 
+// Database
+$db = new DB(DB_DRIVER, DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_DATABASE, DB_PORT);
+$registry->set('db', $db);
+
+// Settings
+$query = $db->query("SELECT * FROM `" . DB_PREFIX . "setting` WHERE store_id = '0'");
+
+foreach ($query->rows as $result) {
+	if (!$result['serialized']) {
+		$config->set($result['key'], $result['value']);
+	} else {
+		$config->set($result['key'], json_decode($result['value'], true));
+	}
+}
+
 // Log
 $log = new Log($config->get('error_filename'));
 $registry->set('log', $log);
 
 date_default_timezone_set($config->get('date_timezone'));
-
-// Database
-if ($config->get('db_autostart')) {
-	$registry->set('db', new DB($config->get('db_engine'), $config->get('db_hostname'), $config->get('db_username'), $config->get('db_password'), $config->get('db_database'), $config->get('db_port')));
-}
 
 // Event
 $event = new Event($registry);
@@ -48,11 +58,8 @@ $registry->set('load', $loader);
 $language = new Language($config->get('language_directory'));
 $registry->set('language', $language);
 
-// Route
-$route = new Router($registry);
-
-// Dispatch the Alfabank cron action
-$route->dispatch(new Action('extension/payment/alfabank/cron'), new Action('extension/payment/alfabank/cron'));
+$action = new Action('extension/payment/alfabank/cron');
+$action->execute($registry);
 
 // Output
 echo "Alfabank cron job completed.\n";

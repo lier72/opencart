@@ -593,8 +593,8 @@ All inputs are cast to appropriate types.
 
 ## Related Documentation
 
-- [SALES_BASED_INTERLEAVING.md](./SALES_BASED_INTERLEAVING.md) - Original implementation
-- [SMART_INTERLEAVING_IMPLEMENTATION.md](./SMART_INTERLEAVING_IMPLEMENTATION.md) - Initial concept
+- [SALES_BASED_INTERLEAVING.md](SALES_BASED_INTERLEAVING.md) - Original implementation
+- [SMART_INTERLEAVING_IMPLEMENTATION.md](SMART_INTERLEAVING_IMPLEMENTATION.md) - Initial concept
 
 ---
 

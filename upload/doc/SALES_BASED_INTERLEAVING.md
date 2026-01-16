@@ -482,8 +482,8 @@ echo "Processed: " . $results['categories_processed'] . " categories\n";
 
 ## Related Documentation
 
-- [SMART_INTERLEAVING_IMPLEMENTATION.md](./SMART_INTERLEAVING_IMPLEMENTATION.md) - Initial interleaving implementation
-- [SIMPLIFICATION_COMPLETE.md](./SIMPLIFICATION_COMPLETE.md) - Adaptive filter core features
+- [SMART_INTERLEAVING_IMPLEMENTATION.md](SMART_INTERLEAVING_IMPLEMENTATION.md) - Initial interleaving implementation
+- [SIMPLIFICATION_COMPLETE.md](SIMPLIFICATION_COMPLETE.md) - Adaptive filter core features
 
 ---
 

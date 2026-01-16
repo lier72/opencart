@@ -227,8 +227,8 @@ Smart interleaving is automatic and based on:
 
 ## Related Documentation
 
-- [SIMPLIFICATION_COMPLETE.md](./SIMPLIFICATION_COMPLETE.md) - Initial adaptive filter implementation
-- [ADAPTIVE_FILTER_SIMPLIFICATION_PLAN.md](./ADAPTIVE_FILTER_SIMPLIFICATION_PLAN.md) - Planning document
+- [SIMPLIFICATION_COMPLETE.md](SIMPLIFICATION_COMPLETE.md) - Initial adaptive filter implementation
+- [ADAPTIVE_FILTER_SIMPLIFICATION_PLAN.md](ADAPTIVE_FILTER_SIMPLIFICATION_PLAN.md) - Planning document
 
 ---
 
