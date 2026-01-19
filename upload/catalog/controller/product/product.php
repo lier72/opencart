@@ -285,8 +285,9 @@ class ControllerProductProduct extends Controller {
             if ($this->customer->isLogged() && $this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id')){
 				$data['retail_price'] = $this->currency->format($this->tax->calculate($product_info['retail_price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
 			} else {
-				$data['reatil_price'] = false;
+				$data['retail_price'] = false;
 			}
+			$this->log->write('Page Load Debug: config_customer_group_id=' . $this->config->get('config_customer_group_id') . ', customer_default_group_id=' . $this->config->get('customer_default_group_id') . ', retail_price=' . $product_info['retail_price'] . ', special=' . $product_info['special']);
 			//echo '$data[retail_price] =' . $data['retail_price'] . '<br/>';
 // the end of modifications
             if (($this->config->get('config_customer_price') && $this->customer->isLogged()) || !$this->config->get('config_customer_price')) {
@@ -306,6 +307,13 @@ class ControllerProductProduct extends Controller {
 			} else {
 				$data['tax'] = false;
 			}
+
+			// Load bonus widget for this product
+			$data['bonus_widget'] = $this->load->controller('extension/module/bonus_display/product', array(
+				'product_id' => $product_info['product_id'],
+				'price' => $product_info['price'],
+				'special' => $product_info['special']
+			));
 
 			$discounts = $this->model_catalog_product->getProductDiscounts($this->request->get['product_id']);
 
