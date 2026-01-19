@@ -177,13 +177,13 @@ class ControllerProductCategory extends Controller {
 
 			// Use personalized sorting if requested
 			if ($sort == 'personalized' && $this->config->get('module_adaptive_filter_status')) {
-				$this->log->write('[Category Controller] Personalized sorting requested. Sort: ' . $sort . ', Module status: ' . $this->config->get('module_adaptive_filter_status'));
+//				$this->log->write('[Category Controller] Personalized sorting requested. Sort: ' . $sort . ', Module status: ' . $this->config->get('module_adaptive_filter_status'));
 				$this->load->model('extension/module/adaptive_filter');
 				$results = $this->model_extension_module_adaptive_filter->getPersonalizedProducts($filter_data, $limit, ($page - 1) * $limit);
 				$product_total = $this->model_extension_module_adaptive_filter->getPersonalizedProductsTotal();
-				$this->log->write('[Category Controller] Got ' . count($results) . ' products, total: ' . $product_total);
+//				$this->log->write('[Category Controller] Got ' . count($results) . ' products, total: ' . $product_total);
 			} else {
-				$this->log->write('[Category Controller] Standard sorting. Sort: ' . $sort);
+//				$this->log->write('[Category Controller] Standard sorting. Sort: ' . $sort);
 				$results = $this->model_catalog_product->getProducts($filter_data);
 				$product_total = $this->model_catalog_product->getTotalProducts($filter_data);
 			}
