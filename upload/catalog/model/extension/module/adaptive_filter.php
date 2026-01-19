@@ -816,7 +816,7 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             $result = $this->scoreProductWithBulkAttributes(
                 $product['product_id'],
                 $preferences,
-                $bulk_attributes[$product['product_id']]
+                $bulk_attributes[$product['product_id']] ?? array()
             );
 
             $score = $result['score'];
@@ -826,12 +826,9 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
                 $debug_data_temp[$product['product_id']] = $result['debug'];
             }
 
-            // Only include products that match at least one preference (score > 0)
-            // OR if there are no preferences at all (show everything)
-            if ($has_preferences && $score == 0) {
-                continue; // Skip products with no matching preferences
-            }
-
+            // Always include all in-stock products
+            // Products with matching preferences get higher scores; others get 0
+            // This ensures in-stock products always appear before out-of-stock
             $product['personalization_score'] = $score;
             $scored_products[] = $product;
         }
@@ -881,8 +878,8 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             $this->log->write(sprintf('Smart interleaving: %.4f sec', $interleaving_time));
             $this->log->write(sprintf('Total personalized: %.4f sec', $total_time));
             $this->log->write(sprintf('Overhead: %.4f sec (+%.1f%%)', $personalized_overhead, $overhead_percent));
-            $this->log->write(sprintf('Total products: %d, In-stock: %d, Out-of-stock: %d, Returned: %d',
-                count($products), count($in_stock_products), count($out_of_stock_products), count($result)));
+            $this->log->write(sprintf('Total products: %d, In-stock: %d, Scored: %d, Out-of-stock: %d, Returned: %d',
+                count($products), count($in_stock_products), count($scored_products), count($out_of_stock_products), count($result)));
             $this->log->write('==============================');
         }
         // DEBUG: Log top 5 scored products with breakdown
@@ -1007,13 +1004,14 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
                     // Try fuzzy matching - check if preference size is contained in any available size
                     foreach ($attributes['sizes_available'] as $available_size) {
                         // Normalize both sizes for comparison (lowercase, remove extra spaces)
-                        $normalized_pref = strtolower(trim($size));
-                        $normalized_avail = strtolower(trim($available_size));
+                        // Cast to string to avoid PHP warning with numeric array keys
+                        $normalized_pref = strtolower(trim((string)$size));
+                        $normalized_avail = strtolower(trim((string)$available_size));
 
                         // Check if they match when normalized, or if one contains the other
                         if ($normalized_pref === $normalized_avail ||
-                            stripos($available_size, $size) !== false ||
-                            stripos($size, $available_size) !== false) {
+                            stripos($normalized_avail, $normalized_pref) !== false ||
+                            stripos($normalized_pref, $normalized_avail) !== false) {
                             $score += $score_size * $count;
                             // $this->log->write('[Adaptive Filter] FUZZY SIZE MATCH: Product ' . $product_id . ' - Preference "' . $size . '" matched with available "' . $available_size . '"');
                             break; // Only count once per preferred size
@@ -1207,13 +1205,14 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
                     // Try fuzzy matching - check if preference size is contained in any available size
                     foreach ($attributes['sizes_available'] as $available_size) {
                         // Normalize both sizes for comparison (lowercase, remove extra spaces)
-                        $normalized_pref = strtolower(trim($size));
-                        $normalized_avail = strtolower(trim($available_size));
+                        // Cast to string to avoid PHP warning with numeric array keys
+                        $normalized_pref = strtolower(trim((string)$size));
+                        $normalized_avail = strtolower(trim((string)$available_size));
 
                         // Check if they match when normalized, or if one contains the other
                         if ($normalized_pref === $normalized_avail ||
-                            stripos($available_size, $size) !== false ||
-                            stripos($size, $available_size) !== false) {
+                            stripos($normalized_avail, $normalized_pref) !== false ||
+                            stripos($normalized_pref, $normalized_avail) !== false) {
                             $points = $score_size * $count;
                             $size_score += $points;
                             if ($this->isDebugMode()) $size_matches[] = "$size ≈ $available_size (fuzzy match, count: $count, +$points)";
