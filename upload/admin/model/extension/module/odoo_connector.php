@@ -461,8 +461,12 @@ class ModelExtensionModuleOdooConnector extends Model {
                                     $delivery['price_unit'] = round($total_data['value']);
                                 }
                                 break;
-                            case 'cod_cdek_total':
+                            case 'cdek':
                                 $cod['product_id'] = 3892; // id=3892 - Product variant ! Оплата при доставке СДЭК в odoo
+                                $cod['price_unit'] = round($total_data['value']);
+                                break;
+                            case 'cod_cdek_total':
+                                $cod['product_id'] = 3892; // the cod_cdek_total is from OC2 - id=3892 - Product variant ! Оплата при доставке Почта России в odoo
                                 $cod['price_unit'] = round($total_data['value']);
                                 break;
                         }
@@ -1342,7 +1346,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                         'property_product_pricelist' => $odoo_pricelist_id['price_id'],
                     ),
                     ));
-                if ($res['faultCode']) {
+                if (is_array($res) && isset($res['faultCode'])) {
                     $this->log->write('modle odoo_create createOdooPartner: '. serialize($res['faultString']));
                     throw new Exception (json_encode($res['faultString']));
                 } //$res if rpc call was successful contains the odoo's (int) ID of created res.partner
