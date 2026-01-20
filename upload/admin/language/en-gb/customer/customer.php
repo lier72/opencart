@@ -41,6 +41,10 @@ $_['column_points']             = 'Points';
 $_['column_ip']                 = 'IP';
 $_['column_total']              = 'Total Accounts';
 $_['column_action']             = 'Action';
+$_['column_bonus_type']         = 'Type';
+$_['column_metadata']           = 'Details';
+$_['column_date_expires']       = 'Expires';
+$_['column_bonus_items']        = 'Bonus Items';
 
 // Entry
 $_['entry_customer_group']      = 'Customer Group';
@@ -112,3 +116,13 @@ $_['error_cheque']              = 'Cheque Payee Name required!';
 $_['error_paypal']              = 'PayPal Email Address does not appear to be valid!';
 $_['error_bank_account_name']   = 'Account Name required!';
 $_['error_bank_account_number'] = 'Account Number required!';
+
+// Bonus Types
+$_['text_type_order_complete']    = 'Order Bonus';
+$_['text_type_return_deduction']  = 'Return Deduction';
+$_['text_type_registration']      = 'Registration Bonus';
+$_['text_type_birthday']          = 'Birthday Bonus';
+$_['text_type_product_bonus']     = 'Product Bonus';
+$_['text_type_manual_adjustment'] = 'Manual Adjustment';
+$_['text_type_reward']            = 'Reward Points';
+$_['text_no_expiration']          = 'No expiration';

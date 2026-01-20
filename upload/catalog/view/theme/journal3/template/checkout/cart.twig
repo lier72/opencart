@@ -112,6 +112,9 @@
       </div>
       {% endif %}
       <div class="row">
+        {# Bonus Manager Widget - Show bonuses to be earned #}
+        {{ bonus_widget }}
+        {# End Bonus Manager #}
         <div class="cart-total">
           <div class="table-responsive table-scroll">
           <table class="table table-bordered">
@@ -135,4 +138,5 @@
       {{ content_bottom }}</div>
     {{ column_right }}</div>
 </div>
+<script type="text/javascript" src="catalog/view/theme/journal3/js/bonus-widget.js"></script>
 {{ footer }} 

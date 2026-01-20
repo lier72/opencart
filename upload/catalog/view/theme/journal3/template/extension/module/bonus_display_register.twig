@@ -1,0 +1,124 @@
+{#
+  BONUS REGISTRATION WIDGET
+
+  PURPOSE:
+  This template renders an attractive widget that encourages non-logged-in visitors
+  to register for an account and start earning bonus points. It appears in the cart
+  when a guest has items but is not logged in.
+
+  CALLED BY:
+  catalog/controller/extension/module/bonus_display.php::registerWidget()
+
+  AVAILABLE VARIABLES (passed from controller):
+  - heading_title: Widget main heading (configurable in admin)
+  - description: Widget description/pitch (configurable in admin)
+  - icon: Font Awesome icon class (e.g., "fa-gift")
+  - button_text: Register button label (e.g., "Зарегистрироваться")
+  - show_details: Boolean - whether to show benefits list
+  - benefits: Array of benefit strings (auto-generated from bonus settings)
+  - register_link: JavaScript link to open register modal ("javascript:open_register_popup()")
+  - login_link: JavaScript link to open login modal ("javascript:open_login_popup()")
+  - text_already_member: "Already a member?" text
+  - text_login: "Login" link text
+
+  JOURNAL3 INTEGRATION:
+  - Uses Journal3's open_register_popup() function from common.js
+  - Modal opens registration form in iframe with proper styling
+  - After successful registration, page reloads and shows bonus balance widget instead
+
+  DESIGN NOTES:
+  - Gradient purple background matches bonus balance widget styling
+  - Responsive layout adapts to mobile screens
+  - Animated fade-in effect on page load
+  - Hover effects on buttons for better UX
+  - Font Awesome icons for visual appeal
+#}
+<div class="bonus-register-widget" style="margin: 15px 0;">
+  <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+    {# Icon and Heading #}
+    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+      <i class="{{ icon }}" style="font-size: 32px; margin-right: 15px; opacity: 0.9;"></i>
+      <div>
+        <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: white;">
+          {{ heading_title }}
+        </h3>
+      </div>
+    </div>
+
+    {# Description #}
+    <p style="font-size: 14px; margin-bottom: 15px; opacity: 0.95; line-height: 1.5;">
+      {{ description }}
+    </p>
+
+    {# Benefits List #}
+    {% if show_details and benefits %}
+    <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 13px; opacity: 0.9; list-style: none;">
+      {% for benefit in benefits %}
+      <li style="margin-bottom: 8px; position: relative; padding-left: 0;">
+        <i class="fa fa-check-circle" style="color: #4ade80; margin-right: 8px;"></i>{{ benefit }}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {# Loyalty Program Link #}
+    {% if loyalty_info_link %}
+    <div style="padding: 12px; background: rgba(255, 255, 255, 0.15); border-radius: 4px; margin-bottom: 15px;">
+      <a href="{{ loyalty_info_link }}" style="color: white; text-decoration: none; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 13px; font-weight: 600;">
+          <i class="fa fa-diamond" style="margin-right: 6px;"></i>
+          {% if language_code == 'ru' or language_code == 'ru-ru' %}
+            Узнайте о уровнях программы лояльности
+          {% else %}
+            Learn about loyalty program levels
+          {% endif %}
+        </span>
+        <i class="fa fa-arrow-right" style="opacity: 0.8;"></i>
+      </a>
+    </div>
+    {% endif %}
+
+    {# Register Button #}
+    <a href="{{ register_link }}"
+       class="btn btn-light btn-block"
+       style="display: block; width: 100%; padding: 12px; font-weight: 600; text-align: center; border-radius: 6px; font-size: 15px; margin-bottom: 12px; text-decoration: none; background: white; color: #667eea; transition: all 0.3s;">
+      <i class="fa fa-user-plus" style="margin-right: 8px;"></i>
+      {{ button_text }}
+    </a>
+
+    {# Already a member link #}
+    <div style="text-align: center; font-size: 13px; opacity: 0.9;">
+      {{ text_already_member }}
+      <a href="{{ login_link }}" style="color: white; font-weight: 600; text-decoration: underline;">
+        {{ text_login }}
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* Hover effect for register button */
+.bonus-register-widget .btn-light:hover {
+  background: #f3f4f6 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Animation on load */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bonus-register-widget {
+  animation: fadeInUp 0.5s ease-out;
+}
+</style>

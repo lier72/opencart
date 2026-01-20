@@ -425,23 +425,77 @@ class ModelCustomerCustomer extends Model {
 		$this->db->query("DELETE FROM " . DB_PREFIX . "customer_reward WHERE order_id = '" . (int)$order_id . "' AND points > 0");
 	}
 
+	/**
+	 * Get customer reward transactions with product-level bonus items details
+	 *
+	 * Retrieves reward point transactions for a specific customer including:
+	 * - All customer_reward fields (points, description, bonus_type, bonus_metadata, date_expires)
+	 * - Aggregated bonus_items summary with product names from order_product table
+	 *
+	 * The bonus_items_summary shows:
+	 * - Product name and model
+	 * - Bonus points (positive for awards, negative for returns)
+	 * - Product quantity
+	 * - Bonus rate percentage
+	 * - Current status
+	 * - Return ID if applicable
+	 *
+	 * Scope: Called from admin/controller/customer/customer.php::reward() to display detailed transaction history
+	 *
+	 * @param int $customer_id Customer ID
+	 * @param int $start Pagination start offset
+	 * @param int $limit Number of records to return
+	 * @return array Array of reward transactions with bonus items summary
+	 */
 	public function getRewards($customer_id, $start = 0, $limit = 10) {
-		$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "customer_reward WHERE customer_id = '" . (int)$customer_id . "' ORDER BY date_added DESC LIMIT " . (int)$start . "," . (int)$limit);
+		$query = $this->db->query("
+			SELECT
+				cr.*,
+				(SELECT GROUP_CONCAT(
+					CONCAT(
+							'[Item#', cbi.bonus_item_id, ' | OP:', cbi.order_product_id, '] ',
+							'<strong>', op.name, '</strong> (', op.model, '): ',
+							IF(cbi.bonus_points >= 0, '+', ''), cbi.bonus_points, ' pts ',
+							'(OrigQty: ', IFNULL(cbi.product_quantity, 0), ', Returned: ', IFNULL(cbi.return_quantity, 0), ', ',
+							'Rate: ', cbi.bonus_rate, '%) ',
+							'[', cbi.status, ']',
+							IF(cbi.return_id IS NOT NULL, CONCAT(' - Return #', cbi.return_id), '')
+						) SEPARATOR '<br>'
+				)
+				FROM " . DB_PREFIX . "customer_bonus_items cbi
+				LEFT JOIN " . DB_PREFIX . "order_product op ON op.order_product_id = cbi.order_product_id
+				WHERE cbi.order_id = cr.order_id
+				AND cbi.status IN ('active', 'deducted', 'pending', 'pending_deduction')
+				) as bonus_items_summary
+			FROM " . DB_PREFIX . "customer_reward cr
+			WHERE cr.customer_id = '" . (int)$customer_id . "'
+			ORDER BY cr.date_added DESC
+			LIMIT " . (int)$start . "," . (int)$limit
+		);
 
 		return $query->rows;
 	}
 
 	public function getTotalRewards($customer_id) {
-		$query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "customer_reward WHERE customer_id = '" . (int)$customer_id . "'");
-
+		// Exclude expired bonuses from total calculation
+		$query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "customer_reward 
+			WHERE customer_id = '" . (int)$customer_id . "'
+			AND (date_expires IS NULL OR date_expires > NOW())");
 		return $query->row['total'];
 	}
 
 	public function getRewardTotal($customer_id) {
-		$query = $this->db->query("SELECT SUM(points) AS total FROM " . DB_PREFIX . "customer_reward WHERE customer_id = '" . (int)$customer_id . "'");
+		// Calculate balance from remaining column on award entries only
+		// This reflects the ACTUAL available balance after spending allocations
+		$query = $this->db->query("SELECT SUM(remaining) AS total FROM " . DB_PREFIX . "customer_reward
+			WHERE customer_id = '" . (int)$customer_id . "'
+			AND reward_kind = 'award'
+			AND remaining > 0
+			AND (date_expires IS NULL OR date_expires > NOW())");
 
-		return $query->row['total'];
+		return $query->row['total'] ? $query->row['total'] : 0;
 	}
+
 
 	public function getTotalCustomerRewardsByOrderId($order_id) {
 		$query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "customer_reward WHERE order_id = '" . (int)$order_id . "' AND points > 0");

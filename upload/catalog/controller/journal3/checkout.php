@@ -218,15 +218,28 @@ class ControllerJournal3Checkout extends Controller {
 			'error_warning' => sprintf($this->language->get('error_no_payment'), $this->url->link('information/contact')),
 		));
 
+		// Load bonus widget for checkout page
+		// For logged-in users: shows bonus balance and earning potential
+		// For guests: shows registration widget encouraging sign-up
+		// The cart() method handles routing based on login status internally
+		$bonus_widget_checkout = '';
+		if ($this->config->get('module_bonus_manager_status')) {
+			// Call bonus_display/cart which will show:
+			// - Registration widget if guest (NOT logged in)
+			// - Bonus balance widget if logged in
+			$bonus_widget_checkout = $this->load->controller('extension/module/bonus_display/cart');
+		}
+
 		$data['coupon_voucher_reward_block'] = $this->load->view('journal3/checkout/coupon_voucher_reward', array(
-			'text_loading'   => $this->language->get('text_loading'),
-			'entry_coupon'   => $this->language->get('entry_coupon'),
-			'button_coupon'  => $this->language->get('button_coupon'),
-			'entry_voucher'  => $this->language->get('entry_voucher'),
-			'button_voucher' => $this->language->get('button_voucher'),
-			'entry_reward'   => sprintf($this->language->get('entry_reward'), $data['checkout_data']['order_data']['points']),
-			'button_reward'  => $this->language->get('button_reward'),
-			'button_submit'  => $this->language->get('button_submit'),
+			'text_loading'          => $this->language->get('text_loading'),
+			'entry_coupon'          => $this->language->get('entry_coupon'),
+			'button_coupon'         => $this->language->get('button_coupon'),
+			'entry_voucher'         => $this->language->get('entry_voucher'),
+			'button_voucher'        => $this->language->get('button_voucher'),
+			'entry_reward'          => sprintf($this->language->get('entry_reward'), $data['checkout_data']['order_data']['points']),
+			'button_reward'         => $this->language->get('button_reward'),
+			'button_submit'         => $this->language->get('button_submit'),
+			'bonus_widget_checkout' => $bonus_widget_checkout,
 		));
 
 		$data['cart_block'] = $this->load->view('journal3/checkout/cart', array(
@@ -341,34 +354,40 @@ class ControllerJournal3Checkout extends Controller {
 			unset($this->session->data['voucher']);
 		}
 
-		if ($this->config->get($this->journal3_opencart->is_oc2 ? 'reward_status' : 'total_reward_status') && $this->request->post['reward']) {
-			$this->load->language('extension/total/reward');
+		// Only validate reward if it's explicitly being posted (not just when reward system is enabled)
+		// This prevents clearing the session when shipping/payment methods change via AJAX
+		if ($this->config->get($this->journal3_opencart->is_oc2 ? 'reward_status' : 'total_reward_status') && isset($this->request->post['reward'])) {
+			// Use centralized validation from bonus_manager model if enabled
+			if ($this->config->get('module_bonus_manager_status')) {
+				$this->load->model('extension/module/bonus_manager');
+				$validation = $this->model_extension_module_bonus_manager->validateReward($this->request->post['reward']);
+			} else {
+				// Fallback validation when bonus_manager is disabled
+				$this->load->language('extension/total/reward');
+				$reward = (int)$this->request->post['reward'];
+				$points = $this->customer->getRewardPoints();
 
-			$points = $this->customer->getRewardPoints();
-
-			$points_total = 0;
-
-			foreach ($this->cart->getProducts() as $product) {
-				if ($product['points']) {
-					$points_total += $product['points'];
+				if ($reward < 0) {
+					$validation = array('valid' => false, 'error' => $this->language->get('error_reward'));
+				} elseif ($reward > $points) {
+					$validation = array('valid' => false, 'error' => sprintf($this->language->get('error_points'), $reward));
+				} else {
+					$validation = array('valid' => true, 'amount' => $reward);
 				}
 			}
 
-			if (empty($this->request->post['reward'])) {
-				$error['reward'] = $this->language->get('error_reward');
+			if (!$validation['valid']) {
+				$error['reward'] = $validation['error'];
 				unset($this->session->data['reward']);
-			} else if ($this->request->post['reward'] > $points) {
-				$error['reward'] = sprintf($this->language->get('error_points'), $this->request->post['reward']);
-				unset($this->session->data['reward']);
-			} else if ($this->request->post['reward'] > $points_total) {
-				$error['reward'] = sprintf($this->language->get('error_maximum'), $points_total);
-				unset($this->session->data['reward']);
+			} else if ($validation['amount'] > 0) {
+				$this->session->data['reward'] = $validation['amount'];
 			} else {
-				$this->session->data['reward'] = abs($this->request->post['reward']);
+				// Amount is 0 - clear reward
+				unset($this->session->data['reward']);
 			}
-		} else {
-			unset($this->session->data['reward']);
 		}
+		// Don't clear reward session if it's not being explicitly changed
+		// This preserves the reward when shipping/payment methods change
 
 		$data = $this->model_journal3_checkout->update();
 

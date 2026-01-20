@@ -1,0 +1,16 @@
+{# Bonus Display Widget - Product Page #}
+{% if bonus_text %}
+<div class="product-bonus-widget" style="margin: 8px 0;">
+  <div class="bonus-earned" style="display: inline-flex; align-items: center; background: #f0f9ff; border-left: 3px solid #28a745; padding: 8px 12px; border-radius: 4px; font-size: 14px; color: #155724;">
+    <i class="fa fa-gift" style="margin-right: 8px; color: #28a745; font-size: 16px;"></i>
+    <span style="font-weight: 500;">{{ bonus_text|raw }}</span>
+  </div>
+</div>
+{% elseif has_heavy_discount %}
+<div class="product-bonus-widget" style="margin: 8px 0;">
+  <div class="bonus-unavailable" style="display: inline-flex; align-items: center; background: #fff3cd; border-left: 3px solid #ffc107; padding: 6px 10px; border-radius: 4px; font-size: 12px; color: #856404;">
+    <i class="fa fa-exclamation-circle" style="margin-right: 6px; color: #ffc107;"></i>
+    <span>{{ no_bonus_text }}</span>
+  </div>
+</div>
+{% endif %}

@@ -1,0 +1,995 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="submit" form="form-bonus-manager" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+      </div>
+      <div class="panel-body">
+        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-bonus-manager" class="form-horizontal">
+
+          <ul class="nav nav-tabs">
+            <li class="active"><a href="#tab-general" data-toggle="tab">{{ tab_general }}</a></li>
+            <li><a href="#tab-bonus-settings" data-toggle="tab">{{ tab_bonus_settings }}</a></li>
+            <li><a href="#tab-loyalty-levels" data-toggle="tab">{{ tab_loyalty_levels }}</a></li>
+            <li><a href="#tab-notifications" data-toggle="tab">{{ tab_notifications }}</a></li>
+            <li><a href="#tab-statistics" data-toggle="tab">{{ tab_statistics }}</a></li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- General Settings Tab -->
+            <div class="tab-pane active" id="tab-general">
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-status"><span data-toggle="tooltip" title="{{ help_status }}">{{ entry_status }}</span></label>
+                <div class="col-sm-10">
+                  <select name="module_bonus_manager_status" id="input-status" class="form-control">
+                    {% if module_bonus_manager_status %}
+                    <option value="1" selected="selected">{{ text_enabled }}</option>
+                    <option value="0">{{ text_disabled }}</option>
+                    {% else %}
+                    <option value="1">{{ text_enabled }}</option>
+                    <option value="0" selected="selected">{{ text_disabled }}</option>
+                    {% endif %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-discount-threshold"><span data-toggle="tooltip" title="{{ help_discount_threshold }}">{{ entry_discount_threshold }}</span></label>
+                <div class="col-sm-10">
+                  <div class="input-group">
+                    <input type="text" name="module_bonus_manager_discount_threshold" value="{{ module_bonus_manager_discount_threshold }}" placeholder="15" id="input-discount-threshold" class="form-control" />
+                    <span class="input-group-addon">%</span>
+                  </div>
+                  <p class="help-block">{{ help_discount_threshold }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-max-usage-percent"><span data-toggle="tooltip" title="{{ help_max_usage_percent }}">{{ entry_max_usage_percent }}</span></label>
+                <div class="col-sm-10">
+                  <div class="input-group">
+                    <input type="text" name="module_bonus_manager_max_usage_percent" value="{{ module_bonus_manager_max_usage_percent }}" placeholder="30" id="input-max-usage-percent" class="form-control" />
+                    <span class="input-group-addon">%</span>
+                  </div>
+                  <p class="help-block">{{ help_max_usage_percent }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-expiration-days"><span data-toggle="tooltip" title="{{ help_expiration_days }}">{{ entry_expiration_days }}</span></label>
+                <div class="col-sm-10">
+                  <input type="text" name="module_bonus_manager_expiration_days" value="{{ module_bonus_manager_expiration_days }}" placeholder="365" id="input-expiration-days" class="form-control" />
+                  <p class="help-block">{{ help_expiration_days }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-accrual-status"><span data-toggle="tooltip" title="{{ help_accrual_status }}">{{ entry_accrual_status }}</span></label>
+                <div class="col-sm-10">
+                  <select name="module_bonus_manager_accrual_status_id" id="input-accrual-status" class="form-control">
+                    {% for order_status in order_statuses %}
+                    {% if order_status.order_status_id == module_bonus_manager_accrual_status_id %}
+                    <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                    {% else %}
+                    <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                  <p class="help-block">{{ help_accrual_status }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-return-deduction-status"><span data-toggle="tooltip" title="{{ help_return_deduction_status }}">{{ entry_return_deduction_status }}</span></label>
+                <div class="col-sm-10">
+                  <select name="module_bonus_manager_return_deduction_status_id" id="input-return-deduction-status" class="form-control">
+                    {% for return_status in return_statuses %}
+                    {% if return_status.return_status_id == module_bonus_manager_return_deduction_status_id %}
+                    <option value="{{ return_status.return_status_id }}" selected="selected">{{ return_status.name }}</option>
+                    {% else %}
+                    <option value="{{ return_status.return_status_id }}">{{ return_status.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                  <p class="help-block">{{ help_return_deduction_status }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-category"><span data-toggle="tooltip" title="{{ help_excluded_categories }}">{{ entry_excluded_categories }}</span></label>
+                <div class="col-sm-10">
+                  <input type="text" name="category" value="" placeholder="{{ entry_excluded_categories }}" id="input-category" class="form-control" />
+                  <div id="bonus-category" class="well well-sm" style="height: 150px; overflow: auto;">
+                    {% for category in excluded_categories %}
+                    <div id="bonus-category{{ category.category_id }}"><i class="fa fa-minus-circle"></i> {{ category.name }}
+                      <input type="hidden" name="module_bonus_manager_excluded_categories[]" value="{{ category.category_id }}" />
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bonus Settings Tab -->
+            <div class="tab-pane" id="tab-bonus-settings">
+              <div class="well">
+                <div class="row">
+                  <div class="col-sm-3">
+                    <select id="new-customer-group" class="form-control">
+                      <option value="">-- {{ entry_customer_group }} --</option>
+                      {% for group in customer_groups %}
+                      <option value="{{ group.customer_group_id }}">{{ group.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-sm-4">
+                    <input type="text" id="new-category" placeholder="{{ entry_category }} (0 = {{ text_all_categories }})" class="form-control" value="0" />
+                  </div>
+                  <div class="col-sm-3">
+                    <div class="input-group">
+                      <input type="text" id="new-bonus-percent" placeholder="{{ entry_bonus_percent }}" class="form-control" />
+                      <span class="input-group-addon">%</span>
+                    </div>
+                  </div>
+                  <div class="col-sm-2">
+                    <button type="button" id="btn-add-bonus-setting" class="btn btn-primary btn-block"><i class="fa fa-plus"></i> {{ button_add_setting }}</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                  <thead>
+                    <tr>
+                      <td class="text-left">{{ column_customer_group }}</td>
+                      <td class="text-left">{{ column_category }}</td>
+                      <td class="text-right">{{ column_bonus_percent }}</td>
+                      <td class="text-right">{{ column_action }}</td>
+                    </tr>
+                  </thead>
+                  <tbody id="bonus-settings-table">
+                    {% for setting in bonus_settings %}
+                    <tr id="bonus-setting-{{ setting.bonus_setting_id }}">
+                      <td class="text-left">{{ setting.group_name }}</td>
+                      <td class="text-left">{% if setting.category_id == 0 %}{{ text_all_categories }}{% else %}{{ setting.category_id }}{% endif %}</td>
+                      <td class="text-right">{{ setting.bonus_percent }}%</td>
+                      <td class="text-right">
+                        <button type="button" class="btn btn-danger btn-xs" onclick="deleteBonusSetting({{ setting.bonus_setting_id }});"><i class="fa fa-trash"></i></button>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Loyalty Levels Tab -->
+            <div class="tab-pane" id="tab-loyalty-levels">
+              <div class="alert alert-info">
+                <i class="fa fa-info-circle"></i> Configure automatic customer group upgrades based on annual spending thresholds. Customers will be automatically upgraded when they reach the threshold within the current program period.
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-loyalty-status">
+                  <span data-toggle="tooltip" title="{{ help_loyalty_status }}">{{ entry_loyalty_status }}</span>
+                </label>
+                <div class="col-sm-10">
+                  <select name="module_bonus_manager_loyalty_status" id="input-loyalty-status" class="form-control">
+                    {% if module_bonus_manager_loyalty_status %}
+                    <option value="1" selected="selected">{{ text_enabled }}</option>
+                    <option value="0">{{ text_disabled }}</option>
+                    {% else %}
+                    <option value="1">{{ text_enabled }}</option>
+                    <option value="0" selected="selected">{{ text_disabled }}</option>
+                    {% endif %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-loyalty-info-page">{{ entry_loyalty_info_page }}</label>
+                <div class="col-sm-10">
+                  <select name="module_bonus_manager_loyalty_info_id" id="input-loyalty-info-page" class="form-control">
+                    <option value="">-- None --</option>
+                    {% for page in information_pages %}
+                    <option value="{{ page.information_id }}" {% if page.information_id == module_bonus_manager_loyalty_info_id %}selected="selected"{% endif %}>{{ page.title }}</option>
+                    {% endfor %}
+                  </select>
+                  <p class="help-block">Select the information page that describes your loyalty program levels</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-loyalty-period-start">
+                  <span data-toggle="tooltip" title="{{ help_loyalty_period_start }}">{{ entry_loyalty_period_start }}</span>
+                </label>
+                <div class="col-sm-10">
+                  <input type="text" name="module_bonus_manager_loyalty_period_start" value="{{ module_bonus_manager_loyalty_period_start }}" placeholder="01-01" id="input-loyalty-period-start" class="form-control" />
+                  <p class="help-block">{{ help_loyalty_period_start }}</p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="col-sm-2 control-label">
+                  <span data-toggle="tooltip" title="{{ help_loyalty_levels }}">{{ entry_loyalty_levels }}</span>
+                </label>
+                <div class="col-sm-10">
+                  <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="loyalty-levels-table">
+                      <thead>
+                        <tr>
+                          <td class="text-left">{{ entry_customer_group }}</td>
+                          <td class="text-left">Display Name (for emails)</td>
+                          <td class="text-right">{{ entry_min_total_spent }}</td>
+                          <td class="text-center">Action</td>
+                        </tr>
+                      </thead>
+                      <tbody id="loyalty-levels-tbody">
+                        {% if loyalty_levels %}
+                          {% for level in loyalty_levels %}
+                        <tr>
+                          <td class="text-left">
+                            <select name="module_bonus_manager_loyalty_levels[{{ loop.index0 }}][customer_group_id]" class="form-control">
+                              {% for group in customer_groups %}
+                              <option value="{{ group.customer_group_id }}" {% if group.customer_group_id == level.customer_group_id %}selected="selected"{% endif %}>{{ group.name }}</option>
+                              {% endfor %}
+                            </select>
+                          </td>
+                          <td class="text-left">
+                            <input type="text" name="module_bonus_manager_loyalty_levels[{{ loop.index0 }}][display_name]" value="{{ level.display_name|default('') }}" placeholder="e.g., Silver, Gold, Platinum" class="form-control" />
+                          </td>
+                          <td class="text-right">
+                            <input type="number" name="module_bonus_manager_loyalty_levels[{{ loop.index0 }}][min_total_spent]" value="{{ level.min_total_spent }}" placeholder="0" class="form-control" />
+                          </td>
+                          <td class="text-center">
+                            <button type="button" onclick="removeLoyaltyLevel(this);" class="btn btn-danger btn-xs"><i class="fa fa-minus-circle"></i></button>
+                          </td>
+                        </tr>
+                          {% endfor %}
+                        {% else %}
+                        <tr>
+                          <td class="text-left">
+                            <select name="module_bonus_manager_loyalty_levels[0][customer_group_id]" class="form-control">
+                              {% for group in customer_groups %}
+                              <option value="{{ group.customer_group_id }}">{{ group.name }}</option>
+                              {% endfor %}
+                            </select>
+                          </td>
+                          <td class="text-left">
+                            <input type="text" name="module_bonus_manager_loyalty_levels[0][display_name]" value="" placeholder="e.g., Silver, Gold, Platinum" class="form-control" />
+                          </td>
+                          <td class="text-right">
+                            <input type="number" name="module_bonus_manager_loyalty_levels[0][min_total_spent]" value="0" placeholder="0" class="form-control" />
+                          </td>
+                          <td class="text-center">
+                            <button type="button" onclick="removeLoyaltyLevel(this);" class="btn btn-danger btn-xs"><i class="fa fa-minus-circle"></i></button>
+                          </td>
+                        </tr>
+                        {% endif %}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colspan="4"><button type="button" onclick="addLoyaltyLevel();" class="btn btn-primary"><i class="fa fa-plus-circle"></i> {{ text_add_level }}</button></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <p class="help-block">{{ help_loyalty_levels }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notifications Tab -->
+            <div class="tab-pane" id="tab-notifications">
+              <p class="help-block"><i class="fa fa-info-circle"></i> {{ help_notification_email }}</p>
+              <hr/>
+
+              <style>
+                .email-preview-container {
+                  border: 1px solid #ddd;
+                  border-radius: 4px;
+                  margin-bottom: 15px;
+                  background: #fff;
+                }
+                .email-preview-header {
+                  background: #f5f5f5;
+                  padding: 10px 15px;
+                  border-bottom: 1px solid #ddd;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                }
+                .email-preview-header .subject-preview {
+                  font-weight: bold;
+                  color: #333;
+                }
+                .email-preview-frame {
+                  padding: 20px;
+                  min-height: 200px;
+                  max-height: 400px;
+                  overflow-y: auto;
+                  background: #fff;
+                }
+                .email-editor-container {
+                  display: none;
+                  padding: 15px;
+                  background: #fafafa;
+                  border-top: 1px solid #ddd;
+                }
+                .email-editor-container.active {
+                  display: block;
+                }
+                .btn-edit-email {
+                  padding: 4px 12px;
+                  font-size: 12px;
+                }
+                .btn-edit-email .fa {
+                  margin-right: 4px;
+                }
+                .email-preview-frame iframe {
+                  width: 100%;
+                  border: none;
+                  min-height: 200px;
+                }
+              </style>
+
+              <!-- Bonus Awarded Notification -->
+              <fieldset>
+                <legend>{{ entry_email_awarded_status }}</legend>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-awarded-status"><span data-toggle="tooltip" title="{{ help_email_awarded_status }}">{{ entry_status }}</span></label>
+                  <div class="col-sm-10">
+                    <select name="module_bonus_manager_email_awarded_status" id="input-email-awarded-status" class="form-control">
+                      {% if module_bonus_manager_email_awarded_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-awarded-subject"><span data-toggle="tooltip" title="{{ help_email_awarded_subject }}">{{ entry_email_awarded_subject }}</span></label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_email_awarded_subject" value="{{ module_bonus_manager_email_awarded_subject }}" placeholder="Вам начислены бонусы за заказ #{order_id}" id="input-email-awarded-subject" class="form-control" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_email_awarded_body }}">{{ entry_email_awarded_body }}</span></label>
+                  <div class="col-sm-10">
+                    <div class="email-preview-container" id="preview-container-awarded">
+                      <div class="email-preview-header">
+                        <span class="subject-preview" id="subject-preview-awarded">{{ module_bonus_manager_email_awarded_subject|default('Вам начислены бонусы за заказ #{order_id}') }}</span>
+                        <button type="button" class="btn btn-default btn-edit-email" onclick="toggleEmailEditor('awarded');">
+                          <i class="fa fa-code"></i> Edit HTML
+                        </button>
+                      </div>
+                      <div class="email-preview-frame" id="preview-frame-awarded">
+                        {{ module_bonus_manager_email_awarded_body|raw }}
+                      </div>
+                      <div class="email-editor-container" id="editor-container-awarded">
+                        <textarea name="module_bonus_manager_email_awarded_body" rows="12" id="input-email-awarded-body" class="form-control" onchange="updateEmailPreview('awarded');">{{ module_bonus_manager_email_awarded_body|raw }}</textarea>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top: 10px;" onclick="toggleEmailEditor('awarded');">
+                          <i class="fa fa-eye"></i> Preview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <hr/>
+
+              <!-- Bonus Spent Notification -->
+              <fieldset>
+                <legend>{{ entry_email_spent_status }}</legend>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-spent-status"><span data-toggle="tooltip" title="{{ help_email_spent_status }}">{{ entry_status }}</span></label>
+                  <div class="col-sm-10">
+                    <select name="module_bonus_manager_email_spent_status" id="input-email-spent-status" class="form-control">
+                      {% if module_bonus_manager_email_spent_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-spent-subject"><span data-toggle="tooltip" title="{{ help_email_spent_subject }}">{{ entry_email_spent_subject }}</span></label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_email_spent_subject" value="{{ module_bonus_manager_email_spent_subject }}" placeholder="Списаны бонусы за заказ #{order_id}" id="input-email-spent-subject" class="form-control" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_email_spent_body }}">{{ entry_email_spent_body }}</span></label>
+                  <div class="col-sm-10">
+                    <div class="email-preview-container" id="preview-container-spent">
+                      <div class="email-preview-header">
+                        <span class="subject-preview" id="subject-preview-spent">{{ module_bonus_manager_email_spent_subject|default('Списаны бонусы за заказ #{order_id}') }}</span>
+                        <button type="button" class="btn btn-default btn-edit-email" onclick="toggleEmailEditor('spent');">
+                          <i class="fa fa-code"></i> Edit HTML
+                        </button>
+                      </div>
+                      <div class="email-preview-frame" id="preview-frame-spent">
+                        {{ module_bonus_manager_email_spent_body|raw }}
+                      </div>
+                      <div class="email-editor-container" id="editor-container-spent">
+                        <textarea name="module_bonus_manager_email_spent_body" rows="12" id="input-email-spent-body" class="form-control" onchange="updateEmailPreview('spent');">{{ module_bonus_manager_email_spent_body|raw }}</textarea>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top: 10px;" onclick="toggleEmailEditor('spent');">
+                          <i class="fa fa-eye"></i> Preview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <!-- Bonus Deducted Notification (Return) -->
+              <fieldset>
+                <legend>{{ entry_email_deducted_status }}</legend>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-deducted-status"><span data-toggle="tooltip" title="{{ help_email_deducted_status }}">{{ entry_status }}</span></label>
+                  <div class="col-sm-10">
+                    <select name="module_bonus_manager_email_deducted_status" id="input-email-deducted-status" class="form-control">
+                      {% if module_bonus_manager_email_deducted_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-deducted-subject"><span data-toggle="tooltip" title="{{ help_email_deducted_subject }}">{{ entry_email_deducted_subject }}</span></label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_email_deducted_subject" value="{{ module_bonus_manager_email_deducted_subject }}" placeholder="Бонусные баллы списаны - {store_name}" id="input-email-deducted-subject" class="form-control" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_email_deducted_body }}">{{ entry_email_deducted_body }}</span></label>
+                  <div class="col-sm-10">
+                    <div class="email-preview-container" id="preview-container-deducted">
+                      <div class="email-preview-header">
+                        <span class="subject-preview" id="subject-preview-deducted">{{ module_bonus_manager_email_deducted_subject|default('Бонусные баллы списаны - {store_name}') }}</span>
+                        <button type="button" class="btn btn-default btn-edit-email" onclick="toggleEmailEditor('deducted');">
+                          <i class="fa fa-code"></i> Edit HTML
+                        </button>
+                      </div>
+                      <div class="email-preview-frame" id="preview-frame-deducted">
+                        {{ module_bonus_manager_email_deducted_body|raw }}
+                      </div>
+                      <div class="email-editor-container" id="editor-container-deducted">
+                        <textarea name="module_bonus_manager_email_deducted_body" rows="12" id="input-email-deducted-body" class="form-control" onchange="updateEmailPreview('deducted');">{{ module_bonus_manager_email_deducted_body|raw }}</textarea>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top: 10px;" onclick="toggleEmailEditor('deducted');">
+                          <i class="fa fa-eye"></i> Preview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr/>
+                <h4>Bonus Expiring Warning</h4>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-expiration-warning-days"><span data-toggle="tooltip" title="{{ help_expiration_warning_days }}">{{ entry_expiration_warning_days }}</span></label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_expiration_warning_days" value="{{ module_bonus_manager_expiration_warning_days }}" placeholder="90,30,7" id="input-expiration-warning-days" class="form-control" />
+                    <p class="help-block">{{ help_expiration_warning_days }}</p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-expiring-status">{{ entry_email_expiring_status }}</label>
+                  <div class="col-sm-10">
+                    <select name="module_bonus_manager_email_expiring_status" id="input-email-expiring-status" class="form-control">
+                      {% if module_bonus_manager_email_expiring_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-expiring-subject"><span data-toggle="tooltip" title="{{ help_email_expiring_subject }}">{{ entry_email_expiring_subject }}</span></label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_email_expiring_subject" value="{{ module_bonus_manager_email_expiring_subject }}" placeholder="Ваши бонусы скоро сгорят!" id="input-email-expiring-subject" class="form-control" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_email_expiring_body }}">{{ entry_email_expiring_body }}</span></label>
+                  <div class="col-sm-10">
+                    <div class="email-preview-container" id="preview-container-expiring">
+                      <div class="email-preview-header">
+                        <span class="subject-preview" id="subject-preview-expiring">{{ module_bonus_manager_email_expiring_subject|default('Ваши бонусы скоро сгорят!') }}</span>
+                        <button type="button" class="btn btn-default btn-edit-email" onclick="toggleEmailEditor('expiring');">
+                          <i class="fa fa-code"></i> Edit HTML
+                        </button>
+                      </div>
+                      <div class="email-preview-frame" id="preview-frame-expiring">
+                        {{ module_bonus_manager_email_expiring_body|raw }}
+                      </div>
+                      <div class="email-editor-container" id="editor-container-expiring">
+                        <textarea name="module_bonus_manager_email_expiring_body" rows="15" id="input-email-expiring-body" class="form-control" onchange="updateEmailPreview('expiring');">{{ module_bonus_manager_email_expiring_body|raw }}</textarea>
+                        <p class="help-block">{{ help_email_expiring_body }}</p>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top: 10px;" onclick="toggleEmailEditor('expiring');">
+                          <i class="fa fa-eye"></i> Preview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <hr style="margin: 30px 0;"/>
+
+              <!-- Loyalty Level Upgrade Email Settings -->
+              <fieldset>
+                <legend><i class="fa fa-star"></i> Loyalty Level Upgrade Email</legend>
+                <p class="help-block"><i class="fa fa-info-circle"></i> Email sent when customer's loyalty level is upgraded based on total spent.</p>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-loyalty-upgrade-status">Enable Notification</label>
+                  <div class="col-sm-10">
+                    <select name="module_bonus_manager_email_loyalty_upgrade_status" id="input-email-loyalty-upgrade-status" class="form-control">
+                      {% if module_bonus_manager_email_loyalty_upgrade_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-loyalty-upgrade-subject">Email Subject</label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_email_loyalty_upgrade_subject" value="{{ module_bonus_manager_email_loyalty_upgrade_subject }}" placeholder="Поздравляем! Ваш уровень лояльности повышен до {new_group_name}" id="input-email-loyalty-upgrade-subject" class="form-control" />
+                    <p class="help-block">Available placeholders: {customer_firstname}, {customer_lastname}, {old_group_name}, {new_group_name}, {new_bonus_percent}, {total_spent}, {current_balance}, {store_name}</p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label">Email Body (HTML)</label>
+                  <div class="col-sm-10">
+                    <div class="email-preview-container" id="preview-container-loyalty-upgrade">
+                      <div class="email-preview-header">
+                        <span class="subject-preview" id="subject-preview-loyalty-upgrade">{{ module_bonus_manager_email_loyalty_upgrade_subject|default('Поздравляем! Ваш уровень лояльности повышен') }}</span>
+                        <button type="button" class="btn btn-default btn-edit-email" onclick="toggleEmailEditor('loyalty-upgrade');">
+                          <i class="fa fa-code"></i> Edit HTML
+                        </button>
+                      </div>
+                      <div class="email-preview-frame" id="preview-frame-loyalty-upgrade">
+                        {{ module_bonus_manager_email_loyalty_upgrade_body|raw }}
+                      </div>
+                      <div class="email-editor-container" id="editor-container-loyalty-upgrade">
+                        <textarea name="module_bonus_manager_email_loyalty_upgrade_body" rows="15" id="input-email-loyalty-upgrade-body" class="form-control" onchange="updateEmailPreview('loyalty-upgrade');">{{ module_bonus_manager_email_loyalty_upgrade_body|raw }}</textarea>
+                        <p class="help-block">Available placeholders: {customer_firstname}, {customer_lastname}, {old_group_name}, {new_group_name}, {new_bonus_percent}, {total_spent}, {current_balance}, {store_name}, {store_url}, {account_url}, {date_upgraded}</p>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top: 10px;" onclick="toggleEmailEditor('loyalty-upgrade');">
+                          <i class="fa fa-eye"></i> Preview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <hr style="margin: 30px 0;"/>
+
+              <!-- Registration Widget Settings -->
+              <fieldset>
+                <legend>{{ entry_register_widget_heading }}</legend>
+                <p class="help-block"><i class="fa fa-info-circle"></i> {{ help_register_widget }}</p>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-register-widget-heading">{{ entry_register_widget_title }}</label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_register_widget_heading" value="{{ module_bonus_manager_register_widget_heading }}" placeholder="{{ text_register_widget_heading_default }}" id="input-register-widget-heading" class="form-control" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-register-widget-description">{{ entry_register_widget_description }}</label>
+                  <div class="col-sm-10">
+                    <textarea name="module_bonus_manager_register_widget_description" rows="3" id="input-register-widget-description" class="form-control" placeholder="{{ text_register_widget_description_default }}">{{ module_bonus_manager_register_widget_description }}</textarea>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-register-widget-button-text">{{ entry_register_widget_button_text }}</label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_register_widget_button_text" value="{{ module_bonus_manager_register_widget_button_text }}" placeholder="{{ text_register_button_default }}" id="input-register-widget-button-text" class="form-control" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-register-widget-icon">{{ entry_register_widget_icon }}</label>
+                  <div class="col-sm-10">
+                    <div class="input-group">
+                      <span class="input-group-addon"><i id="icon-preview" class="fa fa-gift"></i></span>
+                      <input type="text" name="module_bonus_manager_register_widget_icon" value="{{ module_bonus_manager_register_widget_icon }}" placeholder="fa-gift" id="input-register-widget-icon" class="form-control" />
+                    </div>
+                    <p class="help-block">{{ help_register_widget_icon }}</p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-register-widget-show-details">{{ entry_register_widget_show_details }}</label>
+                  <div class="col-sm-10">
+                    <select name="module_bonus_manager_register_widget_show_details" id="input-register-widget-show-details" class="form-control">
+                      {% if module_bonus_manager_register_widget_show_details %}
+                      <option value="1" selected="selected">{{ text_yes }}</option>
+                      <option value="0">{{ text_no }}</option>
+                      {% else %}
+                      <option value="1">{{ text_yes }}</option>
+                      <option value="0" selected="selected">{{ text_no }}</option>
+                      {% endif %}
+                    </select>
+                    <p class="help-block">{{ help_register_widget_show_details }}</p>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div class="tab-pane" id="tab-statistics">
+              <div class="row">
+                <div class="col-lg-3 col-md-6 col-sm-6">
+                  <div class="panel panel-primary">
+                    <div class="panel-heading">
+                      <div class="row">
+                        <div class="col-xs-3">
+                          <i class="fa fa-gift fa-5x"></i>
+                        </div>
+                        <div class="col-xs-9 text-right">
+                          <div class="huge">{{ statistics.total_issued }}</div>
+                          <div>{{ text_total_issued }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 col-sm-6">
+                  <div class="panel panel-success">
+                    <div class="panel-heading">
+                      <div class="row">
+                        <div class="col-xs-3">
+                          <i class="fa fa-check fa-5x"></i>
+                        </div>
+                        <div class="col-xs-9 text-right">
+                          <div class="huge">{{ statistics.total_redeemed }}</div>
+                          <div>{{ text_total_redeemed }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 col-sm-6">
+                  <div class="panel panel-info">
+                    <div class="panel-heading">
+                      <div class="row">
+                        <div class="col-xs-3">
+                          <i class="fa fa-star fa-5x"></i>
+                        </div>
+                        <div class="col-xs-9 text-right">
+                          <div class="huge">{{ statistics.active_bonuses }}</div>
+                          <div>{{ text_active_bonuses }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 col-sm-6">
+                  <div class="panel panel-warning">
+                    <div class="panel-heading">
+                      <div class="row">
+                        <div class="col-xs-3">
+                          <i class="fa fa-users fa-5x"></i>
+                        </div>
+                        <div class="col-xs-9 text-right">
+                          <div class="huge">{{ statistics.customers_count }}</div>
+                          <div>{{ text_customers_count }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel panel-default">
+                <div class="panel-heading">{{ text_recent_transactions }}</div>
+                <div class="panel-body">
+                  <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                      <thead>
+                        <tr>
+                          <td class="text-left">{{ column_order_id }}</td>
+                          <td class="text-left">{{ column_customer }}</td>
+                          <td class="text-right">{{ column_points }}</td>
+                          <td class="text-left">{{ column_date }}</td>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for transaction in recent_transactions %}
+                        <tr>
+                          <td class="text-left">#{{ transaction.order_id }}</td>
+                          <td class="text-left">{{ transaction.customer_name }}<br/><small>{{ transaction.email }}</small></td>
+                          <td class="text-right"><span class="label label-success">+{{ transaction.points }}</span></td>
+                          <td class="text-left">{{ transaction.date_added }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+// Category autocomplete
+$('input[name=\'category\']').autocomplete({
+  source: function(request, response) {
+    $.ajax({
+      url: 'index.php?route=catalog/category/autocomplete&user_token={{ user_token }}&filter_name=' + encodeURIComponent(request),
+      dataType: 'json',
+      success: function(json) {
+        response($.map(json, function(item) {
+          return {
+            label: item['name'],
+            value: item['category_id']
+          }
+        }));
+      }
+    });
+  },
+  select: function(item) {
+    $('input[name=\'category\']').val('');
+
+    $('#bonus-category' + item['value']).remove();
+
+    $('#bonus-category').append('<div id="bonus-category' + item['value'] + '"><i class="fa fa-minus-circle"></i> ' + item['label'] + '<input type="hidden" name="module_bonus_manager_excluded_categories[]" value="' + item['value'] + '" /></div>');
+  }
+});
+
+$('#bonus-category').delegate('.fa-minus-circle', 'click', function() {
+  $(this).parent().remove();
+});
+
+// Add bonus setting
+$('#btn-add-bonus-setting').on('click', function() {
+  var customer_group_id = $('#new-customer-group').val();
+  var category_id = $('#new-category').val();
+  var bonus_percent = $('#new-bonus-percent').val();
+
+  if (!customer_group_id) {
+    alert('Please select a customer group');
+    return;
+  }
+
+  if (!bonus_percent || bonus_percent < 0) {
+    alert('Please enter a valid bonus percentage');
+    return;
+  }
+
+  $.ajax({
+    url: 'index.php?route=extension/module/bonus_manager/addBonusSetting&user_token={{ user_token }}',
+    type: 'post',
+    data: {
+      customer_group_id: customer_group_id,
+      category_id: category_id || 0,
+      bonus_percent: bonus_percent
+    },
+    dataType: 'json',
+    beforeSend: function() {
+      $('#btn-add-bonus-setting').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Adding...');
+    },
+    success: function(json) {
+      $('#btn-add-bonus-setting').prop('disabled', false).html('<i class="fa fa-plus"></i> {{ button_add_setting }}');
+
+      if (json['error']) {
+        alert(json['error']);
+      }
+
+      if (json['success']) {
+        alert(json['success']);
+        location.reload();
+      }
+    },
+    error: function(xhr, ajaxOptions, thrownError) {
+      $('#btn-add-bonus-setting').prop('disabled', false).html('<i class="fa fa-plus"></i> {{ button_add_setting }}');
+
+      if (xhr.responseText && xhr.responseText.indexOf('<!DOCTYPE') !== -1) {
+        alert('Session expired. Please refresh the page and login again.');
+        location.reload();
+      } else {
+        alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+      }
+    }
+  });
+});
+
+// Delete bonus setting
+function deleteBonusSetting(bonus_setting_id) {
+  if (confirm('Are you sure?')) {
+    $.ajax({
+      url: 'index.php?route=extension/module/bonus_manager/deleteBonusSetting&user_token={{ user_token }}',
+      type: 'post',
+      data: {
+        bonus_setting_id: bonus_setting_id
+      },
+      dataType: 'json',
+      beforeSend: function() {
+        $('#bonus-setting-' + bonus_setting_id).css('opacity', '0.5');
+      },
+      success: function(json) {
+        if (json['error']) {
+          alert(json['error']);
+          $('#bonus-setting-' + bonus_setting_id).css('opacity', '1');
+        }
+
+        if (json['success']) {
+          $('#bonus-setting-' + bonus_setting_id).remove();
+          alert('Bonus setting deleted successfully');
+        }
+      },
+      error: function(xhr, ajaxOptions, thrownError) {
+        $('#bonus-setting-' + bonus_setting_id).css('opacity', '1');
+        if (xhr.responseText && xhr.responseText.indexOf('<!DOCTYPE') !== -1) {
+          alert('Session expired. Please refresh the page and login again.');
+          location.reload();
+        } else {
+          alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+        }
+      }
+    });
+  }
+}
+
+// Loyalty Levels Management
+var loyalty_level_row = {{ loyalty_levels|length|default(1) }};
+
+function addLoyaltyLevel() {
+  var html = '<tr>';
+  html += '  <td class="text-left">';
+  html += '    <select name="module_bonus_manager_loyalty_levels[' + loyalty_level_row + '][customer_group_id]" class="form-control">';
+  {% for group in customer_groups %}
+  html += '      <option value="{{ group.customer_group_id }}">{{ group.name }}</option>';
+  {% endfor %}
+  html += '    </select>';
+  html += '  </td>';
+  html += '  <td class="text-left">';
+  html += '    <input type="text" name="module_bonus_manager_loyalty_levels[' + loyalty_level_row + '][display_name]" value="" placeholder="e.g., Silver, Gold, Platinum" class="form-control" />';
+  html += '  </td>';
+  html += '  <td class="text-right">';
+  html += '    <input type="number" name="module_bonus_manager_loyalty_levels[' + loyalty_level_row + '][min_total_spent]" value="0" placeholder="0" class="form-control" />';
+  html += '  </td>';
+  html += '  <td class="text-center">';
+  html += '    <button type="button" onclick="removeLoyaltyLevel(this);" class="btn btn-danger btn-xs"><i class="fa fa-minus-circle"></i></button>';
+  html += '  </td>';
+  html += '</tr>';
+
+  $('#loyalty-levels-tbody').append(html);
+  loyalty_level_row++;
+}
+
+function removeLoyaltyLevel(element) {
+  if ($('#loyalty-levels-tbody tr').length > 1) {
+    $(element).closest('tr').remove();
+  } else {
+    alert('You must have at least one loyalty level');
+  }
+}
+
+// Email Preview/Edit Toggle Functions
+function toggleEmailEditor(type) {
+  var editorContainer = $('#editor-container-' + type);
+  var previewFrame = $('#preview-frame-' + type);
+  var editButton = $('#preview-container-' + type + ' .btn-edit-email');
+
+  if (editorContainer.hasClass('active')) {
+    // Switch to preview mode
+    editorContainer.removeClass('active');
+    previewFrame.show();
+    editButton.html('<i class="fa fa-code"></i> Edit HTML');
+
+    // Update preview with current textarea content
+    updateEmailPreview(type);
+  } else {
+    // Switch to edit mode
+    editorContainer.addClass('active');
+    previewFrame.hide();
+    editButton.html('<i class="fa fa-eye"></i> Preview');
+  }
+}
+
+function updateEmailPreview(type) {
+  var textareaId = 'input-email-' + type + '-body';
+  if (type === 'loyalty-upgrade') {
+    textareaId = 'input-email-loyalty-upgrade-body';
+  }
+
+  var textarea = $('#' + textareaId);
+  var previewFrame = $('#preview-frame-' + type);
+
+  if (textarea.length && previewFrame.length) {
+    previewFrame.html(textarea.val());
+  }
+}
+
+// Update subject preview when subject input changes
+$('#input-email-awarded-subject').on('input', function() {
+  $('#subject-preview-awarded').text($(this).val() || 'Вам начислены бонусы за заказ #{order_id}');
+});
+
+$('#input-email-spent-subject').on('input', function() {
+  $('#subject-preview-spent').text($(this).val() || 'Списаны бонусы за заказ #{order_id}');
+});
+
+$('#input-email-deducted-subject').on('input', function() {
+  $('#subject-preview-deducted').text($(this).val() || 'Бонусные баллы списаны - {store_name}');
+});
+
+$('#input-email-expiring-subject').on('input', function() {
+  $('#subject-preview-expiring').text($(this).val() || 'Ваши бонусы скоро сгорят!');
+});
+
+$('#input-email-loyalty-upgrade-subject').on('input', function() {
+  $('#subject-preview-loyalty-upgrade').text($(this).val() || 'Поздравляем! Ваш уровень лояльности повышен');
+});
+</script>
+
+{{ footer }}

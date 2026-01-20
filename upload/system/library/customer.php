@@ -132,8 +132,14 @@ class Customer {
 	}
 
 	public function getRewardPoints() {
-		$query = $this->db->query("SELECT SUM(points) AS total FROM " . DB_PREFIX . "customer_reward WHERE customer_id = '" . (int)$this->customer_id . "'");
+		// Calculate balance from remaining column on award entries only
+		// This reflects the ACTUAL available balance after spending allocations
+		$query = $this->db->query("SELECT SUM(remaining) AS total FROM " . DB_PREFIX . "customer_reward
+			WHERE customer_id = '" . (int)$this->customer_id . "'
+			AND reward_kind = 'award'
+			AND remaining > 0
+			AND (date_expires IS NULL OR date_expires > NOW())");
 
-		return $query->row['total'];
+		return $query->row['total'] ? $query->row['total'] : 0;
 	}
 }

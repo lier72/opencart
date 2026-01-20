@@ -1248,6 +1248,14 @@ class ControllerSaleOrder extends Controller {
 				$data['api_token'] = '';
 			}
 
+			// Load bonus items for product-level bonus tracking (only if bonus_manager is enabled)
+			if ($this->config->get('module_bonus_manager_status')) {
+				$this->load->model('extension/module/bonus_manager');
+				$data['bonus_items'] = $this->model_extension_module_bonus_manager->getOrderBonusItems($order_id);
+			} else {
+				$data['bonus_items'] = array();
+			}
+
 			$data['header'] = $this->load->controller('common/header');
 			$data['column_left'] = $this->load->controller('common/column_left');
 			$data['footer'] = $this->load->controller('common/footer');
@@ -1844,5 +1852,91 @@ class ControllerSaleOrder extends Controller {
 		}
 
 		$this->response->setOutput($this->load->view('sale/order_shipping', $data));
+	}
+
+	/**
+	 * AJAX handler to deduct bonus points and create return
+	 * Called from order info page when admin clicks "Deduct & Create Return"
+	 */
+	public function deductBonusAndCreateReturn() {
+		$this->load->language('sale/order');
+
+		$json = array();
+
+		if ($this->request->server['REQUEST_METHOD'] == 'POST') {
+			$order_id = (int)$this->request->post['order_id'];
+			$product_id = (int)$this->request->post['product_id'];
+			$quantity = (int)$this->request->post['quantity'];
+
+			// Get order info
+			$this->load->model('sale/order');
+			$order_info = $this->model_sale_order->getOrder($order_id);
+
+			if (!$order_info) {
+				$json['error'] = 'Order not found';
+			} else {
+				// Get product details from order_product
+				// There is getOrderProducts method, but it returns way too much data
+				// for all products in the order but we need to validate just quantity
+				$query = $this->db->query("
+					SELECT * FROM " . DB_PREFIX . "order_product
+					WHERE order_id = '" . (int)$order_id . "'
+					AND product_id = '" . (int)$product_id . "'
+					LIMIT 1
+				");
+
+				if ($query->num_rows) {
+					$product = $query->row;
+
+					// Validate quantity
+					if ($quantity <= 0 || $quantity > (int)$product['quantity']) {
+						$json['error'] = 'Invalid return quantity';
+					} else {
+						// Get configured return deduction status
+						$return_status_id = (int)$this->config->get('module_bonus_manager_return_deduction_status_id');
+						if (!$return_status_id) {
+							$return_status_id = 4; // Default to "Complete" status
+						}
+
+						// Create return using model method (this will properly trigger events)
+						$this->load->model('sale/return');
+
+						$return_data = array(
+							'order_id' => $order_id,
+							'product_id' => $product_id,
+							'customer_id' => $order_info['customer_id'],
+							'firstname' => $order_info['firstname'],
+							'lastname' => $order_info['lastname'],
+							'email' => $order_info['email'],
+							'telephone' => $order_info['telephone'],
+							'product' => $product['name'],
+							'model' => $product['model'],
+							'quantity' => $quantity,
+							'opened' => 0,
+							'return_reason_id' => 1,
+							'return_action_id' => 1,
+							'return_status_id' => 1, // Start with pending status
+							'comment' => 'Created via bonus deduction',
+							'date_ordered' => $order_info['date_added']
+						);
+
+						$return_id = $this->model_sale_return->addReturn($return_data);
+
+						// Now set status to deduction status - this will trigger the event
+						$this->model_sale_return->addReturnHistory($return_id, $return_status_id, 'Bonus points deducted automatically', false);
+
+						// Event will handle deduction and email automatically
+						$json['success'] = 'Return #' . $return_id . ' created and bonus points deducted';
+					}
+				} else {
+					$json['error'] = 'Product not found in order';
+				}
+			}
+		} else {
+			$json['error'] = 'Invalid request method';
+		}
+
+		$this->response->addHeader('Content-Type: application/json');
+		$this->response->setOutput(json_encode($json));
 	}
 }

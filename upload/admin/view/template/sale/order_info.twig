@@ -210,6 +210,7 @@
         <ul class="nav nav-tabs">
           <li class="active"><a href="#tab-history" data-toggle="tab">{{ tab_history }}</a></li>
           <li><a href="#tab-additional" data-toggle="tab">{{ tab_additional }}</a></li>
+          <li><a href="#tab-bonus" data-toggle="tab"><i class="fa fa-gift"></i> Bonus Points</a></li>
           {% for tab in tabs %}
             <li><a href="#tab-{{ tab.code }}" data-toggle="tab">{{ tab.title }}</a></li>
           {% endfor %}
@@ -368,6 +369,46 @@
 
               </table>
             </div>
+          </div>
+          <div class="tab-pane" id="tab-bonus">
+            {% if bonus_items %}
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Model</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>Bonus Points</th>
+                    <th class="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in bonus_items %}
+                  <tr id="bonus-row-{{ item.order_product_id }}">
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.model }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.price }}</td>
+                    <td>{{ item.total }}</td>
+                    <td><strong>{{ item.bonus_points }} pts</strong></td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-danger btn-xs" onclick="deductBonus({{ item.product_id }}, {{ item.quantity }}, '{{ item.name|escape('js') }}')">
+                        <i class="fa fa-minus-circle"></i> Deduct & Create Return
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+              <i class="fa fa-info-circle"></i> No bonus points were awarded for this order.
+            </div>
+            {% endif %}
           </div>
           {% for tab in tabs %}
             <div class="tab-pane" id="tab-{{ tab.code }}">{{ tab.content }}</div>
@@ -592,6 +633,43 @@
 		  }
 	  });
   });
+
+  // Deduct bonus points and create return
+  function deductBonus(productId, maxQty, productName) {
+    var quantity = prompt('Enter quantity to return for "' + productName + '" (max ' + maxQty + '):');
+
+    if (quantity && parseInt(quantity) > 0 && parseInt(quantity) <= maxQty) {
+      $.ajax({
+        url: 'index.php?route=sale/order/deductBonusAndCreateReturn&user_token={{ user_token }}',
+        type: 'post',
+        dataType: 'json',
+        data: {
+          order_id: {{ order_id }},
+          product_id: productId,
+          quantity: quantity
+        },
+        success: function(json) {
+          $('.alert-dismissible').remove();
+
+          if (json.error) {
+            $('#content > .container-fluid').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json.error + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+          }
+
+          if (json.success) {
+            $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + json.success + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+
+            // Reload bonus tab content to show updated values
+            location.reload();
+          }
+        },
+        error: function(xhr, ajaxOptions, thrownError) {
+          alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+        }
+      });
+    } else if (quantity !== null) {
+      alert('Invalid quantity. Please enter a number between 1 and ' + maxQty);
+    }
+  }
   //--></script>
 </div>
 {{ footer }} 

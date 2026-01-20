@@ -1,0 +1,144 @@
+{# Bonus Display Widget - Flip Card Design #}
+{% if current_balance > 0 or total_bonus > 0 %}
+<div class="bonus-flip-container">
+  <div class="bonus-flip-card {% if applied_reward > 0 %}flipped{% endif %}" id="bonus-flip-card">
+
+    {# FRONT SIDE - Earn Bonuses #}
+    <div class="bonus-card-front">
+      <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <div style="display: flex; align-items: center;">
+            <i class="fa fa-gift" style="font-size: 24px; margin-right: 12px; opacity: 0.9;"></i>
+            <div>
+              <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px; opacity: 0.9;">
+                {% if total_bonus > 0 %}{{ text_you_will_earn }}{% else %}{{ text_balance_bonuses }}{% endif %}
+              </div>
+              <div style="font-size: 24px; font-weight: 700; line-height: 1;">
+                {% if total_bonus > 0 %}+{{ total_bonus }} ₽{% else %}{{ current_balance }} ₽{% endif %}
+              </div>
+            </div>
+          </div>
+          <div style="text-align: right; opacity: 0.9;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+              {{ text_balance }}
+            </div>
+            <div style="font-size: 18px; font-weight: 600;">
+              {{ current_balance }} ₽
+            </div>
+          </div>
+        </div>
+
+        {% if current_balance > 0 and max_can_spend > 0 %}
+        <button type="button" id="btn-show-spend" class="btn btn-light" style="width: 100%; padding: 10px; font-weight: 600; border-radius: 6px;">
+          <i class="fa fa-credit-card" style="margin-right: 6px;"></i>
+          {{ button_pay_with_bonuses }}
+        </button>
+        {% endif %}
+
+        {% if total_bonus > 0 %}
+        <div style="padding: 10px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 4px; font-size: 12px; color: white; margin-top: 12px;">
+          <i class="fa fa-info-circle" style="margin-right: 6px;"></i>
+          {{ text_bonuses_awarded }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# BACK SIDE - Spend Bonuses #}
+    {% if current_balance > 0 and max_can_spend > 0 %}
+    <div class="bonus-card-back">
+      <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+
+        {# Balance display #}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <div style="display: flex; align-items: center;">
+            <i class="fa fa-diamond" style="font-size: 22px; margin-right: 10px; opacity: 0.9;"></i>
+            <div>
+              <div style="font-size: 12px; opacity: 0.85; margin-bottom: 2px;">{{ text_your_balance }}</div>
+              <div style="font-size: 22px; font-weight: 700;">{{ current_balance }} ₽</div>
+            </div>
+          </div>
+          <button type="button" id="btn-show-earn" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 6px 12px; border-radius: 4px;">
+            <i class="fa fa-arrow-left"></i> {{ button_back }}
+          </button>
+        </div>
+
+        {# Input section #}
+        <div style="margin-bottom: 10px;">
+          <label for="input-reward-cart" style="display: block; font-size: 13px; font-weight: 600; color: white; opacity: 0.9; margin-bottom: 6px;">
+            <i class="fa fa-credit-card" style="margin-right: 6px;"></i>
+            {{ text_pay_up_to }}
+          </label>
+          <div class="input-group" style="position: relative;">
+            <input type="text"
+                   inputmode="numeric"
+                   pattern="[0-9]*"
+                   name="reward"
+                   value="{% if applied_reward > 0 %}{{ applied_reward }}{% endif %}"
+                   placeholder="0"
+                   id="input-reward-cart"
+                   data-max="{{ max_can_spend }}"
+                   class="form-control"
+                   style="border-radius: 4px 0 0 4px; height: 42px; font-size: 16px; font-weight: 600; padding-right: 45px;" />
+            <button type="button"
+                    id="button-reward-cancel"
+                    class="btn btn-link"
+                    style="position: absolute; right: 110px; top: 0; height: 42px; width: 40px; padding: 0; z-index: 10; color: rgba(60,60,60,0.7) !important; border: none; background: transparent;">
+              <i class="fa fa-times"></i>
+            </button>
+            <span class="input-group-btn">
+              <button type="button"
+                      id="button-reward-cart"
+                      class="btn btn-light"
+                      style="height: 42px; padding: 0 20px; border-radius: 0 4px 4px 0; font-weight: 600;">
+                {{ button_apply }}
+              </button>
+            </span>
+          </div>
+          <div style="font-size: 11px; margin-top: 4px; color: white; opacity: 0.8;">
+            {{ text_max_usage_percent }}
+          </div>
+        </div>
+
+        {% if total_bonus > 0 %}
+        <div style="padding: 10px 12px; background: rgba(255, 243, 205, 0.2); border-left: 3px solid #ffc107; border-radius: 4px; font-size: 12px; color: white;">
+          <i class="fa fa-exclamation-triangle" style="margin-right: 6px;"></i>
+          {{ warning_no_earn_if_spend|raw }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>{# end bonus-flip-card #}
+</div>{# end bonus-flip-container #}
+
+<script type="text/javascript">
+// Initialize bonus widget after a short delay to ensure DOM is ready
+if (typeof initBonusWidget === 'function') {
+  setTimeout(initBonusWidget, 100);
+}
+</script>
+
+{% elseif current_balance == 0 and total_bonus > 0 %}
+{# Show simple info when customer has no balance yet #}
+<div style="margin: 15px 0;">
+  <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+      <i class="fa fa-gift" style="font-size: 24px; margin-right: 12px; opacity: 0.9;"></i>
+      <div>
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px; opacity: 0.9;">
+          {{ text_you_will_earn }}
+        </div>
+        <div style="font-size: 24px; font-weight: 700; line-height: 1;">
+          +{{ total_bonus }} ₽
+        </div>
+      </div>
+    </div>
+    <div style="padding: 10px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 4px; font-size: 12px;">
+      <i class="fa fa-info-circle" style="margin-right: 6px;"></i>
+      {{ text_bonuses_will_be_awarded }}
+    </div>
+  </div>
+</div>
+{% endif %}

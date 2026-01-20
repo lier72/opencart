@@ -15,37 +15,135 @@
     {% endif %}
     <div id="content" class="{{ class }}">{{ content_top }}
       <h1>{{ heading_title }}</h1>
-      <p>{{ text_total }} <b>{{ total }}</b>.</p>
+      <div class="reward-summary">
+        <p>{{ text_total }} <b>{{ total }}</b>.</p>
+        {% if loyalty_level %}
+        <p>
+          {{ text_loyalty_level }}
+          <span class="badge badge-{{ loyalty_level_color }} loyalty-level-badge">
+            {{ loyalty_level.display_name }}
+          </span>
+        </p>
+        {% endif %}
+      </div>
       <div class="table-responsive">
-        <table class="table table-bordered table-hover">
+        <table class="table table-bordered table-hover reward-history-table">
           <thead>
             <tr>
               <td class="text-left">{{ column_date_added }}</td>
+              <td class="text-left">{{ column_type }}</td>
               <td class="text-left">{{ column_description }}</td>
               <td class="text-right">{{ column_points }}</td>
+              <td class="text-left">{{ column_details }}</td>
+              <td class="text-center">{{ column_date_expires }}</td>
             </tr>
           </thead>
           <tbody>
-          
+
           {% if rewards %}
           {% for reward in rewards %}
-          <tr>
+          <tr class="reward-row {% if reward.expiration_status == 'expired' %}reward-expired{% elseif reward.expiration_status == 'expiring_soon' %}reward-expiring-soon{% endif %}">
             <td class="text-left">{{ reward.date_added }}</td>
-            <td class="text-left">{% if reward.order_id %} <a href="{{ reward.href }}">{{ reward.description }}</a> {% else %}
-              {{ reward.description }}
-              {% endif %}</td>
-            <td class="text-right">{{ reward.points }}</td>
+            <td class="text-left">
+              <span class="badge badge-{% if reward.points > 0 %}success{% else %}danger{% endif %}">
+                {{ reward.bonus_type_display }}
+              </span>
+            </td>
+            <td class="text-left">
+              {% if reward.order_id %}
+                <a href="{{ reward.href }}">{{ reward.description }}</a>
+              {% else %}
+                {{ reward.description }}
+              {% endif %}
+            </td>
+            <td class="text-right">
+              <strong class="{{ reward.points_class }}">{{ reward.points_display }}</strong>
+            </td>
+            <td class="text-left">
+              <small class="text-muted">{{ reward.metadata_display }}</small>
+            </td>
+            <td class="text-center">
+              {% if reward.date_expires %}
+                <span class="expiration-date {% if reward.expiration_status == 'expired' %}text-danger{% elseif reward.expiration_status == 'expiring_soon' %}text-warning{% endif %}">
+                  {{ reward.date_expires }}
+                  {% if reward.expiration_status == 'expired' %}
+                    <br><small class="text-danger">{{ text_expiration_expired }}</small>
+                  {% elseif reward.expiration_status == 'expiring_soon' %}
+                    <br><small class="text-warning">{{ text_expiration_expiring_soon }}</small>
+                  {% endif %}
+                </span>
+              {% else %}
+                <small class="text-muted">{{ text_no_expiration }}</small>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
           {% else %}
           <tr>
-            <td class="text-center" colspan="3">{{ text_empty }}</td>
+            <td class="text-center" colspan="6">{{ text_empty }}</td>
           </tr>
           {% endif %}
             </tbody>
-          
+
         </table>
       </div>
+      <style>
+        .reward-summary {
+          margin-bottom: 20px;
+          padding: 15px;
+          background-color: #f8f9fa;
+          border-radius: 4px;
+        }
+        .reward-summary p {
+          margin-bottom: 10px;
+        }
+        .reward-summary p:last-child {
+          margin-bottom: 0;
+        }
+        .loyalty-level-badge {
+          font-size: 14px;
+          padding: 6px 12px;
+          font-weight: 600;
+          margin-left: 8px;
+        }
+        .badge-secondary {
+          background-color: #6c757d;
+          color: #fff;
+        }
+        .badge-default {
+          background-color: #c0c0c0;
+          color: #333;
+        }
+        .badge-silver {
+          background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 50%, #c0c0c0 100%);
+          color: #333;
+          text-shadow: 0 1px 1px rgba(255,255,255,0.5);
+        }
+        .badge-gold {
+          background: linear-gradient(135deg, #d4af37 0%, #f9e79f 50%, #d4af37 100%);
+          color: #5a4a1a;
+          text-shadow: 0 1px 1px rgba(255,255,255,0.3);
+        }
+        .badge-platinum {
+          background: linear-gradient(135deg, #4a90e2 0%, #a8d5ff 50%, #4a90e2 100%);
+          color: #fff;
+          text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+        }
+        .reward-history-table .badge {
+          font-size: 11px;
+          padding: 4px 8px;
+        }
+        .reward-expired {
+          opacity: 0.6;
+          background-color: #f9f9f9;
+        }
+        .reward-expiring-soon {
+          background-color: #fff9e6;
+        }
+        .expiration-date small {
+          font-weight: bold;
+        }
+      </style>
       <div class="row">
         <div class="col-sm-6 text-left">{{ pagination }}</div>
         <div class="col-sm-6 text-right">{{ results }}</div>

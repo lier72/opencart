@@ -1306,10 +1306,54 @@ class ControllerCustomerCustomer extends Controller {
 		$results = $this->model_customer_customer->getRewards($this->request->get['customer_id'], ($page - 1) * 10, 10);
 
 		foreach ($results as $result) {
+			// Format bonus type
+			$bonus_type = !empty($result['bonus_type']) ? $result['bonus_type'] : 'reward';
+			$bonus_type_label = $this->formatBonusType($bonus_type);
+
+			// Parse and format metadata
+			$metadata_display = $this->formatBonusMetadata($result['bonus_metadata'], $bonus_type);
+
+			// Format expiration date
+			$date_expires_display = '';
+			$expiration_class = '';
+			if (!empty($result['date_expires'])) {
+				$expires_timestamp = strtotime($result['date_expires']);
+				$date_expires_display = date($this->language->get('date_format_short'), $expires_timestamp);
+
+				// Check if expired
+				if ($expires_timestamp < time()) {
+					$expiration_class = 'text-danger';
+				} elseif (ceil(($expires_timestamp - time()) / 86400) <= 30) {
+					$expiration_class = 'text-warning';
+				}
+			} else {
+				$date_expires_display = $this->language->get('text_no_expiration');
+			}
+
+			// Format points display
+			$points_class = $result['points'] > 0 ? 'text-success' : ($result['points'] < 0 ? 'text-danger' : '');
+			$points_display = $result['points'] > 0 ? '+' . $result['points'] : $result['points'];
+
+			// Format order link if available
+			$order_link = '';
+			if (!empty($result['order_id'])) {
+				$order_link = $this->url->link('sale/order/info', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'], true);
+			}
+
 			$data['rewards'][] = array(
-				'points'      => $result['points'],
-				'description' => $result['description'],
-				'date_added'  => date($this->language->get('date_format_short'), strtotime($result['date_added']))
+				'points'              => $result['points'],
+				'points_display'      => $points_display,
+				'points_class'        => $points_class,
+				'description'         => $result['description'],
+				'date_added'          => date($this->language->get('date_format_short'), strtotime($result['date_added'])),
+				'bonus_type'          => $bonus_type,
+				'bonus_type_label'    => $bonus_type_label,
+				'metadata_display'    => $metadata_display,
+				'date_expires'        => $date_expires_display,
+				'expiration_class'    => $expiration_class,
+				'bonus_items_summary' => !empty($result['bonus_items_summary']) ? $result['bonus_items_summary'] : '-',
+				'order_id'            => $result['order_id'],
+				'order_link'          => $order_link
 			);
 		}
 
@@ -1486,5 +1530,83 @@ class ControllerCustomerCustomer extends Controller {
 
 		$this->response->addHeader('Content-Type: application/json');
 		$this->response->setOutput(json_encode($json));
+	}
+
+	/**
+	 * Format bonus type for admin display
+	 *
+	 * Converts database bonus_type codes into user-friendly display labels for admin interface.
+	 *
+	 * Scope: Helper method called from reward() to format bonus types in admin customer reward view
+	 *
+	 * @param string $bonus_type The bonus_type from database
+	 * @return string Formatted bonus type label
+	 */
+	private function formatBonusType($bonus_type) {
+		$type_map = array(
+			'order_complete'    => $this->language->get('text_type_order_complete'),
+			'return_deduction'  => $this->language->get('text_type_return_deduction'),
+			'registration'      => $this->language->get('text_type_registration'),
+			'birthday'          => $this->language->get('text_type_birthday'),
+			'product_bonus'     => $this->language->get('text_type_product_bonus'),
+			'manual_adjustment' => $this->language->get('text_type_manual_adjustment'),
+			'reward'            => $this->language->get('text_type_reward')
+		);
+
+		return isset($type_map[$bonus_type]) ? $type_map[$bonus_type] : ucfirst(str_replace('_', ' ', $bonus_type));
+	}
+
+	/**
+	 * Format bonus metadata for admin display
+	 *
+	 * Parses JSON bonus_metadata and formats it into readable text for admin.
+	 *
+	 * Scope: Helper method called from reward() to format metadata in admin customer reward view
+	 *
+	 * @param string $metadata_json JSON-encoded metadata
+	 * @param string $bonus_type The type of bonus transaction
+	 * @return string Formatted metadata string
+	 */
+	private function formatBonusMetadata($metadata_json, $bonus_type) {
+		if (empty($metadata_json)) {
+			return '-';
+		}
+
+		$metadata = json_decode($metadata_json, true);
+		if (!is_array($metadata)) {
+			return '-';
+		}
+
+		$parts = array();
+
+		switch ($bonus_type) {
+			case 'order_complete':
+				if (isset($metadata['order_id'])) {
+					$parts[] = 'Order #' . $metadata['order_id'];
+				}
+				if (isset($metadata['bonus_pct'])) {
+					$parts[] = 'Rate: ' . number_format($metadata['bonus_pct'], 1) . '%';
+				}
+				break;
+
+			case 'return_deduction':
+				if (isset($metadata['return_id'])) {
+					$parts[] = 'Return #' . $metadata['return_id'];
+				}
+				if (isset($metadata['product_id'])) {
+					$parts[] = 'Product #' . $metadata['product_id'];
+				}
+				break;
+
+			default:
+				foreach ($metadata as $key => $value) {
+					if (is_scalar($value)) {
+						$parts[] = ucfirst(str_replace('_', ' ', $key)) . ': ' . $value;
+					}
+				}
+				break;
+		}
+
+		return !empty($parts) ? implode(', ', $parts) : '-';
 	}
 }

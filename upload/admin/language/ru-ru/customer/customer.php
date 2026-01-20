@@ -41,6 +41,10 @@ $_['column_points']             = 'Баллы';
 $_['column_ip']                 = 'IP';
 $_['column_total']              = 'Общая сумма';
 $_['column_action']             = 'Действие';
+$_['column_bonus_type']         = 'Тип';
+$_['column_metadata']           = 'Детали';
+$_['column_date_expires']       = 'Срок действия';
+$_['column_bonus_items']        = 'Детали бонусов';
 
 // Entry
 $_['entry_customer_group']      = 'Группа клиента';
@@ -112,5 +116,15 @@ $_['error_cheque']              = 'Обязательно к заполнени�
 $_['error_paypal']              = 'PayPal Email не корректный!';
 $_['error_bank_account_name']   = 'Обязательно к заполнению!';
 $_['error_bank_account_number'] = 'Обязательно к заполнению!';
+
+// Bonus Types
+$_['text_type_order_complete']    = 'Бонус за заказ';
+$_['text_type_return_deduction']  = 'Списание за возврат';
+$_['text_type_registration']      = 'Бонус за регистрацию';
+$_['text_type_birthday']          = 'Бонус ко дню рождения';
+$_['text_type_product_bonus']     = 'Бонус за товар';
+$_['text_type_manual_adjustment'] = 'Ручная корректировка';
+$_['text_type_reward']            = 'Бонусные баллы';
+$_['text_no_expiration']          = 'Без срока';
 
 

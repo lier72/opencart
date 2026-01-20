@@ -1,4 +1,13 @@
-<div class="checkout-section section-cvr" v-if="coupon_status || voucher_status || (reward_status && customer_id)">
+{#
+  BONUS WIDGET INTEGRATION:
+  - Shows for ALL users (both guests and logged-in)
+  - For guests: displays registration widget encouraging sign-up
+  - For logged-in: displays bonus balance and earning potential
+  - Controlled by bonus_display/cart() method which handles routing internally
+#}
+{% set show_bonus_widget = bonus_widget_checkout is not empty %}
+
+<div class="checkout-section section-cvr" v-if="coupon_status || voucher_status || (reward_status && customer_id) || {{ show_bonus_widget ? 'true' : 'false' }}">
   <div class="title section-title">{{ journal3.get('sectionTitleCouponVoucherReward') }}</div>
 
   <div class="section-body">
@@ -26,16 +35,17 @@
       <span class="text-danger" v-if="error && error.voucher" v-html="error.voucher"></span>
     </div>
 
-    <div class="form-group form-reward" v-if="reward_status && customer_id">
-      <label class="control-label" for="input-reward">{{ entry_reward }}</label>
-      <div class="input-group">
-        <input type="text" v-model="reward" placeholder="{{ entry_reward }}" id="input-reward" class="form-control"/>
-        <span class="input-group-btn">
-              <button type="button" v-on:click="applyReward()" data-loading-text="{{ text_loading }}" class="btn btn-primary"><span>{{ button_submit }}</span></button>
-            </span>
-      </div>
-      <span class="text-success" v-if="reward_message" v-html="reward_message"></span>
-      <span class="text-danger" v-if="error && error.reward" v-html="error.reward"></span>
+    {#
+      BONUS WIDGET DISPLAY:
+      Always show if widget content exists (bonus_widget_checkout is not empty)
+      - For guests (!customer_id): Shows registration widget
+      - For logged-in (customer_id): Shows bonus balance widget
+      The bonus_display/cart() controller handles the routing logic
+    #}
+    {% if show_bonus_widget %}
+    <div class="form-group form-reward">
+      {{ bonus_widget_checkout }}
     </div>
+    {% endif %}
   </div>
 </div>

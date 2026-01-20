@@ -3,8 +3,12 @@
     <thead>
       <tr>
         <td class="text-left">{{ column_date_added }}</td>
+        <td class="text-left">{{ column_bonus_type }}</td>
         <td class="text-left">{{ column_description }}</td>
         <td class="text-right">{{ column_points }}</td>
+        <td class="text-left">{{ column_metadata }}</td>
+        <td class="text-center">{{ column_date_expires }}</td>
+        <td class="text-left">{{ column_bonus_items }}</td>
       </tr>
     </thead>
     <tbody>
@@ -12,18 +16,40 @@
       {% for reward in rewards %}
       <tr>
         <td class="text-left">{{ reward.date_added }}</td>
-        <td class="text-left">{{ reward.description }}</td>
-        <td class="text-right">{{ reward.points }}</td>
+        <td class="text-left">
+          <span class="label label-{% if reward.points > 0 %}success{% else %}danger{% endif %}">
+            {{ reward.bonus_type_label }}
+          </span>
+        </td>
+        <td class="text-left">
+          {% if reward.order_id %}
+            <a href="{{ reward.order_link }}" target="_blank">{{ reward.description }}</a>
+          {% else %}
+            {{ reward.description }}
+          {% endif %}
+        </td>
+        <td class="text-right">
+          <strong class="{{ reward.points_class }}">{{ reward.points_display }}</strong>
+        </td>
+        <td class="text-left">
+          <small>{{ reward.metadata_display }}</small>
+        </td>
+        <td class="text-center">
+          <span class="{{ reward.expiration_class }}">{{ reward.date_expires }}</span>
+        </td>
+        <td class="text-left">
+          <small>{{ reward.bonus_items_summary|raw }}</small>
+        </td>
       </tr>
       {% endfor %}
       <tr>
-        <td></td>
+        <td colspan="3"></td>
         <td class="text-right"><b>{{ text_balance }}</b></td>
-        <td class="text-right">{{ balance }}</td>
+        <td colspan="3" class="text-right"><b>{{ balance }}</b></td>
       </tr>
       {% else %}
       <tr>
-        <td class="text-center" colspan="3">{{ text_no_results }}</td>
+        <td class="text-center" colspan="7">{{ text_no_results }}</td>
       </tr>
       {% endif %}
     </tbody>
