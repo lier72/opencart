@@ -7379,7 +7379,7 @@ class ModelToolExportImport extends Model {
 		$exist_table_customer_group_description = ($query->num_rows > 0);
 
 		// get the product rewards
-		$sql  = "SELECT pr.*, ";
+		$sql  = "SELECT DISTINCT pr.*, ";
 		$sql .= ($exist_table_customer_group_description) ? "cgd.name " : "cg.name ";
 		$sql .= "FROM `".DB_PREFIX."product_reward` pr ";
 		if ($exist_table_customer_group_description) {
@@ -9332,7 +9332,7 @@ class ModelToolExportImport extends Model {
 
 	public function getNotifications() {
 		$language_code = $this->config->get( 'config_admin_language' );
-		$result = $this->curl_get_contents("http://www.mhccorp.com/index.php?route=information/message&type=tool_export_import_3_20&language_code=$language_code");
+		$result = $this->curl_get_contents("http://www.mhccorp.com/index.php?route=information/message&type=tool_export_import_3_22&language_code=$language_code");
 		if (stripos($result,'<html') !== false) {
 			return '';
 		}
