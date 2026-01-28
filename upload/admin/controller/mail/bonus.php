@@ -217,6 +217,118 @@ class ControllerMailBonus extends Controller {
 	}
 
 	/**
+	 * Send birthday bonus email to customer
+	 * Called by cron job when birthday bonus is awarded
+	 *
+	 * This method handles email notifications for customers receiving birthday bonuses.
+	 * Uses the same placeholder and Twig rendering system as other bonus emails.
+	 *
+	 * Scope: Called from admin/controller/extension/module/bonus_manager::processBirthdayBonuses()
+	 *
+	 * @param array $args Array containing:
+	 *                     [0] = customer_info - Customer data array with customer_id, firstname, lastname, email
+	 *                     [1] = bonus_amount - Birthday bonus amount awarded
+	 * @return bool True if email sent successfully
+	 */
+	public function birthday($args) {
+		// Extract arguments
+		$customer_info = isset($args[0]) ? $args[0] : array();
+		$bonus_amount = isset($args[1]) ? (int)$args[1] : 0;
+
+		// Check if email notifications are enabled
+		if (!$this->config->get('module_bonus_manager_email_birthday_status')) {
+			return false;
+		}
+
+		// Validate required data
+		if (!isset($customer_info['email']) || !$customer_info['email']) {
+			$this->log->write('BONUS MAIL: Missing customer email for birthday notification');
+			return false;
+		}
+
+		if ($bonus_amount <= 0) {
+			return false;
+		}
+
+		// Get current bonus balance
+		$this->load->model('customer/customer');
+		$current_balance = $this->model_customer_customer->getRewardTotal($customer_info['customer_id']);
+
+		// Calculate expiration date
+		$expiration_days = (int)$this->config->get('module_bonus_manager_expiration_days');
+		if ($expiration_days <= 0) {
+			$expiration_days = 365;
+		}
+		$expiration_date = date('d.m.Y', strtotime('+' . $expiration_days . ' days'));
+
+		// Get store info
+		$store_name = $this->config->get('config_name') ?: 'UniqSport';
+		$store_url = defined('HTTP_CATALOG') ? HTTP_CATALOG : HTTP_SERVER;
+
+		// Prepare data for template
+		$data = array(
+			'customer_firstname' => $customer_info['firstname'],
+			'customer_lastname' => $customer_info['lastname'],
+			'birthday_bonus' => number_format($bonus_amount, 0, '.', ' '),
+			'current_balance' => number_format($current_balance, 0, '.', ' '),
+			'expiration_date' => $expiration_date,
+			'store_name' => $store_name,
+			'store_url' => $store_url,
+			'account_url' => $store_url . 'index.php?route=account/account'
+		);
+
+		// Get templates from configuration
+		$subject_template = $this->config->get('module_bonus_manager_email_birthday_subject');
+		if (!$subject_template) {
+			$subject_template = 'С Днём рождения, {customer_firstname}! Вам подарок от {store_name}';
+		}
+
+		$body_template = $this->config->get('module_bonus_manager_email_birthday_body');
+		if (!$body_template) {
+			// Get default template from bonus_manager controller (single source of truth)
+			$body_template = $this->load->controller('extension/module/bonus_manager/getDefaultBirthdayTemplate');
+		}
+
+		// Decode HTML entities in templates
+		$subject_template = html_entity_decode($subject_template, ENT_QUOTES, 'UTF-8');
+		$body_template = html_entity_decode($body_template, ENT_QUOTES, 'UTF-8');
+
+		// Replace placeholders
+		$subject = $this->replacePlaceholders($subject_template, $data);
+		$body = $this->renderTwigTemplate($body_template, $data);
+
+		// Get from email
+		$from = $this->config->get('config_email');
+
+		// Send email
+		try {
+			$mail = new Mail($this->config->get('config_mail_engine') ?: 'mail');
+			$mail->parameter = $this->config->get('config_mail_parameter');
+			$mail->smtp_hostname = $this->config->get('config_mail_smtp_hostname');
+			$mail->smtp_username = $this->config->get('config_mail_smtp_username');
+			$mail->smtp_password = html_entity_decode($this->config->get('config_mail_smtp_password'), ENT_QUOTES, 'UTF-8');
+			$mail->smtp_port = $this->config->get('config_mail_smtp_port');
+			$mail->smtp_timeout = $this->config->get('config_mail_smtp_timeout');
+
+			$mail->setTo($customer_info['email']);
+			$mail->setFrom($from);
+			$mail->setSender(html_entity_decode($store_name, ENT_QUOTES, 'UTF-8'));
+			$mail->setSubject(html_entity_decode($subject, ENT_QUOTES, 'UTF-8'));
+			$mail->setHtml(html_entity_decode($body, ENT_QUOTES, 'UTF-8'));
+			$mail->send();
+
+			$this->log->write('BONUS: Birthday notification sent to ' . $customer_info['email'] .
+				' (bonus: ' . $bonus_amount . ' points)');
+
+			return true;
+
+		} catch (Exception $e) {
+			$this->log->write('BONUS: Birthday notification failed: ' . $e->getMessage());
+			return false;
+		}
+	}
+
+	/**
 	 * Replace placeholders in template
 	 *
 	 * Replaces {placeholder} syntax with actual values from data array.

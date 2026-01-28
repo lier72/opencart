@@ -816,6 +816,213 @@ class ModelExtensionModuleBonusManager extends Model {
 	}
 
 	// =============================================================================
+	// BIRTHDAY BONUS METHODS
+	// =============================================================================
+
+	/**
+	 * Get all customers with birthday today (for admin display)
+	 *
+	 * Returns all customers whose birthday matches today's date, regardless of
+	 * whether they've already received a birthday bonus. Used for statistics display.
+	 *
+	 * Birthday field format in custom_field JSON: {"2":"YYYY-MM-DD", ...}
+	 *
+	 * Scope: Called from admin statistics tab display
+	 *
+	 * @return array Array of customer data (customer_id, firstname, lastname, email, received_bonus)
+	 */
+	public function getTodaysBirthdays() {
+		$today_month = date('m');
+		$today_day = date('d');
+		$current_year = date('Y');
+
+		// Get all customers with birthday custom field
+		// Note: JSON may have spaces after colons ("2": "date") or not ("2":"date")
+		$query = $this->db->query("
+			SELECT c.customer_id, c.firstname, c.lastname, c.email, c.custom_field,
+				(SELECT COUNT(*) FROM " . DB_PREFIX . "customer_reward cr
+				 WHERE cr.customer_id = c.customer_id
+				 AND cr.bonus_type = 'birthday'
+				 AND YEAR(cr.date_added) = '" . (int)$current_year . "') as received_bonus
+			FROM " . DB_PREFIX . "customer c
+			WHERE c.status = 1
+			AND c.custom_field IS NOT NULL
+			AND c.custom_field != ''
+			AND (c.custom_field LIKE '%\"2\":\"%-%-%\"%' OR c.custom_field LIKE '%\"2\": \"%-%-%\"%')
+		");
+
+		$customers = array();
+
+		foreach ($query->rows as $row) {
+			// Parse custom_field JSON and check birthday date
+			$custom_fields = json_decode($row['custom_field'], true);
+
+			if (!is_array($custom_fields) || !isset($custom_fields['2'])) {
+				continue;
+			}
+
+			$birthday = $custom_fields['2'];
+
+			// Validate date format YYYY-MM-DD and check if month/day matches today
+			if (preg_match('/^\d{4}-(\d{2})-(\d{2})$/', $birthday, $matches)) {
+				if ($matches[1] == $today_month && $matches[2] == $today_day) {
+					$customers[] = array(
+						'customer_id' => $row['customer_id'],
+						'firstname' => $row['firstname'],
+						'lastname' => $row['lastname'],
+						'email' => $row['email'],
+						'received_bonus' => (int)$row['received_bonus'] > 0
+					);
+				}
+			}
+		}
+
+		return $customers;
+	}
+
+	/**
+	 * Get customers with birthday today who are eligible for birthday bonus
+	 *
+	 * Finds all registered customers whose birthday (stored in custom_field JSON with key "2")
+	 * matches today's date (month and day), are in a customer group enrolled in the bonus program,
+	 * and haven't received a birthday bonus in the current calendar year.
+	 *
+	 * Birthday field format in custom_field JSON: {"2":"YYYY-MM-DD", ...}
+	 *
+	 * Scope: Called from cron job to award birthday bonuses
+	 *
+	 * @return array Array of customer data (customer_id, firstname, lastname, email)
+	 */
+	public function getCustomersWithBirthdayToday() {
+		$today_month = date('m');
+		$today_day = date('d');
+		$current_year = date('Y');
+
+		// Get customer groups that are enrolled in bonus program
+		$bonus_groups_query = $this->db->query("
+			SELECT DISTINCT customer_group_id FROM " . DB_PREFIX . "bonus_settings
+			WHERE bonus_percent > 0
+		");
+
+		if (!$bonus_groups_query->num_rows) {
+			return array(); // No bonus-eligible groups configured
+		}
+
+		$eligible_group_ids = array();
+		foreach ($bonus_groups_query->rows as $row) {
+			$eligible_group_ids[] = (int)$row['customer_group_id'];
+		}
+
+		// Find customers with birthday today who:
+		// 1. Are active (status = 1)
+		// 2. Have an email address
+		// 3. Are in a bonus-eligible customer group
+		// 4. Have birthday matching today's month and day (custom_field JSON key "2")
+		// 5. Haven't received birthday bonus this year
+		// Note: JSON may have spaces after colons ("2": "date") or not ("2":"date")
+		$query = $this->db->query("
+			SELECT c.customer_id, c.firstname, c.lastname, c.email, c.custom_field
+			FROM " . DB_PREFIX . "customer c
+			WHERE c.status = 1
+			AND c.email != ''
+			AND c.customer_group_id IN (" . implode(',', $eligible_group_ids) . ")
+			AND c.custom_field IS NOT NULL
+			AND c.custom_field != ''
+			AND (c.custom_field LIKE '%\"2\":\"%-%-%\"%' OR c.custom_field LIKE '%\"2\": \"%-%-%\"%')
+			AND c.customer_id NOT IN (
+				SELECT cr.customer_id FROM " . DB_PREFIX . "customer_reward cr
+				WHERE cr.bonus_type = 'birthday'
+				AND YEAR(cr.date_added) = '" . (int)$current_year . "'
+			)
+		");
+
+		$customers = array();
+
+		foreach ($query->rows as $row) {
+			// Parse custom_field JSON and check birthday date
+			$custom_fields = json_decode($row['custom_field'], true);
+
+			if (!is_array($custom_fields) || !isset($custom_fields['2'])) {
+				continue;
+			}
+
+			$birthday = $custom_fields['2'];
+
+			// Validate date format YYYY-MM-DD and check if month/day matches today
+			if (preg_match('/^\d{4}-(\d{2})-(\d{2})$/', $birthday, $matches)) {
+				if ($matches[1] == $today_month && $matches[2] == $today_day) {
+					$customers[] = array(
+						'customer_id' => $row['customer_id'],
+						'firstname' => $row['firstname'],
+						'lastname' => $row['lastname'],
+						'email' => $row['email']
+					);
+				}
+			}
+		}
+
+		return $customers;
+	}
+
+	/**
+	 * Award birthday bonus to a customer
+	 *
+	 * Creates a bonus award entry for the customer's birthday.
+	 * Uses 'birthday' as bonus_type to track and prevent duplicate awards within the same year.
+	 * This method includes a double-check to prevent duplicate awards if cron runs multiple times.
+	 *
+	 * Scope: Called from cron job when processing birthday bonuses
+	 *
+	 * @param int $customer_id Customer ID
+	 * @param int $bonus_amount Amount of bonus points to award
+	 * @return bool True if bonus was awarded successfully
+	 */
+	public function awardBirthdayBonus($customer_id, $bonus_amount) {
+		if ($customer_id <= 0 || $bonus_amount <= 0) {
+			return false;
+		}
+
+		$current_year = date('Y');
+
+		// Double-check: prevent duplicate awards if cron runs multiple times per day
+		$check = $this->db->query("
+			SELECT customer_reward_id FROM " . DB_PREFIX . "customer_reward
+			WHERE customer_id = '" . (int)$customer_id . "'
+			AND bonus_type = 'birthday'
+			AND YEAR(date_added) = '" . (int)$current_year . "'
+		");
+
+		if ($check->num_rows) {
+			return false; // Already awarded this year
+		}
+
+		// Calculate expiration date (use configured expiration days)
+		$expiration_days = (int)$this->config->get('module_bonus_manager_expiration_days');
+		if ($expiration_days <= 0) {
+			$expiration_days = 365;
+		}
+		$expiration_date = date('Y-m-d H:i:s', strtotime('+' . $expiration_days . ' days'));
+
+		// Insert birthday bonus
+		$description = 'Подарок на День рождения ' . $current_year;
+
+		$this->db->query("INSERT INTO " . DB_PREFIX . "customer_reward SET
+			customer_id = '" . (int)$customer_id . "',
+			order_id = 0,
+			description = '" . $this->db->escape($description) . "',
+			points = '" . (int)$bonus_amount . "',
+			remaining = '" . (int)$bonus_amount . "',
+			reward_kind = 'award',
+			bonus_type = 'birthday',
+			bonus_metadata = '" . $this->db->escape(json_encode(array('year' => $current_year))) . "',
+			date_added = NOW(),
+			date_expires = '" . $this->db->escape($expiration_date) . "'
+		");
+
+		return $this->db->countAffected() > 0;
+	}
+
+	// =============================================================================
 	// SCHEMA HELPER METHODS (MySQL 5.6 compatible)
 	// =============================================================================
 

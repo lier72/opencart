@@ -23,7 +23,8 @@ class ControllerExtensionModuleBonusManager extends Controller {
 				'module_bonus_manager_email_spent_body',
 				'module_bonus_manager_email_deducted_body',
 				'module_bonus_manager_email_expiring_body',
-				'module_bonus_manager_email_loyalty_upgrade_body'
+				'module_bonus_manager_email_loyalty_upgrade_body',
+				'module_bonus_manager_email_birthday_body'
 			);
 
 			foreach ($html_fields as $field) {
@@ -279,6 +280,31 @@ class ControllerExtensionModuleBonusManager extends Controller {
 			$data['module_bonus_manager_email_loyalty_upgrade_body'] = $this->config->get('module_bonus_manager_email_loyalty_upgrade_body') ?: $this->getDefaultLoyaltyUpgradeTemplate();
 		}
 
+		// Birthday Bonus Settings
+		if (isset($this->request->post['module_bonus_manager_birthday_bonus_amount'])) {
+			$data['module_bonus_manager_birthday_bonus_amount'] = $this->request->post['module_bonus_manager_birthday_bonus_amount'];
+		} else {
+			$data['module_bonus_manager_birthday_bonus_amount'] = $this->config->get('module_bonus_manager_birthday_bonus_amount') ?: 500;
+		}
+
+		if (isset($this->request->post['module_bonus_manager_email_birthday_status'])) {
+			$data['module_bonus_manager_email_birthday_status'] = $this->request->post['module_bonus_manager_email_birthday_status'];
+		} else {
+			$data['module_bonus_manager_email_birthday_status'] = $this->config->get('module_bonus_manager_email_birthday_status');
+		}
+
+		if (isset($this->request->post['module_bonus_manager_email_birthday_subject'])) {
+			$data['module_bonus_manager_email_birthday_subject'] = $this->request->post['module_bonus_manager_email_birthday_subject'];
+		} else {
+			$data['module_bonus_manager_email_birthday_subject'] = $this->config->get('module_bonus_manager_email_birthday_subject') ?: 'С Днём рождения, {customer_firstname}! Вам подарок от {store_name}';
+		}
+
+		if (isset($this->request->post['module_bonus_manager_email_birthday_body'])) {
+			$data['module_bonus_manager_email_birthday_body'] = $this->request->post['module_bonus_manager_email_birthday_body'];
+		} else {
+			$data['module_bonus_manager_email_birthday_body'] = $this->config->get('module_bonus_manager_email_birthday_body') ?: $this->getDefaultBirthdayTemplate();
+		}
+
 		// Registration Widget Settings
 		if (isset($this->request->post['module_bonus_manager_register_widget_heading'])) {
 			$data['module_bonus_manager_register_widget_heading'] = $this->request->post['module_bonus_manager_register_widget_heading'];
@@ -319,6 +345,9 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		// Get statistics
 		$data['statistics'] = $this->model_extension_module_bonus_manager->getBonusStatistics();
 		$data['recent_transactions'] = $this->model_extension_module_bonus_manager->getRecentBonusTransactions(10);
+
+		// Get today's birthdays for display
+		$data['todays_birthdays'] = $this->model_extension_module_bonus_manager->getTodaysBirthdays();
 
 		// Loyalty Levels Settings
 		if (isset($this->request->post['module_bonus_manager_loyalty_status'])) {
@@ -540,7 +569,7 @@ class ControllerExtensionModuleBonusManager extends Controller {
 	 * @return void
 	 */
 	public function cron() {
-		$this->log->write('=== Bonus Expiration Cron Job Started ===');
+		$this->log->write('=== Bonus Cron Job Started ===');
 
 		try {
 			$this->load->model('extension/module/bonus_manager');
@@ -553,15 +582,21 @@ class ControllerExtensionModuleBonusManager extends Controller {
 			// Step 2: Process expired bonuses
 			$this->processExpiredBonuses();
 
-			$this->log->write('=== Bonus Expiration Cron Job Completed Successfully ===');
+			// Step 3: Process birthday bonuses
+			$birthday_bonus_amount = (int)$this->config->get('module_bonus_manager_birthday_bonus_amount');
+			if ($birthday_bonus_amount > 0) {
+				$this->processBirthdayBonuses($birthday_bonus_amount);
+			}
+
+			$this->log->write('=== Bonus Cron Job Completed Successfully ===');
 
 		} catch (Exception $e) {
 			$this->log->write('CRON ERROR: ' . $e->getMessage());
-			$this->log->write('=== Bonus Expiration Cron Job Failed ===');
+			$this->log->write('=== Bonus Cron Job Failed ===');
 		}
 
 		// For CLI output
-		echo "Bonus expiration cron completed. Check logs for details.\n";
+		echo "Bonus cron completed. Check logs for details.\n";
 	}
 
 	/**
@@ -637,6 +672,57 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$expired_count = $this->model_extension_module_bonus_manager->expireExpiredBonuses();
 
 		$this->log->write('Expired ' . $expired_count . ' bonus records (set remaining to 0)');
+	}
+
+	/**
+	 * Process birthday bonuses
+	 *
+	 * Awards birthday bonuses to customers who have a birthday today.
+	 * Only awards once per year per customer.
+	 * Sends birthday email notification if enabled.
+	 *
+	 * Scope: Called from cron() method daily
+	 *
+	 * @param int $bonus_amount Amount of birthday bonus to award
+	 * @return void
+	 */
+	private function processBirthdayBonuses($bonus_amount) {
+		$this->log->write('Processing birthday bonuses (amount: ' . $bonus_amount . ')');
+
+		// Get customers with birthday today who haven't received bonus this year
+		$customers = $this->model_extension_module_bonus_manager->getCustomersWithBirthdayToday();
+
+		if (empty($customers)) {
+			$this->log->write('No customers with birthday today found');
+			return;
+		}
+
+		$this->log->write('Found ' . count($customers) . ' customers with birthday today');
+
+		$bonuses_awarded = 0;
+		$emails_sent = 0;
+
+		foreach ($customers as $customer) {
+			// Award birthday bonus
+			$result = $this->model_extension_module_bonus_manager->awardBirthdayBonus(
+				$customer['customer_id'],
+				$bonus_amount
+			);
+
+			if ($result) {
+				$bonuses_awarded++;
+
+				// Send birthday email if enabled
+				if ($this->config->get('module_bonus_manager_email_birthday_status')) {
+					$success = $this->load->controller('mail/bonus/birthday', array($customer, $bonus_amount));
+					if ($success) {
+						$emails_sent++;
+					}
+				}
+			}
+		}
+
+		$this->log->write('Awarded ' . $bonuses_awarded . ' birthday bonuses, sent ' . $emails_sent . ' emails');
 	}
 
 	/**
@@ -851,6 +937,66 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		<div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
 			<p style="color: #6b7280; font-size: 14px; margin: 0;">
 				С уважением,<br>
+				<strong>{store_name}</strong>
+			</p>
+		</div>
+	</div>
+</div>';
+	}
+
+	/**
+	 * Get default template for birthday bonus email
+	 *
+	 * This method is public so it can be called from admin/controller/mail/bonus.php
+	 * to maintain a single source of truth for the default template.
+	 *
+	 * Scope: Called from bonus_manager form and mail/bonus/birthday()
+	 *
+	 * @return string Default HTML template
+	 */
+	public function getDefaultBirthdayTemplate() {
+		return '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+	<div style="background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+		<h1 style="color: white; margin: 0; font-size: 28px;">&#127874; С Днём рождения!</h1>
+	</div>
+
+	<div style="background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px;">
+		<p style="font-size: 16px; color: #374151;">Дорогой(ая) <strong>{customer_firstname}</strong>!</p>
+
+		<p style="font-size: 16px; color: #374151; line-height: 1.6;">
+			От всей души поздравляем вас с Днём рождения! &#127881;
+		</p>
+
+		<p style="font-size: 16px; color: #374151; line-height: 1.6;">
+			В честь этого замечательного дня мы дарим вам подарочные бонусы!
+		</p>
+
+		<div style="background: white; border-left: 4px solid #ec4899; padding: 20px; margin: 20px 0; border-radius: 4px;">
+			<p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">Ваш подарок:</p>
+			<p style="margin: 0; font-size: 32px; color: #ec4899; font-weight: bold;">+{birthday_bonus} &#8381;</p>
+		</div>
+
+		<div style="background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 6px; padding: 15px; margin: 20px 0;">
+			<p style="margin: 0; color: #9d174d; font-size: 14px;">
+				<strong>&#127873; Подарок уже на вашем счету!</strong><br>
+				&#128176; Текущий баланс: <strong>{current_balance} &#8381;</strong><br>
+				&#128197; Бонусы действительны до: {expiration_date}
+			</p>
+		</div>
+
+		<p style="font-size: 16px; color: #374151; line-height: 1.6;">
+			Желаем вам здоровья, счастья и исполнения всех желаний! Пусть этот день будет наполнен радостью и приятными сюрпризами.
+		</p>
+
+		<div style="text-align: center; margin: 30px 0;">
+			<a href="{store_url}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+				Порадовать себя подарком
+			</a>
+		</div>
+
+		<div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+			<p style="color: #6b7280; font-size: 14px; margin: 0;">
+				С наилучшими пожеланиями,<br>
 				<strong>{store_name}</strong>
 			</p>
 		</div>

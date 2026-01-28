@@ -89,6 +89,17 @@
               </div>
 
               <div class="form-group">
+                <label class="col-sm-2 control-label" for="input-birthday-bonus-amount"><span data-toggle="tooltip" title="Amount of bonus points awarded to customers on their birthday">Birthday Bonus Amount</span></label>
+                <div class="col-sm-10">
+                  <div class="input-group">
+                    <input type="number" name="module_bonus_manager_birthday_bonus_amount" value="{{ module_bonus_manager_birthday_bonus_amount }}" placeholder="500" id="input-birthday-bonus-amount" class="form-control" min="0" />
+                    <span class="input-group-addon">&#8381;</span>
+                  </div>
+                  <p class="help-block">Bonus points awarded to customers on their birthday. Set to 0 to disable birthday bonuses. Only customers in bonus-eligible groups will receive birthday bonuses.</p>
+                </div>
+              </div>
+
+              <div class="form-group">
                 <label class="col-sm-2 control-label" for="input-accrual-status"><span data-toggle="tooltip" title="{{ help_accrual_status }}">{{ entry_accrual_status }}</span></label>
                 <div class="col-sm-10">
                   <select name="module_bonus_manager_accrual_status_id" id="input-accrual-status" class="form-control">
@@ -624,6 +635,61 @@
 
               <hr style="margin: 30px 0;"/>
 
+              <!-- Birthday Bonus Email Settings -->
+              <fieldset>
+                <legend><i class="fa fa-birthday-cake"></i> Birthday Bonus Email</legend>
+                <p class="help-block"><i class="fa fa-info-circle"></i> Email sent to customers on their birthday when bonus points are awarded.</p>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-birthday-status">Enable Notification</label>
+                  <div class="col-sm-10">
+                    <select name="module_bonus_manager_email_birthday_status" id="input-email-birthday-status" class="form-control">
+                      {% if module_bonus_manager_email_birthday_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label" for="input-email-birthday-subject">Email Subject</label>
+                  <div class="col-sm-10">
+                    <input type="text" name="module_bonus_manager_email_birthday_subject" value="{{ module_bonus_manager_email_birthday_subject }}" placeholder="С Днём рождения, {customer_firstname}! Вам подарок от {store_name}" id="input-email-birthday-subject" class="form-control" />
+                    <p class="help-block">Available placeholders: {customer_firstname}, {customer_lastname}, {birthday_bonus}, {current_balance}, {expiration_date}, {store_name}</p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-2 control-label">Email Body (HTML)</label>
+                  <div class="col-sm-10">
+                    <div class="email-preview-container" id="preview-container-birthday">
+                      <div class="email-preview-header">
+                        <span class="subject-preview" id="subject-preview-birthday">{{ module_bonus_manager_email_birthday_subject|default('С Днём рождения! Вам подарок') }}</span>
+                        <button type="button" class="btn btn-default btn-edit-email" onclick="toggleEmailEditor('birthday');">
+                          <i class="fa fa-code"></i> Edit HTML
+                        </button>
+                      </div>
+                      <div class="email-preview-frame" id="preview-frame-birthday">
+                        {{ module_bonus_manager_email_birthday_body|raw }}
+                      </div>
+                      <div class="email-editor-container" id="editor-container-birthday">
+                        <textarea name="module_bonus_manager_email_birthday_body" rows="15" id="input-email-birthday-body" class="form-control" onchange="updateEmailPreview('birthday');">{{ module_bonus_manager_email_birthday_body|raw }}</textarea>
+                        <p class="help-block">Available placeholders: {customer_firstname}, {customer_lastname}, {birthday_bonus}, {current_balance}, {expiration_date}, {store_name}, {store_url}, {account_url}</p>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top: 10px;" onclick="toggleEmailEditor('birthday');">
+                          <i class="fa fa-eye"></i> Preview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <hr style="margin: 30px 0;"/>
+
               <!-- Registration Widget Settings -->
               <fieldset>
                 <legend>{{ entry_register_widget_heading }}</legend>
@@ -741,6 +807,50 @@
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <!-- Today's Birthdays Panel -->
+              <div class="panel panel-default">
+                <div class="panel-heading">
+                  <i class="fa fa-birthday-cake"></i> Today's Birthdays
+                  <span class="badge" style="background-color: #ec4899;">{{ todays_birthdays|length }}</span>
+                </div>
+                <div class="panel-body">
+                  {% if todays_birthdays|length > 0 %}
+                  <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                      <thead>
+                        <tr>
+                          <td class="text-left">Customer</td>
+                          <td class="text-left">Email</td>
+                          <td class="text-center">Birthday Bonus</td>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for birthday in todays_birthdays %}
+                        <tr>
+                          <td class="text-left">
+                            <a href="index.php?route=customer/customer/edit&user_token={{ user_token }}&customer_id={{ birthday.customer_id }}">
+                              {{ birthday.firstname }} {{ birthday.lastname }}
+                            </a>
+                          </td>
+                          <td class="text-left">{{ birthday.email }}</td>
+                          <td class="text-center">
+                            {% if birthday.received_bonus %}
+                            <span class="label label-success"><i class="fa fa-check"></i> Awarded</span>
+                            {% else %}
+                            <span class="label label-warning"><i class="fa fa-clock-o"></i> Pending</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% else %}
+                  <p class="text-muted text-center"><i class="fa fa-info-circle"></i> No customers have a birthday today.</p>
+                  {% endif %}
                 </div>
               </div>
 
@@ -989,6 +1099,10 @@ $('#input-email-expiring-subject').on('input', function() {
 
 $('#input-email-loyalty-upgrade-subject').on('input', function() {
   $('#subject-preview-loyalty-upgrade').text($(this).val() || 'Поздравляем! Ваш уровень лояльности повышен');
+});
+
+$('#input-email-birthday-subject').on('input', function() {
+  $('#subject-preview-birthday').text($(this).val() || 'С Днём рождения! Вам подарок');
 });
 </script>
 
