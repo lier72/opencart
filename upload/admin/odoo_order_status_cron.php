@@ -46,6 +46,16 @@ $registry->set('config', $config);
 $db = new DB(DB_DRIVER, DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_DATABASE, DB_PORT);
 $registry->set('db', $db);
 
+// Load settings from database (store_id = 0 for default store)
+$query = $db->query("SELECT * FROM " . DB_PREFIX . "setting WHERE store_id = '0'");
+foreach ($query->rows as $setting) {
+    if (!$setting['serialized']) {
+        $config->set($setting['key'], $setting['value']);
+    } else {
+        $config->set($setting['key'], json_decode($setting['value'], true));
+    }
+}
+
 // Log
 $log = new Log($config->get('error_filename'));
 $registry->set('log', $log);

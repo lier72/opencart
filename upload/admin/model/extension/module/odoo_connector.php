@@ -1029,22 +1029,110 @@ class ModelExtensionModuleOdooConnector extends Model {
         return false;
     }
 
-    private function update_opencart_order_history($oc_order_id, $oc_order_state, $debug){
-        $sql = "INSERT INTO " . DB_PREFIX . "order_history SET order_id = " . $oc_order_id . ", 
-                order_status_id = " . $oc_order_state . ", `comment` = 'Синхронизирован из ERP', date_added = NOW()";
-        $res = $this->db->query($sql);
-        $sql1 = "UPDATE " . DB_PREFIX . "order SET `order_status_id` =" . $oc_order_state . ", `date_modified` = NOW() 
-                WHERE `order_id` = " . $oc_order_id;
-        $res1 = $this->db->query($sql1);
-        if($debug){
-            echo "Inserting in OpenCart order history table SQL:";
-            print_r($sql);
-            echo "<br/>";
-            echo "Updating in OpenCart order status SQL:";
-            print_r($sql1);
-            echo "<br/>";
+    /**
+     * Updates OpenCart order history via the OpenCart API to properly trigger events.
+     * This method uses the same approach as CDEK Integrator's statusApi() to ensure
+     * that OpenCart events (like catalog/model/checkout/order/addOrderHistory/after)
+     * are properly triggered, which is required for modules like bonus_manager.
+     *
+     * @param int $oc_order_id The OpenCart order ID
+     * @param int $oc_order_state The new order status ID
+     * @param bool $debug Enable debug output
+     * @param string $comment Comment to add to order history
+     * @param int $notify Whether to notify customer (0 or 1)
+     * @return mixed API response or false on failure
+     */
+    private function update_opencart_order_history($oc_order_id, $oc_order_state, $debug, $comment = 'Синхронизирован из ERP', $notify = 0){
+        // Debug: Log entry into method
+        $this->log->write('Odoo Connector DEBUG: update_opencart_order_history called for order_id=' . $oc_order_id . ', status=' . $oc_order_state);
+
+        // Debug: Check registry state before loading model
+        $this->log->write('Odoo Connector DEBUG: registry has load? ' . ($this->registry->has('load') ? 'YES' : 'NO'));
+
+        // Try to load user/api model
+        try {
+            $this->load->model('user/api');
+            $this->log->write('Odoo Connector DEBUG: load->model(user/api) called without exception');
+        } catch (Exception $e) {
+            $this->log->write('Odoo Connector DEBUG: Exception loading model: ' . $e->getMessage());
+            return false;
+        }
+
+        // Check if model is registered in registry (don't use isset - it fails with __get magic)
+        $model_in_registry = $this->registry->has('model_user_api');
+        $this->log->write('Odoo Connector DEBUG: registry has model_user_api? ' . ($model_in_registry ? 'YES' : 'NO'));
+
+        if (!$model_in_registry) {
+            $this->log->write('Odoo Connector DEBUG: model_user_api not in registry after load');
+            return false;
+        }
+
+        // Get config_api_id value
+        $config_api_id = $this->config->get('config_api_id');
+        $this->log->write('Odoo Connector DEBUG: config_api_id = ' . var_export($config_api_id, true));
+
+        if (empty($config_api_id)) {
+            $this->log->write('Odoo Connector DEBUG: config_api_id is empty, trying fallback');
+            $query = $this->db->query("SELECT api_id FROM " . DB_PREFIX . "api WHERE status = 1 ORDER BY api_id ASC LIMIT 1");
+            if ($query->num_rows) {
+                $config_api_id = $query->row['api_id'];
+                $this->log->write('Odoo Connector DEBUG: Using fallback api_id = ' . $config_api_id);
+            } else {
+                $this->log->write('Odoo Connector DEBUG: No active API found in database');
+                return false;
             }
-    return $res1;
+        }
+
+        // Get API info using model
+        $api_info = $this->model_user_api->getApi($config_api_id);
+        $this->log->write('Odoo Connector DEBUG: api_info from model = ' . var_export($api_info, true));
+
+        if (!$api_info) {
+            $this->log->write('Odoo Connector: API not configured. Please set up API in System > Users > API.');
+            if ($debug) {
+                echo "API not configured for order " . $oc_order_id . "<br/>";
+            }
+            return false;
+        }
+
+        require_once DIR_SYSTEM . 'library/cdek_integrator/ocapi.php';
+
+        // Prefer HTTPS_CATALOG if defined (production sites should use HTTPS)
+        // Fall back to HTTP_CATALOG for local/dev environments
+        if (defined('HTTPS_CATALOG')) {
+            $site_url = rtrim(HTTPS_CATALOG, '/');
+        } else {
+            $site_url = rtrim(HTTP_CATALOG, '/');
+        }
+
+        $oc = new \OpenCart\OpenCart($site_url);
+        $token = $oc->login($api_info['username'], $api_info['key']);
+
+        if (empty($token)) {
+            $last_error = $oc->getLastError();
+            $this->log->write('Odoo Connector: Failed to authenticate with OpenCart API');
+            $this->log->write('Site_url: ' . $site_url . ' | Username: ' . $api_info['username'] . ' | order_id: ' . $oc_order_id . ' | status_id: ' . $oc_order_state);
+            if ($last_error) {
+                $this->log->write('API Error: ' . print_r($last_error, true));
+            }
+            $this->log->write('Check: 1) Server IP in ocus_api_ip, 2) HTTP_CATALOG in config.php, 3) API key');
+            if ($debug) {
+                echo "API authentication failed for order " . $oc_order_id . "<br/>";
+            }
+            return false;
+        }
+
+        $oc->order->setToken($token);
+        $response = $oc->order->history((int)$oc_order_id, (int)$oc_order_state, $notify, false, $comment);
+
+        if ($debug) {
+            echo "Updated order " . $oc_order_id . " via API to status " . $oc_order_state . "<br/>";
+            echo "API Response: ";
+            print_r($response);
+            echo "<br/>";
+        }
+
+        return $response;
     }
 
     private function write_chatter_note($odoo_order_id, $message)
