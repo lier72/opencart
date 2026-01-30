@@ -4002,7 +4002,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			}
 
 			// Update Odoo payment.transaction for ACCEPTED or DELIVERED status changes
-			if (in_array($status_id, array('ACCEPTED', 'DELIVERED'))) {
+			if (in_array($status_id, array('CREATED', 'DELIVERED'))) {
 				$this->updateOdooPaymentTransaction($dispatch['order_id'], $info, $dispatch['dispatch_number'], $dispatch['cdek_number']);
 			}
 
