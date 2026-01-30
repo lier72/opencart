@@ -1044,48 +1044,68 @@ class ModelExtensionModuleOdooConnector extends Model {
      */
     private function update_opencart_order_history($oc_order_id, $oc_order_state, $debug, $comment = 'Синхронизирован из ERP', $notify = 0){
         // Debug: Log entry into method
-        $this->log->write('Odoo Connector DEBUG: update_opencart_order_history called for order_id=' . $oc_order_id . ', status=' . $oc_order_state);
+        if ($debug) {
+            $this->log->write('Odoo Connector DEBUG: update_opencart_order_history called for order_id=' . $oc_order_id . ', status=' . $oc_order_state);
 
         // Debug: Check registry state before loading model
-        $this->log->write('Odoo Connector DEBUG: registry has load? ' . ($this->registry->has('load') ? 'YES' : 'NO'));
+            $this->log->write('Odoo Connector DEBUG: registry has load? ' . ($this->registry->has('load') ? 'YES' : 'NO'));
+        }
 
         // Try to load user/api model
         try {
             $this->load->model('user/api');
-            $this->log->write('Odoo Connector DEBUG: load->model(user/api) called without exception');
+            if ($debug) {
+                $this->log->write('Odoo Connector DEBUG: load->model(user/api) called without exception');
+            }
         } catch (Exception $e) {
-            $this->log->write('Odoo Connector DEBUG: Exception loading model: ' . $e->getMessage());
+            if ($debug) {
+                $this->log->write('Odoo Connector DEBUG: Exception loading model: ' . $e->getMessage());
+            }
             return false;
         }
 
         // Check if model is registered in registry (don't use isset - it fails with __get magic)
         $model_in_registry = $this->registry->has('model_user_api');
-        $this->log->write('Odoo Connector DEBUG: registry has model_user_api? ' . ($model_in_registry ? 'YES' : 'NO'));
+        if ($debug) {
+            $this->log->write('Odoo Connector DEBUG: registry has model_user_api? ' . ($model_in_registry ? 'YES' : 'NO'));
+        }
 
         if (!$model_in_registry) {
-            $this->log->write('Odoo Connector DEBUG: model_user_api not in registry after load');
+            if ($debug) {
+                $this->log->write('Odoo Connector DEBUG: model_user_api not in registry after load');
+            }
             return false;
         }
 
         // Get config_api_id value
         $config_api_id = $this->config->get('config_api_id');
-        $this->log->write('Odoo Connector DEBUG: config_api_id = ' . var_export($config_api_id, true));
+        if ($debug) {
+            $this->log->write('Odoo Connector DEBUG: config_api_id = ' . var_export($config_api_id, true));
+        }
 
         if (empty($config_api_id)) {
-            $this->log->write('Odoo Connector DEBUG: config_api_id is empty, trying fallback');
+            if ($debug) {
+                $this->log->write('Odoo Connector DEBUG: config_api_id is empty, trying fallback');
+            }
             $query = $this->db->query("SELECT api_id FROM " . DB_PREFIX . "api WHERE status = 1 ORDER BY api_id ASC LIMIT 1");
             if ($query->num_rows) {
                 $config_api_id = $query->row['api_id'];
-                $this->log->write('Odoo Connector DEBUG: Using fallback api_id = ' . $config_api_id);
+                if ($debug) {
+                    $this->log->write('Odoo Connector DEBUG: Using fallback api_id = ' . $config_api_id);
+                }
             } else {
-                $this->log->write('Odoo Connector DEBUG: No active API found in database');
+                if ($debug) {
+                    $this->log->write('Odoo Connector DEBUG: No active API found in database');
+                }
                 return false;
             }
         }
 
         // Get API info using model
         $api_info = $this->model_user_api->getApi($config_api_id);
-        $this->log->write('Odoo Connector DEBUG: api_info from model = ' . var_export($api_info, true));
+        if ($debug) {
+            $this->log->write('Odoo Connector DEBUG: api_info from model = ' . var_export($api_info, true));
+        }
 
         if (!$api_info) {
             $this->log->write('Odoo Connector: API not configured. Please set up API in System > Users > API.');
