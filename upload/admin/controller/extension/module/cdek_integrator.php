@@ -2320,7 +2320,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				$rdata['delivery_last_change'] = $this->formatDate($dispatch_info['delivery_last_change']);
 			}
 
-			if ($dispatch_info['reason_status']) {
+			if (!empty($dispatch_info['reason_status'])) {
 				$rdata['reason_status'] = $dispatch_info['reason_status'];
 			}
 
@@ -2345,10 +2345,17 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				);
 			}
 
-			$rdata['status'] = array(
-				'title'	=> $rdata['status_history'][0]['name'],
-				'date'	=> $rdata['status_history'][0]['date']
-			);
+			if (!empty($rdata['status_history'])) {
+				$rdata['status'] = array(
+					'title'	=> $rdata['status_history'][0]['name'],
+					'date'	=> $rdata['status_history'][0]['date']
+				);
+			} else {
+				$rdata['status'] = array(
+					'title'	=> '',
+					'date'	=> ''
+				);
+			}
 
 			if ($dispatch_info['delay_id']) {
 				$rdata['delay'] = array(

@@ -418,7 +418,7 @@ class ModelCustomerCustomer extends Model {
 	}
 
 	public function addReward($customer_id, $description = '', $points = '', $order_id = 0) {
-		$this->db->query("INSERT INTO " . DB_PREFIX . "customer_reward SET customer_id = '" . (int)$customer_id . "', order_id = '" . (int)$order_id . "', points = '" . (int)$points . "', description = '" . $this->db->escape($description) . "', date_added = NOW()");
+		$this->db->query("INSERT INTO " . DB_PREFIX . "customer_reward SET customer_id = '" . (int)$customer_id . "', order_id = '" . (int)$order_id . "', points = '" . (int)$points . "', remaining = '" . (int)$points . "', reward_kind = 'award', description = 'Manual: " . $this->db->escape($description) . "', date_added = NOW(), date_expires = NOW() + INTERVAL " . (int)$this->config->get('module_bonus_manager_expiration_days') . " DAY");
 	}
 
 	public function deleteReward($order_id) {
