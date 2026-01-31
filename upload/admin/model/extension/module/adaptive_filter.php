@@ -148,6 +148,7 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
 
     /**
      * Add sport mapping
+     * Also clears autocomplete cache so new sports appear in search immediately
      */
     public function addSportMapping($category_id, $sport, $weight = 1) {
         $this->db->query("
@@ -157,13 +158,20 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
                 weight = '" . (int)$weight . "'
             ON DUPLICATE KEY UPDATE weight = '" . (int)$weight . "'
         ");
+
+        // Clear autocomplete cache so new sport appears in search results
+        $this->cache->delete('adaptive_filter.autocomplete');
     }
 
     /**
      * Delete sport mapping
+     * Also clears autocomplete cache so deleted sports no longer appear in search
      */
     public function deleteSportMapping($mapping_id) {
         $this->db->query("DELETE FROM `" . DB_PREFIX . "sport_mapping` WHERE mapping_id = '" . (int)$mapping_id . "'");
+
+        // Clear autocomplete cache so deleted sport is removed from search results
+        $this->cache->delete('adaptive_filter.autocomplete');
     }
 
     /**

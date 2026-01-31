@@ -27,6 +27,7 @@ $_['sport_icon_Badminton']       = '🏸';  // Badminton
 $_['sport_icon_Running']         = '🏃';  // Running
 $_['sport_icon_Basketball']      = '🏀';  // Basketball
 $_['sport_icon_Volleyball']      = '🏐';  // Volleyball
+$_['sport_icon_Squash']          = '⚫';  // Squash
 $_['sport_icon_Football']        = '⚽';  // Football/Soccer
 $_['sport_icon_Soccer']          = '⚽';  // Soccer
 $_['sport_icon_Tennis']          = '🎾';  // Tennis
