@@ -1857,6 +1857,10 @@ class ControllerSaleOrder extends Controller {
 	/**
 	 * AJAX handler to deduct bonus points and create return
 	 * Called from order info page when admin clicks "Deduct & Create Return"
+	 *
+	 * Accepts order_product_id to uniquely identify the order line item.
+	 * This is critical when the same product appears multiple times in an order
+	 * (e.g., same product with different options).
 	 */
 	public function deductBonusAndCreateReturn() {
 		$this->load->language('sale/order');
@@ -1865,7 +1869,7 @@ class ControllerSaleOrder extends Controller {
 
 		if ($this->request->server['REQUEST_METHOD'] == 'POST') {
 			$order_id = (int)$this->request->post['order_id'];
-			$product_id = (int)$this->request->post['product_id'];
+			$order_product_id = isset($this->request->post['order_product_id']) ? (int)$this->request->post['order_product_id'] : 0;
 			$quantity = (int)$this->request->post['quantity'];
 
 			// Get order info
@@ -1875,13 +1879,11 @@ class ControllerSaleOrder extends Controller {
 			if (!$order_info) {
 				$json['error'] = 'Order not found';
 			} else {
-				// Get product details from order_product
-				// There is getOrderProducts method, but it returns way too much data
-				// for all products in the order but we need to validate just quantity
+				// Get product details from order_product using order_product_id for unique identification
 				$query = $this->db->query("
 					SELECT * FROM " . DB_PREFIX . "order_product
 					WHERE order_id = '" . (int)$order_id . "'
-					AND product_id = '" . (int)$product_id . "'
+					AND order_product_id = '" . (int)$order_product_id . "'
 					LIMIT 1
 				");
 
@@ -1903,7 +1905,8 @@ class ControllerSaleOrder extends Controller {
 
 						$return_data = array(
 							'order_id' => $order_id,
-							'product_id' => $product_id,
+							'order_product_id' => $order_product_id,
+							'product_id' => (int)$product['product_id'],
 							'customer_id' => $order_info['customer_id'],
 							'firstname' => $order_info['firstname'],
 							'lastname' => $order_info['lastname'],

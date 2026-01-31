@@ -130,6 +130,11 @@ class ModelExtensionModuleBonusManager extends Model {
 			'admin/model/sale/return/addReturnHistory/after',
 			'extension/module/bonus_manager/deductBonusesOnReturnComplete'
 		);
+
+		// Add order_product_id column to return table for accurate bonus deduction
+		// This allows identifying the exact order line item when same product appears multiple times
+		$this->addColumnIfNotExists('return', 'order_product_id',
+			"ADD COLUMN `order_product_id` int(11) DEFAULT NULL COMMENT 'FK to order_product for bonus tracking' AFTER `product_id`");
 	}
 
 	/**
@@ -398,7 +403,9 @@ class ModelExtensionModuleBonusManager extends Model {
 		$return = $query->row;
 		$order_id = (int)$return['order_id'];
 		$product_id = (int)$return['product_id'];
-		$return_quantity = (int)$return['quantity'] > 0 ? (int)$return['quantity'] : 1; 
+		$return_quantity = (int)$return['quantity'] > 0 ? (int)$return['quantity'] : 1;
+		// Use order_product_id from return if available (for accurate matching when same product ordered multiple times)
+		$stored_order_product_id = isset($return['order_product_id']) ? (int)$return['order_product_id'] : 0;
 
 		// Get customer_id - if order_id is specified, use it; otherwise find from product
 		$customer_id = 0;
@@ -417,14 +424,23 @@ class ModelExtensionModuleBonusManager extends Model {
 
 			$customer_id = (int)$order_info['customer_id'];
 
-			// Find order_product_id from order_product table
-			$query = $this->db->query("SELECT order_product_id, quantity FROM " . DB_PREFIX . "order_product
-				WHERE order_id = '" . (int)$order_id . "'
-				AND product_id = '" . (int)$product_id . "'
-				LIMIT 1");
+			// Use stored order_product_id if available, otherwise fall back to product_id lookup
+			if ($stored_order_product_id > 0) {
+				// Exact match using order_product_id from return record
+				$query = $this->db->query("SELECT order_product_id, quantity FROM " . DB_PREFIX . "order_product
+					WHERE order_id = '" . (int)$order_id . "'
+					AND order_product_id = '" . (int)$stored_order_product_id . "'
+					LIMIT 1");
+			} else {
+				// Legacy fallback: find by product_id (may be ambiguous if same product ordered multiple times)
+				$query = $this->db->query("SELECT order_product_id, quantity FROM " . DB_PREFIX . "order_product
+					WHERE order_id = '" . (int)$order_id . "'
+					AND product_id = '" . (int)$product_id . "'
+					LIMIT 1");
+			}
 
 			if (!$query->num_rows) {
-				$this->log->write('BONUS RETURN: Product #' . $product_id . ' not found in order #' . $order_id);
+				$this->log->write('BONUS RETURN: Product not found in order #' . $order_id . ' (order_product_id: ' . $stored_order_product_id . ', product_id: ' . $product_id . ')');
 				return false;
 			}
 

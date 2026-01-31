@@ -395,7 +395,7 @@
                     <td>{{ item.total }}</td>
                     <td><strong>{{ item.bonus_points }} pts</strong></td>
                     <td class="text-right">
-                      <button type="button" class="btn btn-danger btn-xs" onclick="deductBonus({{ item.product_id }}, {{ item.quantity }}, '{{ item.name|escape('js') }}')">
+                      <button type="button" class="btn btn-danger btn-xs" onclick="deductBonus({{ item.order_product_id }}, {{ item.quantity }}, '{{ item.name|escape('js') }}')">
                         <i class="fa fa-minus-circle"></i> Deduct & Create Return
                       </button>
                     </td>
@@ -635,7 +635,8 @@
   });
 
   // Deduct bonus points and create return
-  function deductBonus(productId, maxQty, productName) {
+  // Uses order_product_id for unique identification when same product appears multiple times
+  function deductBonus(orderProductId, maxQty, productName) {
     var quantity = prompt('Enter quantity to return for "' + productName + '" (max ' + maxQty + '):');
 
     if (quantity && parseInt(quantity) > 0 && parseInt(quantity) <= maxQty) {
@@ -645,7 +646,7 @@
         dataType: 'json',
         data: {
           order_id: {{ order_id }},
-          product_id: productId,
+          order_product_id: orderProductId,
           quantity: quantity
         },
         success: function(json) {
