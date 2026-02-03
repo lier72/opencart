@@ -383,36 +383,33 @@ PRIMARY KEY (`id`)
 					foreach ($row as $r) {
 						$product_id = $r['product_id'];
 						$producturl = 'product_id=' . $product_id;
-						$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($producturl) . "'");
-						$url_alias = $query->rows;
-						foreach ($url_alias as $alias) {
-							$data .= '<url><loc>' . $storeurl . '' . str_replace("&", "", $alias['keyword']) . '</loc>';
+						$query = $this->db->query("SELECT keyword FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($producturl) . "' LIMIT 1");
+
+						if ($query->num_rows) {
+							$keyword = str_replace("&", "", $query->row['keyword']);
+							$data .= '<url><loc>' . $storeurl . $keyword . '</loc>';
 
 							if ($r['image'] != '') {
-								$data .= '<image:image><image:loc>' . $storeurl . '/image/' . $r['image'] . '</image:loc>';
-								$query = $this->db->query("SELECT meta_title FROM " . DB_PREFIX . "product_description WHERE product_id='" . (int)$product_id . "'");
-								$product_title = $query->rows;
-								foreach ($product_title as $title) {
-									$data .= '<image:title>' . htmlspecialchars($title['meta_title'], ENT_XML1) . '</image:title>';
+								$data .= '<image:image><image:loc>' . $storeurl . 'image/' . $r['image'] . '</image:loc>';
+								$title_query = $this->db->query("SELECT meta_title FROM " . DB_PREFIX . "product_description WHERE product_id='" . (int)$product_id . "' LIMIT 1");
+								if ($title_query->num_rows) {
+									$data .= '<image:title>' . htmlspecialchars($title_query->row['meta_title'], ENT_XML1) . '</image:title>';
 								}
 								$data .= '</image:image>';
 							}
 
-							$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "product_image WHERE product_id='" . (int)$product_id . "'");
-							$product_image = $query->rows;
-							foreach ($product_image as $image) {
+							$image_query = $this->db->query("SELECT image FROM " . DB_PREFIX . "product_image WHERE product_id='" . (int)$product_id . "'");
+							foreach ($image_query->rows as $image) {
 								$data .= '<image:image><image:loc>' . $storeurl . 'image/' . $image['image'] . '</image:loc>';
-								$query = $this->db->query("SELECT meta_title FROM " . DB_PREFIX . "product_description WHERE product_id='" . (int)$product_id . "'");
-								$product_title = $query->rows;
-								foreach ($product_title as $title) {
-									$data .= '<image:title>' . htmlspecialchars($title['meta_title'], ENT_XML1) . '</image:title>';
+								if ($title_query->num_rows) {
+									$data .= '<image:title>' . htmlspecialchars($title_query->row['meta_title'], ENT_XML1) . '</image:title>';
 								}
 								$data .= '</image:image>';
 							}
 							$data .= '<changefreq>' . $changefreq . '</changefreq><lastmod>' . date('Y-m-d', strtotime($r['date_modified'])) . '</lastmod><priority>' . $priority . '</priority></url>';
-
-							$this->db->query("UPDATE " . DB_PREFIX . "gcrdev_sitemap SET `lastid`='" . (int)$product_id . "' WHERE `groups`='products'");
 						}
+
+						$this->db->query("UPDATE " . DB_PREFIX . "gcrdev_sitemap SET `lastid`='" . (int)$product_id . "' WHERE `groups`='products'");
 					}
 				}
 				$data .= '</urlset>';
@@ -516,23 +513,22 @@ PRIMARY KEY (`id`)
 					foreach ($row as $r) {
 						$category_id = $r['category_id'];
 						$caturl = 'category_id=' . $category_id;
-						$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($caturl) . "'");
-						$url_alias = $query->rows;
+						$query = $this->db->query("SELECT keyword FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($caturl) . "' LIMIT 1");
 
-						foreach ($url_alias as $alias) {
-							$data .= '<url><loc>' . $storeurl . '' . $alias['keyword'] . '</loc>';
-						}
+						if ($query->num_rows) {
+							$keyword = $query->row['keyword'];
+							$data .= '<url><loc>' . $storeurl . $keyword . '</loc>';
 
-						if ($r['image'] != '') {
-							$data .= '<image:image><image:loc>' . $storeurl . 'image/' . $r['image'] . '</image:loc>';
-							$query = $this->db->query("SELECT meta_title FROM " . DB_PREFIX . "category_description WHERE category_id='" . (int)$category_id . "'");
-							$product_title = $query->rows;
-							foreach ($product_title as $title) {
-								$data .= '<image:title>' . htmlspecialchars($title['meta_title'], ENT_XML1) . '</image:title>';
+							if ($r['image'] != '') {
+								$data .= '<image:image><image:loc>' . $storeurl . 'image/' . $r['image'] . '</image:loc>';
+								$title_query = $this->db->query("SELECT meta_title FROM " . DB_PREFIX . "category_description WHERE category_id='" . (int)$category_id . "' LIMIT 1");
+								if ($title_query->num_rows) {
+									$data .= '<image:title>' . htmlspecialchars($title_query->row['meta_title'], ENT_XML1) . '</image:title>';
+								}
+								$data .= '</image:image>';
 							}
-							$data .= '</image:image>';
+							$data .= '<changefreq>' . $changefreq . '</changefreq><lastmod>' . date('Y-m-d', strtotime($r['date_modified'])) . '</lastmod><priority>' . $priority . '</priority></url>';
 						}
-						$data .= '<changefreq>' . $changefreq . '</changefreq><lastmod>' . date('Y-m-d', strtotime($r['date_modified'])) . '</lastmod><priority>' . $priority . '</priority></url>';
 
 						$this->db->query("UPDATE " . DB_PREFIX . "gcrdev_sitemap SET `lastid`='" . (int)$category_id . "' WHERE `groups`='categories'");
 					}
@@ -630,17 +626,17 @@ PRIMARY KEY (`id`)
 					foreach ($row as $r) {
 						$manufacturer_id = $r['manufacturer_id'];
 						$brandurl = 'manufacturer_id=' . $manufacturer_id;
-						$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($brandurl) . "'");
-						$url_alias = $query->rows;
+						$query = $this->db->query("SELECT keyword FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($brandurl) . "' LIMIT 1");
 
-						foreach ($url_alias as $alias) {
-							$data .= '<url><loc>' . $storeurl . '' . $alias['keyword'] . '</loc>';
-						}
+						if ($query->num_rows) {
+							$keyword = $query->row['keyword'];
+							$data .= '<url><loc>' . $storeurl . $keyword . '</loc>';
 
-						if ($r['image'] != '') {
-							$data .= '<image:image><image:loc>' . $storeurl . 'image/' . $r['image'] . '</image:loc><image:title>' . htmlspecialchars($r['name'], ENT_XML1) . '</image:title></image:image>';
+							if ($r['image'] != '') {
+								$data .= '<image:image><image:loc>' . $storeurl . 'image/' . $r['image'] . '</image:loc><image:title>' . htmlspecialchars($r['name'], ENT_XML1) . '</image:title></image:image>';
+							}
+							$data .= '<changefreq>' . $changefreq . '</changefreq><priority>' . $priority . '</priority></url>';
 						}
-						$data .= '<changefreq>' . $changefreq . '</changefreq><priority>' . $priority . '</priority></url>';
 
 						$this->db->query("UPDATE " . DB_PREFIX . "gcrdev_sitemap SET `lastid`='" . (int)$manufacturer_id . "' WHERE `groups`='brands'");
 					}
@@ -734,21 +730,16 @@ PRIMARY KEY (`id`)
 					$statusrow = $query->rows;
 					foreach ($statusrow as $sr) {
 						$information_id = $sr['information_id'];
-						$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "information_description WHERE information_id ='" . (int)$information_id . "'");
-						$row = $query->rows;
-						foreach ($row as $r) {
-							$information_id = $r['information_id'];
-							$infourl = 'information_id=' . $information_id;
-							$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($infourl) . "'");
-							$url_alias = $query->rows;
+						$infourl = 'information_id=' . $information_id;
+						$query = $this->db->query("SELECT keyword FROM " . DB_PREFIX . "seo_url WHERE query='" . $this->db->escape($infourl) . "' LIMIT 1");
 
-							foreach ($url_alias as $alias) {
-								$data .= '<url><loc>' . $storeurl . $alias['keyword'] . '</loc>';
-							}
+						if ($query->num_rows) {
+							$keyword = $query->row['keyword'];
+							$data .= '<url><loc>' . $storeurl . $keyword . '</loc>';
 							$data .= '<changefreq>' . $changefreq . '</changefreq><priority>' . $priority . '</priority></url>';
-
-							$this->db->query("UPDATE " . DB_PREFIX . "gcrdev_sitemap SET `lastid`='" . (int)$information_id . "' WHERE `groups`='information'");
 						}
+
+						$this->db->query("UPDATE " . DB_PREFIX . "gcrdev_sitemap SET `lastid`='" . (int)$information_id . "' WHERE `groups`='information'");
 					}
 				}
 				$data .= '</urlset>';
