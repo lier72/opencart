@@ -46,6 +46,17 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 							$output .= '  <g:image_link></g:image_link>';
 						}
 
+						// Additional product images (Google allows up to 10 additional images)
+						$product_images = $this->model_catalog_product->getProductImages($product['product_id']);
+						$image_count = 0;
+						foreach ($product_images as $product_image) {
+							if ($image_count >= 10) {
+								break;
+							}
+							$output .= '  <g:additional_image_link>' . $this->model_tool_image->resize($product_image['image'], 500, 500) . '</g:additional_image_link>';
+							$image_count++;
+						}
+
 						$output .= '  <g:model_number>' . $product['model'] . '</g:model_number>';
 
 						if ($product['model']) {
