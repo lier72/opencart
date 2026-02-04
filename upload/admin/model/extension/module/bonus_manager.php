@@ -262,11 +262,241 @@ class ModelExtensionModuleBonusManager extends Model {
 		$query = $this->db->query("SELECT cr.*, CONCAT(c.firstname, ' ', c.lastname) as customer_name, c.email
 			FROM " . DB_PREFIX . "customer_reward cr
 			LEFT JOIN " . DB_PREFIX . "customer c ON cr.customer_id = c.customer_id
-			WHERE cr.order_id > 0 AND cr.points > 0
 			ORDER BY cr.date_added DESC
 			LIMIT " . (int)$limit);
 
 		return $query->rows;
+	}
+
+	/**
+	 * Get bonus transactions with pagination
+	 */
+	public function getBonusTransactions($data = array()) {
+		$start = isset($data['start']) ? (int)$data['start'] : 0;
+		$limit = isset($data['limit']) ? (int)$data['limit'] : 20;
+		$filters = array();
+
+		if ($start < 0) {
+			$start = 0;
+		}
+
+		if ($limit < 1) {
+			$limit = 20;
+		}
+
+		if (!empty($data['filter_order_id'])) {
+			$filters[] = "cr.order_id = '" . (int)$data['filter_order_id'] . "'";
+		}
+
+		if (!empty($data['filter_customer'])) {
+			$filters[] = "(CONCAT(c.firstname, ' ', c.lastname) LIKE '%" . $this->db->escape($data['filter_customer']) . "%'
+				OR c.email LIKE '%" . $this->db->escape($data['filter_customer']) . "%')";
+		}
+
+		if (!empty($data['filter_reward_kind'])) {
+			$filters[] = "cr.reward_kind = '" . $this->db->escape($data['filter_reward_kind']) . "'";
+		}
+
+		if (!empty($data['filter_bonus_type'])) {
+			$filters[] = "cr.bonus_type = '" . $this->db->escape($data['filter_bonus_type']) . "'";
+		}
+
+		if (!empty($data['filter_points_sign'])) {
+			if ($data['filter_points_sign'] === 'positive') {
+				$filters[] = "cr.points > 0";
+			} elseif ($data['filter_points_sign'] === 'negative') {
+				$filters[] = "cr.points < 0";
+			} elseif ($data['filter_points_sign'] === 'zero') {
+				$filters[] = "cr.points = 0";
+			}
+		}
+
+		if (!empty($data['filter_date_from'])) {
+			$filters[] = "DATE(cr.date_added) >= DATE('" . $this->db->escape($data['filter_date_from']) . "')";
+		}
+
+		if (!empty($data['filter_date_to'])) {
+			$filters[] = "DATE(cr.date_added) <= DATE('" . $this->db->escape($data['filter_date_to']) . "')";
+		}
+
+		$sql = "SELECT cr.*, CONCAT(c.firstname, ' ', c.lastname) as customer_name, c.email
+			FROM " . DB_PREFIX . "customer_reward cr
+			LEFT JOIN " . DB_PREFIX . "customer c ON cr.customer_id = c.customer_id";
+
+		if ($filters) {
+			$sql .= " WHERE " . implode(" AND ", $filters);
+		}
+
+		$sql .= " ORDER BY cr.date_added DESC
+			LIMIT " . (int)$start . ", " . (int)$limit;
+
+		$query = $this->db->query($sql);
+
+		return $query->rows;
+	}
+
+	/**
+	 * Get total bonus transactions
+	 */
+	public function getBonusTransactionsTotal($data = array()) {
+		$filters = array();
+
+		if (!empty($data['filter_order_id'])) {
+			$filters[] = "cr.order_id = '" . (int)$data['filter_order_id'] . "'";
+		}
+
+		if (!empty($data['filter_customer'])) {
+			$filters[] = "(CONCAT(c.firstname, ' ', c.lastname) LIKE '%" . $this->db->escape($data['filter_customer']) . "%'
+				OR c.email LIKE '%" . $this->db->escape($data['filter_customer']) . "%')";
+		}
+
+		if (!empty($data['filter_reward_kind'])) {
+			$filters[] = "cr.reward_kind = '" . $this->db->escape($data['filter_reward_kind']) . "'";
+		}
+
+		if (!empty($data['filter_bonus_type'])) {
+			$filters[] = "cr.bonus_type = '" . $this->db->escape($data['filter_bonus_type']) . "'";
+		}
+
+		if (!empty($data['filter_points_sign'])) {
+			if ($data['filter_points_sign'] === 'positive') {
+				$filters[] = "cr.points > 0";
+			} elseif ($data['filter_points_sign'] === 'negative') {
+				$filters[] = "cr.points < 0";
+			} elseif ($data['filter_points_sign'] === 'zero') {
+				$filters[] = "cr.points = 0";
+			}
+		}
+
+		if (!empty($data['filter_date_from'])) {
+			$filters[] = "DATE(cr.date_added) >= DATE('" . $this->db->escape($data['filter_date_from']) . "')";
+		}
+
+		if (!empty($data['filter_date_to'])) {
+			$filters[] = "DATE(cr.date_added) <= DATE('" . $this->db->escape($data['filter_date_to']) . "')";
+		}
+
+		$sql = "SELECT COUNT(*) as total
+			FROM " . DB_PREFIX . "customer_reward cr
+			LEFT JOIN " . DB_PREFIX . "customer c ON cr.customer_id = c.customer_id";
+
+		if ($filters) {
+			$sql .= " WHERE " . implode(" AND ", $filters);
+		}
+
+		$query = $this->db->query($sql);
+
+		return (int)$query->row['total'];
+	}
+
+	/**
+	 * Get active bonus awards (remaining > 0)
+	 */
+	public function getActiveBonusAwards($limit = 10) {
+		$query = $this->db->query("SELECT cr.*, CONCAT(c.firstname, ' ', c.lastname) as customer_name, c.email
+			FROM " . DB_PREFIX . "customer_reward cr
+			LEFT JOIN " . DB_PREFIX . "customer c ON cr.customer_id = c.customer_id
+			WHERE cr.reward_kind = 'award'
+			AND cr.remaining > 0
+			ORDER BY cr.date_added DESC
+			LIMIT " . (int)$limit);
+
+		return $query->rows;
+	}
+
+	/**
+	 * Get awarded clients with pagination
+	 */
+	public function getAwardedClients($data = array()) {
+		$start = isset($data['start']) ? (int)$data['start'] : 0;
+		$limit = isset($data['limit']) ? (int)$data['limit'] : 20;
+		$filters = array();
+
+		if ($start < 0) {
+			$start = 0;
+		}
+
+		if ($limit < 1) {
+			$limit = 20;
+		}
+
+		$filters[] = "cr.reward_kind = 'award'";
+		$filters[] = "cr.points > 0";
+
+		if (!empty($data['filter_customer'])) {
+			$filters[] = "(CONCAT(c.firstname, ' ', c.lastname) LIKE '%" . $this->db->escape($data['filter_customer']) . "%'
+				OR c.email LIKE '%" . $this->db->escape($data['filter_customer']) . "%')";
+		}
+
+		if (!empty($data['filter_date_from'])) {
+			$filters[] = "DATE(cr.date_added) >= DATE('" . $this->db->escape($data['filter_date_from']) . "')";
+		}
+
+		if (!empty($data['filter_date_to'])) {
+			$filters[] = "DATE(cr.date_added) <= DATE('" . $this->db->escape($data['filter_date_to']) . "')";
+		}
+
+		if (!empty($data['filter_min_remaining'])) {
+			$filters[] = "cr.remaining >= '" . (int)$data['filter_min_remaining'] . "'";
+		}
+
+		$sql = "SELECT c.customer_id, CONCAT(c.firstname, ' ', c.lastname) as customer_name, c.email,
+				SUM(cr.points) as total_awarded,
+				SUM(CASE WHEN cr.remaining IS NULL THEN 0 ELSE cr.remaining END) as total_remaining,
+				MAX(cr.date_added) as last_award_date
+			FROM " . DB_PREFIX . "customer_reward cr
+			LEFT JOIN " . DB_PREFIX . "customer c ON cr.customer_id = c.customer_id";
+
+		if ($filters) {
+			$sql .= " WHERE " . implode(" AND ", $filters);
+		}
+
+		$sql .= " GROUP BY c.customer_id
+			ORDER BY total_remaining DESC, last_award_date DESC
+			LIMIT " . (int)$start . ", " . (int)$limit;
+
+		$query = $this->db->query($sql);
+
+		return $query->rows;
+	}
+
+	/**
+	 * Get total awarded clients
+	 */
+	public function getAwardedClientsTotal($data = array()) {
+		$filters = array();
+
+		$filters[] = "cr.reward_kind = 'award'";
+		$filters[] = "cr.points > 0";
+
+		if (!empty($data['filter_customer'])) {
+			$filters[] = "(CONCAT(c.firstname, ' ', c.lastname) LIKE '%" . $this->db->escape($data['filter_customer']) . "%'
+				OR c.email LIKE '%" . $this->db->escape($data['filter_customer']) . "%')";
+		}
+
+		if (!empty($data['filter_date_from'])) {
+			$filters[] = "DATE(cr.date_added) >= DATE('" . $this->db->escape($data['filter_date_from']) . "')";
+		}
+
+		if (!empty($data['filter_date_to'])) {
+			$filters[] = "DATE(cr.date_added) <= DATE('" . $this->db->escape($data['filter_date_to']) . "')";
+		}
+
+		if (!empty($data['filter_min_remaining'])) {
+			$filters[] = "cr.remaining >= '" . (int)$data['filter_min_remaining'] . "'";
+		}
+
+		$sql = "SELECT COUNT(DISTINCT c.customer_id) as total
+			FROM " . DB_PREFIX . "customer_reward cr
+			LEFT JOIN " . DB_PREFIX . "customer c ON cr.customer_id = c.customer_id";
+
+		if ($filters) {
+			$sql .= " WHERE " . implode(" AND ", $filters);
+		}
+
+		$query = $this->db->query($sql);
+
+		return (int)$query->row['total'];
 	}
 
 	/**

@@ -6,6 +6,8 @@ $_['heading_title']    = 'Bonus Manager';
 $_['text_extension']   = 'Extensions';
 $_['text_success']     = 'Success: You have modified bonus manager module!';
 $_['text_edit']        = 'Edit Bonus Manager Module';
+$_['text_dashboard']   = 'Dashboard';
+$_['text_settings']    = 'Settings';
 $_['text_enabled']     = 'Enabled';
 $_['text_disabled']    = 'Disabled';
 $_['text_bonus_setting_added']   = 'Bonus setting added!';
@@ -22,6 +24,14 @@ $_['entry_return_deduction_status'] = 'Return Deduction Status';
 $_['entry_customer_group']      = 'Customer Group';
 $_['entry_category']            = 'Category';
 $_['entry_bonus_percent']       = 'Bonus Percent';
+$_['entry_order_id']             = 'Order ID';
+$_['entry_customer']             = 'Customer';
+$_['entry_reward_kind']          = 'Reward Kind';
+$_['entry_bonus_type']           = 'Bonus Type';
+$_['entry_points_sign']          = 'Points';
+$_['entry_date_from']            = 'Date From';
+$_['entry_date_to']              = 'Date To';
+$_['entry_min_remaining']         = 'Min Remaining';
 $_['entry_notification_email']  = 'Email Notifications';
 $_['entry_email_awarded_status'] = 'Bonus Awarded Notification';
 $_['entry_email_awarded_subject'] = 'Email Subject (Awarded)';
@@ -54,7 +64,14 @@ $_['column_action']             = 'Action';
 $_['column_order_id']           = 'Order ID';
 $_['column_customer']           = 'Customer';
 $_['column_points']             = 'Bonuses';
+$_['column_remaining']           = 'Remaining';
+$_['column_reward_kind']         = 'Kind';
+$_['column_bonus_type']          = 'Type';
 $_['column_date']               = 'Date';
+$_['column_date_expires']         = 'Expires';
+$_['column_total_awarded']        = 'Total Awarded';
+$_['column_total_remaining']      = 'Total Remaining';
+$_['column_last_award_date']      = 'Last Award';
 
 // Help
 $_['help_status']               = 'Enable or disable the bonus system';
@@ -83,6 +100,7 @@ $_['help_register_widget_show_details'] = 'Show detailed benefits list (earn %, 
 $_['button_add_setting']        = 'Add Setting';
 $_['button_save']               = 'Save';
 $_['button_cancel']             = 'Cancel';
+$_['button_filter']              = 'Filter';
 
 // Statistics
 $_['text_total_issued']         = 'Total Issued';
@@ -98,6 +116,15 @@ $_['text_yes'] = 'Yes';
 $_['text_no'] = 'No';
 $_['text_orders_with_bonuses']  = 'Orders with Bonuses';
 $_['text_recent_transactions']  = 'Recent Transactions';
+$_['text_filter']               = 'Filter';
+$_['text_operations']            = 'Operations';
+$_['text_operations_help']       = 'Awards add points, spends/deductions remove points. Remaining shows the unspent balance for each award.';
+$_['text_view_all_operations']    = 'View all operations';
+$_['text_spent_bonuses']           = 'Spent Bonuses';
+$_['text_active_bonus_awards']     = 'Active Bonuses';
+$_['text_awarded_clients']         = 'Clients with Awards';
+$_['text_awarded_clients_help']    = 'Totals are based on awarded bonus entries. Remaining shows the current unspent balance.';
+$_['text_view_all_awarded_clients'] = 'View all awarded clients';
 $_['text_all_categories']       = 'All Categories (Default)';
 
 // Descriptions (for database records)

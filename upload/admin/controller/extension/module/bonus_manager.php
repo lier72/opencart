@@ -344,7 +344,7 @@ class ControllerExtensionModuleBonusManager extends Controller {
 
 		// Get statistics
 		$data['statistics'] = $this->model_extension_module_bonus_manager->getBonusStatistics();
-		$data['recent_transactions'] = $this->model_extension_module_bonus_manager->getRecentBonusTransactions(10);
+		$data['recent_transactions'] = $this->model_extension_module_bonus_manager->getRecentBonusTransactions(20);
 
 		// Get today's birthdays for display
 		$data['todays_birthdays'] = $this->model_extension_module_bonus_manager->getTodaysBirthdays();
@@ -443,6 +443,305 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$data['footer'] = $this->load->controller('common/footer');
 
 		$this->response->setOutput($this->load->view('extension/module/bonus_manager', $data));
+	}
+
+	public function dashboard() {
+		$this->load->language('extension/module/bonus_manager');
+		$this->document->setTitle($this->language->get('heading_title'));
+
+		$this->load->model('extension/module/bonus_manager');
+
+		$data['heading_title'] = $this->language->get('heading_title');
+		$data['text_dashboard'] = $this->language->get('text_dashboard');
+		$data['text_recent_transactions'] = $this->language->get('text_recent_transactions');
+		$data['text_operations'] = $this->language->get('text_operations');
+		$data['text_operations_help'] = $this->language->get('text_operations_help');
+		$data['text_view_all_operations'] = $this->language->get('text_view_all_operations');
+		$data['text_total_issued'] = $this->language->get('text_total_issued');
+		$data['text_total_redeemed'] = $this->language->get('text_total_redeemed');
+		$data['text_active_bonuses'] = $this->language->get('text_active_bonuses');
+		$data['text_customers_count'] = $this->language->get('text_customers_count');
+		$data['text_orders_with_bonuses'] = $this->language->get('text_orders_with_bonuses');
+		$data['text_settings'] = $this->language->get('text_settings');
+		$data['column_order_id'] = $this->language->get('column_order_id');
+		$data['column_customer'] = $this->language->get('column_customer');
+		$data['column_points'] = $this->language->get('column_points');
+		$data['column_remaining'] = $this->language->get('column_remaining');
+		$data['column_reward_kind'] = $this->language->get('column_reward_kind');
+		$data['column_bonus_type'] = $this->language->get('column_bonus_type');
+		$data['column_date'] = $this->language->get('column_date');
+		$data['column_date_expires'] = $this->language->get('column_date_expires');
+		$data['column_total_awarded'] = $this->language->get('column_total_awarded');
+		$data['column_total_remaining'] = $this->language->get('column_total_remaining');
+		$data['column_last_award_date'] = $this->language->get('column_last_award_date');
+		$data['text_awarded_clients'] = $this->language->get('text_awarded_clients');
+		$data['text_view_all_awarded_clients'] = $this->language->get('text_view_all_awarded_clients');
+		$data['text_spent_bonuses'] = $this->language->get('text_spent_bonuses');
+		$data['text_active_bonus_awards'] = $this->language->get('text_active_bonus_awards');
+
+		$data['statistics'] = $this->model_extension_module_bonus_manager->getBonusStatistics();
+		$data['recent_transactions'] = $this->model_extension_module_bonus_manager->getRecentBonusTransactions(10);
+		$data['spent_transactions'] = $this->model_extension_module_bonus_manager->getBonusTransactions(array(
+			'start' => 0,
+			'limit' => 10,
+			'filter_points_sign' => 'negative'
+		));
+		$data['active_awards'] = $this->model_extension_module_bonus_manager->getActiveBonusAwards(10);
+		$data['awarded_clients'] = $this->model_extension_module_bonus_manager->getAwardedClients(array(
+			'start' => 0,
+			'limit' => 10
+		));
+		$data['todays_birthdays'] = $this->model_extension_module_bonus_manager->getTodaysBirthdays();
+
+		$data['settings_link'] = $this->url->link('extension/module/bonus_manager', 'user_token=' . $this->session->data['user_token'], true);
+		$data['operations_link'] = $this->url->link('extension/module/bonus_manager/operations', 'user_token=' . $this->session->data['user_token'], true);
+		$data['awarded_clients_link'] = $this->url->link('extension/module/bonus_manager/awardedClients', 'user_token=' . $this->session->data['user_token'], true);
+		$data['user_token'] = $this->session->data['user_token'];
+
+		$data['breadcrumbs'] = array();
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_home'),
+			'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_extension'),
+			'href' => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_dashboard'),
+			'href' => $this->url->link('extension/module/bonus_manager/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+		);
+
+		$data['header'] = $this->load->controller('common/header');
+		$data['column_left'] = $this->load->controller('common/column_left');
+		$data['footer'] = $this->load->controller('common/footer');
+
+		$this->response->setOutput($this->load->view('extension/module/bonus_manager_dashboard', $data));
+	}
+
+	public function operations() {
+		$this->load->language('extension/module/bonus_manager');
+		$this->document->setTitle($this->language->get('heading_title'));
+
+		$this->load->model('extension/module/bonus_manager');
+
+		$page = isset($this->request->get['page']) ? (int)$this->request->get['page'] : 1;
+		$limit = isset($this->request->get['limit']) ? (int)$this->request->get['limit'] : 20;
+		$filter_order_id = isset($this->request->get['filter_order_id']) ? (int)$this->request->get['filter_order_id'] : 0;
+		$filter_customer = isset($this->request->get['filter_customer']) ? trim($this->request->get['filter_customer']) : '';
+		$filter_reward_kind = isset($this->request->get['filter_reward_kind']) ? trim($this->request->get['filter_reward_kind']) : '';
+		$filter_bonus_type = isset($this->request->get['filter_bonus_type']) ? trim($this->request->get['filter_bonus_type']) : '';
+		$filter_points_sign = isset($this->request->get['filter_points_sign']) ? trim($this->request->get['filter_points_sign']) : '';
+		$filter_date_from = isset($this->request->get['filter_date_from']) ? trim($this->request->get['filter_date_from']) : '';
+		$filter_date_to = isset($this->request->get['filter_date_to']) ? trim($this->request->get['filter_date_to']) : '';
+
+		if ($page < 1) {
+			$page = 1;
+		}
+
+		if ($limit < 1) {
+			$limit = 20;
+		}
+
+		$filter_data = array(
+			'start' => ($page - 1) * $limit,
+			'limit' => $limit,
+			'filter_order_id' => $filter_order_id,
+			'filter_customer' => $filter_customer,
+			'filter_reward_kind' => $filter_reward_kind,
+			'filter_bonus_type' => $filter_bonus_type,
+			'filter_points_sign' => $filter_points_sign,
+			'filter_date_from' => $filter_date_from,
+			'filter_date_to' => $filter_date_to
+		);
+
+		$total = $this->model_extension_module_bonus_manager->getBonusTransactionsTotal($filter_data);
+		$data['transactions'] = $this->model_extension_module_bonus_manager->getBonusTransactions($filter_data);
+
+		$data['heading_title'] = $this->language->get('heading_title');
+		$data['text_dashboard'] = $this->language->get('text_dashboard');
+		$data['text_operations'] = $this->language->get('text_operations');
+		$data['text_operations_help'] = $this->language->get('text_operations_help');
+		$data['column_order_id'] = $this->language->get('column_order_id');
+		$data['column_customer'] = $this->language->get('column_customer');
+		$data['column_points'] = $this->language->get('column_points');
+		$data['column_remaining'] = $this->language->get('column_remaining');
+		$data['column_reward_kind'] = $this->language->get('column_reward_kind');
+		$data['column_bonus_type'] = $this->language->get('column_bonus_type');
+		$data['column_date'] = $this->language->get('column_date');
+		$data['entry_order_id'] = $this->language->get('entry_order_id');
+		$data['entry_customer'] = $this->language->get('entry_customer');
+		$data['entry_reward_kind'] = $this->language->get('entry_reward_kind');
+		$data['entry_bonus_type'] = $this->language->get('entry_bonus_type');
+		$data['entry_points_sign'] = $this->language->get('entry_points_sign');
+		$data['entry_date_from'] = $this->language->get('entry_date_from');
+		$data['entry_date_to'] = $this->language->get('entry_date_to');
+		$data['text_filter'] = $this->language->get('text_filter');
+		$data['button_filter'] = $this->language->get('button_filter');
+		$data['datepicker'] = $this->language->get('datepicker');
+
+		$data['filter_order_id'] = $filter_order_id;
+		$data['filter_customer'] = $filter_customer;
+		$data['filter_reward_kind'] = $filter_reward_kind;
+		$data['filter_bonus_type'] = $filter_bonus_type;
+		$data['filter_points_sign'] = $filter_points_sign;
+		$data['filter_date_from'] = $filter_date_from;
+		$data['filter_date_to'] = $filter_date_to;
+
+		$data['reward_kinds'] = array('award', 'spend', 'deduction', 'adjust', 'expire');
+
+		$data['dashboard_link'] = $this->url->link('extension/module/bonus_manager/dashboard', 'user_token=' . $this->session->data['user_token'], true);
+		$data['user_token'] = $this->session->data['user_token'];
+
+		$data['breadcrumbs'] = array();
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_home'),
+			'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_extension'),
+			'href' => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_operations'),
+			'href' => $this->url->link('extension/module/bonus_manager/operations', 'user_token=' . $this->session->data['user_token'], true)
+		);
+
+		$pagination = new Pagination();
+		$pagination->total = $total;
+		$pagination->page = $page;
+		$pagination->limit = $limit;
+		$url = '';
+		if ($filter_order_id) {
+			$url .= '&filter_order_id=' . $filter_order_id;
+		}
+		if ($filter_customer !== '') {
+			$url .= '&filter_customer=' . urlencode(html_entity_decode($filter_customer, ENT_QUOTES, 'UTF-8'));
+		}
+		if ($filter_reward_kind !== '') {
+			$url .= '&filter_reward_kind=' . $filter_reward_kind;
+		}
+		if ($filter_bonus_type !== '') {
+			$url .= '&filter_bonus_type=' . $filter_bonus_type;
+		}
+		if ($filter_points_sign !== '') {
+			$url .= '&filter_points_sign=' . $filter_points_sign;
+		}
+		if ($filter_date_from !== '') {
+			$url .= '&filter_date_from=' . $filter_date_from;
+		}
+		if ($filter_date_to !== '') {
+			$url .= '&filter_date_to=' . $filter_date_to;
+		}
+
+		$pagination->url = $this->url->link('extension/module/bonus_manager/operations', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}&limit=' . $limit, true);
+		$data['pagination'] = $pagination->render();
+
+		$data['header'] = $this->load->controller('common/header');
+		$data['column_left'] = $this->load->controller('common/column_left');
+		$data['footer'] = $this->load->controller('common/footer');
+
+		$this->response->setOutput($this->load->view('extension/module/bonus_manager_operations', $data));
+	}
+
+	public function awardedClients() {
+		$this->load->language('extension/module/bonus_manager');
+		$this->document->setTitle($this->language->get('heading_title'));
+
+		$this->load->model('extension/module/bonus_manager');
+
+		$page = isset($this->request->get['page']) ? (int)$this->request->get['page'] : 1;
+		$limit = isset($this->request->get['limit']) ? (int)$this->request->get['limit'] : 20;
+		$filter_customer = isset($this->request->get['filter_customer']) ? trim($this->request->get['filter_customer']) : '';
+		$filter_date_from = isset($this->request->get['filter_date_from']) ? trim($this->request->get['filter_date_from']) : '';
+		$filter_date_to = isset($this->request->get['filter_date_to']) ? trim($this->request->get['filter_date_to']) : '';
+		$filter_min_remaining = isset($this->request->get['filter_min_remaining']) ? (int)$this->request->get['filter_min_remaining'] : 0;
+
+		if ($page < 1) {
+			$page = 1;
+		}
+
+		if ($limit < 1) {
+			$limit = 20;
+		}
+
+		$filter_data = array(
+			'start' => ($page - 1) * $limit,
+			'limit' => $limit,
+			'filter_customer' => $filter_customer,
+			'filter_date_from' => $filter_date_from,
+			'filter_date_to' => $filter_date_to,
+			'filter_min_remaining' => $filter_min_remaining
+		);
+
+		$total = $this->model_extension_module_bonus_manager->getAwardedClientsTotal($filter_data);
+		$data['clients'] = $this->model_extension_module_bonus_manager->getAwardedClients($filter_data);
+
+		$data['heading_title'] = $this->language->get('heading_title');
+		$data['text_dashboard'] = $this->language->get('text_dashboard');
+		$data['text_awarded_clients'] = $this->language->get('text_awarded_clients');
+		$data['text_awarded_clients_help'] = $this->language->get('text_awarded_clients_help');
+		$data['column_customer'] = $this->language->get('column_customer');
+		$data['column_total_awarded'] = $this->language->get('column_total_awarded');
+		$data['column_total_remaining'] = $this->language->get('column_total_remaining');
+		$data['column_last_award_date'] = $this->language->get('column_last_award_date');
+		$data['entry_customer'] = $this->language->get('entry_customer');
+		$data['entry_date_from'] = $this->language->get('entry_date_from');
+		$data['entry_date_to'] = $this->language->get('entry_date_to');
+		$data['entry_min_remaining'] = $this->language->get('entry_min_remaining');
+		$data['text_filter'] = $this->language->get('text_filter');
+		$data['button_filter'] = $this->language->get('button_filter');
+		$data['datepicker'] = $this->language->get('datepicker');
+
+		$data['filter_customer'] = $filter_customer;
+		$data['filter_date_from'] = $filter_date_from;
+		$data['filter_date_to'] = $filter_date_to;
+		$data['filter_min_remaining'] = $filter_min_remaining;
+
+		$data['dashboard_link'] = $this->url->link('extension/module/bonus_manager/dashboard', 'user_token=' . $this->session->data['user_token'], true);
+		$data['user_token'] = $this->session->data['user_token'];
+
+		$data['breadcrumbs'] = array();
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_home'),
+			'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_extension'),
+			'href' => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_awarded_clients'),
+			'href' => $this->url->link('extension/module/bonus_manager/awardedClients', 'user_token=' . $this->session->data['user_token'], true)
+		);
+
+		$pagination = new Pagination();
+		$pagination->total = $total;
+		$pagination->page = $page;
+		$pagination->limit = $limit;
+
+		$url = '';
+		if ($filter_customer !== '') {
+			$url .= '&filter_customer=' . urlencode(html_entity_decode($filter_customer, ENT_QUOTES, 'UTF-8'));
+		}
+		if ($filter_date_from !== '') {
+			$url .= '&filter_date_from=' . $filter_date_from;
+		}
+		if ($filter_date_to !== '') {
+			$url .= '&filter_date_to=' . $filter_date_to;
+		}
+		if ($filter_min_remaining) {
+			$url .= '&filter_min_remaining=' . $filter_min_remaining;
+		}
+
+		$pagination->url = $this->url->link('extension/module/bonus_manager/awardedClients', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}&limit=' . $limit, true);
+		$data['pagination'] = $pagination->render();
+
+		$data['header'] = $this->load->controller('common/header');
+		$data['column_left'] = $this->load->controller('common/column_left');
+		$data['footer'] = $this->load->controller('common/footer');
+
+		$this->response->setOutput($this->load->view('extension/module/bonus_manager_awarded_clients', $data));
 	}
 
 	/**

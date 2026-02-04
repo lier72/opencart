@@ -1,0 +1,361 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <a href="{{ settings_link }}" class="btn btn-primary"><i class="fa fa-cog"></i> {{ text_settings }}</a>
+      </div>
+      <h1>{{ heading_title }} - {{ text_dashboard }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+          <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-lg-3 col-md-6 col-sm-6">
+      <div class="panel panel-primary js-dashboard-panel" data-target="operations-table" style="cursor: pointer;">
+          <div class="panel-heading">
+            <div class="row">
+              <div class="col-xs-3">
+                <i class="fa fa-gift fa-5x"></i>
+              </div>
+              <div class="col-xs-9 text-right">
+                <div class="huge">{{ statistics.total_issued }}</div>
+                <div>{{ text_total_issued }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3 col-md-6 col-sm-6">
+      <div class="panel panel-success js-dashboard-panel" data-target="spent-table" style="cursor: pointer;">
+          <div class="panel-heading">
+            <div class="row">
+              <div class="col-xs-3">
+                <i class="fa fa-check fa-5x"></i>
+              </div>
+              <div class="col-xs-9 text-right">
+                <div class="huge">{{ statistics.total_redeemed }}</div>
+                <div>{{ text_total_redeemed }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3 col-md-6 col-sm-6">
+      <div class="panel panel-info js-dashboard-panel" data-target="active-table" style="cursor: pointer;">
+          <div class="panel-heading">
+            <div class="row">
+              <div class="col-xs-3">
+                <i class="fa fa-star fa-5x"></i>
+              </div>
+              <div class="col-xs-9 text-right">
+                <div class="huge">{{ statistics.active_bonuses }}</div>
+                <div>{{ text_active_bonuses }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3 col-md-6 col-sm-6">
+      <div class="panel panel-warning js-dashboard-panel" data-target="awarded-clients-table" style="cursor: pointer;">
+          <div class="panel-heading">
+            <div class="row">
+              <div class="col-xs-3">
+                <i class="fa fa-users fa-5x"></i>
+              </div>
+              <div class="col-xs-9 text-right">
+                <div class="huge">{{ statistics.customers_count }}</div>
+                <div>{{ text_customers_count }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <i class="fa fa-birthday-cake"></i> Today's Birthdays
+        <span class="badge" style="background-color: #ec4899;">{{ todays_birthdays|length }}</span>
+      </div>
+      <div class="panel-body">
+        {% if todays_birthdays|length > 0 %}
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td class="text-left">Customer</td>
+                  <td class="text-left">Email</td>
+                  <td class="text-center">Birthday Bonus</td>
+                </tr>
+              </thead>
+              <tbody>
+                {% for birthday in todays_birthdays %}
+                  <tr>
+                    <td class="text-left">
+                      <a href="index.php?route=customer/customer/edit&user_token={{ user_token }}&customer_id={{ birthday.customer_id }}">
+                        {{ birthday.firstname }} {{ birthday.lastname }}
+                      </a>
+                    </td>
+                    <td class="text-left">{{ birthday.email }}</td>
+                    <td class="text-center">
+                      {% if birthday.received_bonus %}
+                        <span class="label label-success"><i class="fa fa-check"></i> Awarded</span>
+                      {% else %}
+                        <span class="label label-warning"><i class="fa fa-clock-o"></i> Pending</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted text-center"><i class="fa fa-info-circle"></i> No customers have a birthday today.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel panel-default">
+      <div class="panel-heading">{{ text_operations }}</div>
+      <div class="panel-body">
+        <p class="text-muted">{{ text_operations_help }}</p>
+        <div id="operations-table">
+          <h4>{{ text_recent_transactions }}</h4>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td class="text-left">{{ column_order_id }}</td>
+                  <td class="text-left">{{ column_customer }}</td>
+                  <td class="text-left">{{ column_reward_kind }}</td>
+                  <td class="text-left">{{ column_bonus_type }}</td>
+                  <td class="text-right">{{ column_points }}</td>
+                  <td class="text-right">{{ column_remaining }}</td>
+                  <td class="text-left">{{ column_date }}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {% if recent_transactions|length > 0 %}
+                  {% for transaction in recent_transactions %}
+                    {% set row_link = '' %}
+                    {% if transaction.order_id %}
+                      {% set row_link = 'index.php?route=sale/order/info&user_token=' ~ user_token ~ '&order_id=' ~ transaction.order_id %}
+                    {% elseif transaction.customer_id %}
+                      {% set row_link = 'index.php?route=customer/customer/edit&user_token=' ~ user_token ~ '&customer_id=' ~ transaction.customer_id %}
+                    {% endif %}
+                    <tr{% if row_link %} class="js-row-link" data-href="{{ row_link }}"{% endif %}>
+                      <td class="text-left">{% if transaction.order_id %}#{{ transaction.order_id }}{% else %}-{% endif %}</td>
+                      <td class="text-left">{{ transaction.customer_name }}<br/><small>{{ transaction.email }}</small></td>
+                      <td class="text-left">{{ transaction.reward_kind }}</td>
+                      <td class="text-left">{{ transaction.bonus_type }}</td>
+                      <td class="text-right">
+                        {% if transaction.points >= 0 %}
+                          <span class="label label-success">+{{ transaction.points }}</span>
+                        {% else %}
+                          <span class="label label-danger">{{ transaction.points }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-right">
+                        {% if transaction.remaining is null %}-{% else %}{{ transaction.remaining }}{% endif %}
+                      </td>
+                      <td class="text-left">{{ transaction.date_added }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td class="text-center" colspan="7">No recent transactions.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-right">
+            <a href="{{ operations_link }}" class="btn btn-default">{{ text_view_all_operations }}</a>
+          </div>
+        </div>
+
+        <div id="spent-table" style="display: none;">
+          <h4>{{ text_spent_bonuses }}</h4>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td class="text-left">{{ column_order_id }}</td>
+                  <td class="text-left">{{ column_customer }}</td>
+                  <td class="text-left">{{ column_reward_kind }}</td>
+                  <td class="text-left">{{ column_bonus_type }}</td>
+                  <td class="text-right">{{ column_points }}</td>
+                  <td class="text-left">{{ column_date }}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {% if spent_transactions|length > 0 %}
+                  {% for transaction in spent_transactions %}
+                    {% set row_link = '' %}
+                    {% if transaction.order_id %}
+                      {% set row_link = 'index.php?route=sale/order/info&user_token=' ~ user_token ~ '&order_id=' ~ transaction.order_id %}
+                    {% elseif transaction.customer_id %}
+                      {% set row_link = 'index.php?route=customer/customer/edit&user_token=' ~ user_token ~ '&customer_id=' ~ transaction.customer_id %}
+                    {% endif %}
+                    <tr{% if row_link %} class="js-row-link" data-href="{{ row_link }}"{% endif %}>
+                      <td class="text-left">{% if transaction.order_id %}#{{ transaction.order_id }}{% else %}-{% endif %}</td>
+                      <td class="text-left">{{ transaction.customer_name }}<br/><small>{{ transaction.email }}</small></td>
+                      <td class="text-left">{{ transaction.reward_kind }}</td>
+                      <td class="text-left">{{ transaction.bonus_type }}</td>
+                      <td class="text-right"><span class="label label-danger">{{ transaction.points }}</span></td>
+                      <td class="text-left">{{ transaction.date_added }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td class="text-center" colspan="6">No spent bonuses.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-right">
+            <a href="{{ operations_link }}&filter_points_sign=negative" class="btn btn-default">{{ text_view_all_operations }}</a>
+          </div>
+        </div>
+
+        <div id="active-table" style="display: none;">
+          <h4>{{ text_active_bonus_awards }}</h4>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td class="text-left">{{ column_order_id }}</td>
+                  <td class="text-left">{{ column_customer }}</td>
+                  <td class="text-right">{{ column_points }}</td>
+                  <td class="text-right">{{ column_remaining }}</td>
+                  <td class="text-left">{{ column_date }}</td>
+                  <td class="text-left">{{ column_date_expires }}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {% if active_awards|length > 0 %}
+                  {% for award in active_awards %}
+                    {% set row_link = '' %}
+                    {% if award.order_id %}
+                      {% set row_link = 'index.php?route=sale/order/info&user_token=' ~ user_token ~ '&order_id=' ~ award.order_id %}
+                    {% elseif award.customer_id %}
+                      {% set row_link = 'index.php?route=customer/customer/edit&user_token=' ~ user_token ~ '&customer_id=' ~ award.customer_id %}
+                    {% endif %}
+                    <tr{% if row_link %} class="js-row-link" data-href="{{ row_link }}"{% endif %}>
+                      <td class="text-left">{% if award.order_id %}#{{ award.order_id }}{% else %}-{% endif %}</td>
+                      <td class="text-left">{{ award.customer_name }}<br/><small>{{ award.email }}</small></td>
+                      <td class="text-right"><span class="label label-success">+{{ award.points }}</span></td>
+                      <td class="text-right">{{ award.remaining }}</td>
+                      <td class="text-left">{{ award.date_added }}</td>
+                      <td class="text-left">{% if award.date_expires %}{{ award.date_expires }}{% else %}-{% endif %}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td class="text-center" colspan="6">No active bonuses.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-right">
+            <a href="{{ operations_link }}&filter_reward_kind=award" class="btn btn-default">{{ text_view_all_operations }}</a>
+          </div>
+        </div>
+
+        <div id="awarded-clients-table" style="display: none;">
+          <h4>{{ text_awarded_clients }}</h4>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td class="text-left">{{ column_customer }}</td>
+                  <td class="text-right">{{ column_total_awarded }}</td>
+                  <td class="text-right">{{ column_total_remaining }}</td>
+                  <td class="text-left">{{ column_last_award_date }}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {% if awarded_clients|length > 0 %}
+                  {% for client in awarded_clients %}
+                    {% set row_link = '' %}
+                    {% if client.customer_id %}
+                      {% set row_link = 'index.php?route=customer/customer/edit&user_token=' ~ user_token ~ '&customer_id=' ~ client.customer_id %}
+                    {% endif %}
+                    <tr{% if row_link %} class="js-row-link" data-href="{{ row_link }}"{% endif %}>
+                      <td class="text-left">{{ client.customer_name }}<br/><small>{{ client.email }}</small></td>
+                      <td class="text-right">{{ client.total_awarded }}</td>
+                      <td class="text-right">{{ client.total_remaining }}</td>
+                      <td class="text-left">{{ client.last_award_date }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td class="text-center" colspan="4">No clients.</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-right">
+            <a href="{{ awarded_clients_link }}" class="btn btn-default">{{ text_view_all_awarded_clients }}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ footer }}
+
+<script type="text/javascript">
+(function() {
+  var panelButtons = document.querySelectorAll('.js-dashboard-panel');
+  var sections = {
+    'operations-table': document.getElementById('operations-table'),
+    'spent-table': document.getElementById('spent-table'),
+    'active-table': document.getElementById('active-table'),
+    'awarded-clients-table': document.getElementById('awarded-clients-table')
+  };
+
+  function showSection(key) {
+    for (var id in sections) {
+      if (!sections.hasOwnProperty(id) || !sections[id]) {
+        continue;
+      }
+      sections[id].style.display = (id === key) ? '' : 'none';
+    }
+  }
+
+  for (var i = 0; i < panelButtons.length; i++) {
+    panelButtons[i].addEventListener('click', function() {
+      var target = this.getAttribute('data-target');
+      if (target && sections[target]) {
+        showSection(target);
+      }
+    });
+  }
+
+  var rows = document.querySelectorAll('.js-row-link');
+  for (var i = 0; i < rows.length; i++) {
+    rows[i].addEventListener('click', function(e) {
+      if (e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'a') {
+        return;
+      }
+      var href = this.getAttribute('data-href');
+      if (href) {
+        window.location.href = href;
+      }
+    });
+  }
+})();
+</script>

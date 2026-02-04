@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+  <name>Bonus Manager Menu</name>
+  <code>bonus_manager_menu</code>
+  <version>1.0.0</version>
+  <author>Local</author>
+
+  <file path="admin/controller/common/column_left.php">
+    <!-- Add Bonus Manager menu item under Extensions -->
+    <operation>
+      <search><![CDATA[
+			if ($marketplace) {
+      ]]></search>
+      <add position="before"><![CDATA[
+			if ($this->user->hasPermission('access', 'extension/module/bonus_manager')) {
+				$marketplace[] = array(
+					'name'     => 'Bonus Manager',
+					'href'     => '',
+					'children' => array(
+						array(
+							'name' => 'Dashboard',
+							'href' => $this->url->link('extension/module/bonus_manager/dashboard', 'user_token=' . $this->session->data['user_token'], true),
+							'children' => array()
+						),
+						array(
+							'name' => 'Operations',
+							'href' => $this->url->link('extension/module/bonus_manager/operations', 'user_token=' . $this->session->data['user_token'], true),
+							'children' => array()
+						),
+						array(
+							'name' => 'Clients with Awards',
+							'href' => $this->url->link('extension/module/bonus_manager/awardedClients', 'user_token=' . $this->session->data['user_token'], true),
+							'children' => array()
+						),
+						array(
+							'name' => 'Settings',
+							'href' => $this->url->link('extension/module/bonus_manager', 'user_token=' . $this->session->data['user_token'], true),
+							'children' => array()
+						)
+					)
+				);
+			}
+      ]]></add>
+    </operation>
+  </file>
+</modification>

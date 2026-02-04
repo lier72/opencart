@@ -6,6 +6,8 @@ $_['heading_title']    = 'Менеджер Бонусов';
 $_['text_extension']   = 'Расширения';
 $_['text_success']     = 'Настройки модуля обновлены!';
 $_['text_edit']        = 'Настройки модуля бонусов';
+$_['text_dashboard']   = 'Панель';
+$_['text_settings']    = 'Настройки';
 $_['text_enabled']     = 'Включено';
 $_['text_disabled']    = 'Отключено';
 $_['text_bonus_setting_added']   = 'Настройка бонусов добавлена!';
@@ -22,6 +24,14 @@ $_['entry_return_deduction_status'] = 'Статус возврата для сп
 $_['entry_customer_group']      = 'Группа покупателей';
 $_['entry_category']            = 'Категория';
 $_['entry_bonus_percent']       = 'Процент бонусов';
+$_['entry_order_id']             = '№ Заказа';
+$_['entry_customer']             = 'Покупатель';
+$_['entry_reward_kind']          = 'Тип операции';
+$_['entry_bonus_type']           = 'Тип бонуса';
+$_['entry_points_sign']          = 'Баллы';
+$_['entry_date_from']            = 'Дата от';
+$_['entry_date_to']              = 'Дата до';
+$_['entry_min_remaining']         = 'Мин. остаток';
 $_['entry_notification_email']  = 'Email уведомления';
 $_['entry_email_awarded_status'] = 'Уведомление о начислении';
 $_['entry_email_awarded_subject'] = 'Тема письма (начисление)';
@@ -57,7 +67,14 @@ $_['column_action']             = 'Действие';
 $_['column_order_id']           = '№ Заказа';
 $_['column_customer']           = 'Покупатель';
 $_['column_points']             = 'Бонусы';
+$_['column_remaining']           = 'Остаток';
+$_['column_reward_kind']         = 'Тип операции';
+$_['column_bonus_type']          = 'Тип бонуса';
 $_['column_date']               = 'Дата';
+$_['column_date_expires']         = 'Сгорание';
+$_['column_total_awarded']        = 'Начислено всего';
+$_['column_total_remaining']      = 'Остаток всего';
+$_['column_last_award_date']      = 'Последнее начисление';
 
 // Help
 $_['help_status']               = 'Включить или отключить систему бонусов';
@@ -89,6 +106,7 @@ $_['help_register_widget_show_details'] = 'Показывать список п�
 $_['button_add_setting']        = 'Добавить настройку';
 $_['button_save']               = 'Сохранить';
 $_['button_cancel']             = 'Отмена';
+$_['button_filter']              = 'Фильтр';
 
 // Statistics
 $_['text_total_issued']         = 'Всего начислено';
@@ -96,7 +114,16 @@ $_['text_total_redeemed']       = 'Всего использовано';
 $_['text_active_bonuses']       = 'Активных бонусов';
 $_['text_customers_count']      = 'Покупателей с бонусами';
 $_['text_orders_with_bonuses']  = 'Заказов с бонусами';
-$_['text_recent_transactions']  = 'Последние начисления';
+$_['text_recent_transactions']  = 'Последние операции';
+$_['text_filter']               = 'Фильтр';
+$_['text_operations']            = 'Операции';
+$_['text_operations_help']       = 'Начисления добавляют баллы, списания и удержания уменьшают. Остаток показывает неиспользованный баланс по начислению.';
+$_['text_view_all_operations']    = 'Смотреть все операции';
+$_['text_spent_bonuses']           = 'Списанные бонусы';
+$_['text_active_bonus_awards']     = 'Активные бонусы';
+$_['text_awarded_clients']         = 'Клиенты с начислениями';
+$_['text_awarded_clients_help']    = 'Итоги рассчитываются по начислениям. Остаток показывает текущий неиспользованный баланс.';
+$_['text_view_all_awarded_clients'] = 'Смотреть всех клиентов';
 $_['text_all_categories']       = 'Все категории (по умолчанию)';
 
 // Registration Widget Defaults
