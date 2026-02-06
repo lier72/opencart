@@ -6,15 +6,18 @@
   <author>Local</author>
 
   <file path="admin/controller/common/column_left.php">
-    <!-- Add Bonus Manager menu item under Extensions -->
+    <!-- Add Bonus Manager as top-level menu -->
     <operation>
       <search><![CDATA[
-			if ($marketplace) {
+			// Catalog
       ]]></search>
       <add position="before"><![CDATA[
+			
 			if ($this->user->hasPermission('access', 'extension/module/bonus_manager')) {
-				$marketplace[] = array(
-					'name'     => 'Bonus Manager',
+				$data['menus'][] = array(
+					'id'       => 'menu-bonus-manager',
+					'icon'	   => 'fa-gift',
+					'name'	   => 'Bonus Manager',
 					'href'     => '',
 					'children' => array(
 						array(
