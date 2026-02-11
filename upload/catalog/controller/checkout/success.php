@@ -3,7 +3,9 @@ class ControllerCheckoutSuccess extends Controller {
 	public function index() {
 		$this->load->language('checkout/success');
 
-		if (isset($this->session->data['order_id'])) {
+		$order_id = isset($this->session->data['order_id']) ? (int)$this->session->data['order_id'] : 0;
+
+		if ($order_id) {
 			$this->cart->clear();
 
 			unset($this->session->data['shipping_method']);
@@ -48,6 +50,44 @@ class ControllerCheckoutSuccess extends Controller {
 			$data['text_message'] = sprintf($this->language->get('text_customer'), $this->url->link('account/account', '', true), $this->url->link('account/order', '', true), $this->url->link('account/download', '', true), $this->url->link('information/contact'));
 		} else {
 			$data['text_message'] = sprintf($this->language->get('text_guest'), $this->url->link('information/contact'));
+		}
+
+		$data['gcr_optin'] = false;
+
+		$gcr_merchant_id = (string)$this->config->get('config_gcr_merchant_id');
+		if ($gcr_merchant_id === '') {
+			$gcr_merchant_id = '116034203';
+		}
+
+		$gcr_allowed = true;
+
+		if ($this->customer->isLogged()) {
+			$gcr_allowed = ((int)$this->customer->getGroupId() === (int)$this->config->get('config_customer_group_id'));
+		}
+
+		if ($order_id && $gcr_merchant_id !== '' && $gcr_allowed) {
+			$this->load->model('checkout/order');
+
+			$order_info = $this->model_checkout_order->getOrder($order_id);
+
+			if ($order_info) {
+				$delivery_country = $order_info['shipping_iso_code_2'] ? $order_info['shipping_iso_code_2'] : $order_info['payment_iso_code_2'];
+				$estimated_days = (int)$this->config->get('config_gcr_estimated_delivery_days');
+
+				if ($estimated_days <= 0) {
+					$estimated_days = 5;
+				}
+
+				if (!empty($order_info['email']) && !empty($delivery_country)) {
+					$data['gcr_optin'] = array(
+						'merchant_id' => $gcr_merchant_id,
+						'order_id' => (string)$order_id,
+						'email' => $order_info['email'],
+						'delivery_country' => $delivery_country,
+						'estimated_delivery_date' => date('Y-m-d', strtotime($order_info['date_added'] . ' +' . $estimated_days . ' days'))
+					);
+				}
+			}
 		}
 
 		$data['continue'] = $this->url->link('common/home');

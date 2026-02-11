@@ -31,4 +31,29 @@
       {{ content_bottom }}</div>
     {{ column_right }}</div>
 </div>
+{% if gcr_optin %}
+<!-- BEGIN GCR Opt-in Module Code -->
+<!-- BEGIN GCR Language Code -->
+<script>
+window.___gcfg = {
+  lang: 'ru'
+};
+</script>
+<!-- END GCR Language Code -->
+<script src="https://apis.google.com/js/platform.js?onload=renderOptIn" async defer></script>
+<script>
+window.renderOptIn = function() {
+  window.gapi.load('surveyoptin', function() {
+    window.gapi.surveyoptin.render({
+      "merchant_id": "{{ gcr_optin.merchant_id|e('js') }}",
+      "order_id": "{{ gcr_optin.order_id|e('js') }}",
+      "email": "{{ gcr_optin.email|e('js') }}",
+      "delivery_country": "{{ gcr_optin.delivery_country|e('js') }}",
+      "estimated_delivery_date": "{{ gcr_optin.estimated_delivery_date|e('js') }}"
+    });
+  });
+}
+</script>
+<!-- END GCR Opt-in Module Code -->
+{% endif %}
 {{ footer }}
