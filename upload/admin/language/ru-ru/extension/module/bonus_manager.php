@@ -75,6 +75,7 @@ $_['column_date_expires']         = 'Сгорание';
 $_['column_total_awarded']        = 'Начислено всего';
 $_['column_total_remaining']      = 'Остаток всего';
 $_['column_last_award_date']      = 'Последнее начисление';
+$_['column_loyalty_level']        = 'Уровень лояльности';
 
 // Help
 $_['help_status']               = 'Включить или отключить систему бонусов';

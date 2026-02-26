@@ -440,7 +440,7 @@ class ModelExtensionModuleBonusManager extends Model {
 			$filters[] = "cr.remaining >= '" . (int)$data['filter_min_remaining'] . "'";
 		}
 
-		$sql = "SELECT c.customer_id, CONCAT(c.firstname, ' ', c.lastname) as customer_name, c.email,
+		$sql = "SELECT c.customer_id, c.customer_group_id, CONCAT(c.firstname, ' ', c.lastname) as customer_name, c.email,
 				SUM(cr.points) as total_awarded,
 				SUM(CASE WHEN cr.remaining IS NULL THEN 0 ELSE cr.remaining END) as total_remaining,
 				MAX(cr.date_added) as last_award_date
@@ -456,8 +456,49 @@ class ModelExtensionModuleBonusManager extends Model {
 			LIMIT " . (int)$start . ", " . (int)$limit;
 
 		$query = $this->db->query($sql);
+		$rows = $query->rows;
 
-		return $query->rows;
+		foreach ($rows as &$row) {
+			$row['loyalty_level'] = $this->getLoyaltyLevelDisplayName($row['customer_group_id']);
+		}
+		unset($row);
+
+		return $rows;
+	}
+
+	/**
+	 * Get loyalty level display name for a customer group.
+	 * Uses custom display name from loyalty levels config when available.
+	 */
+	private function getLoyaltyLevelDisplayName($customer_group_id) {
+		$levels = $this->config->get('module_bonus_manager_loyalty_levels');
+		if ($levels && !is_array($levels)) {
+			$decoded = json_decode($levels, true);
+			if (is_array($decoded)) {
+				$levels = $decoded;
+			}
+		}
+
+		if (is_array($levels)) {
+			foreach ($levels as $level) {
+				if ((int)$level['customer_group_id'] === (int)$customer_group_id) {
+					if (isset($level['display_name']) && trim($level['display_name']) !== '') {
+						return trim($level['display_name']);
+					}
+					break;
+				}
+			}
+		}
+
+		$query = $this->db->query("SELECT name FROM " . DB_PREFIX . "customer_group_description
+			WHERE customer_group_id = '" . (int)$customer_group_id . "'
+			AND language_id = '" . (int)$this->config->get('config_language_id') . "'");
+
+		if ($query->num_rows) {
+			return $query->row['name'];
+		}
+
+		return 'Group #' . (int)$customer_group_id;
 	}
 
 	/**

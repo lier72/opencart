@@ -72,6 +72,7 @@ $_['column_date_expires']         = 'Expires';
 $_['column_total_awarded']        = 'Total Awarded';
 $_['column_total_remaining']      = 'Total Remaining';
 $_['column_last_award_date']      = 'Last Award';
+$_['column_loyalty_level']        = 'Loyalty Level';
 
 // Help
 $_['help_status']               = 'Enable or disable the bonus system';

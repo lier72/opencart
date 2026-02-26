@@ -682,6 +682,7 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$data['text_awarded_clients'] = $this->language->get('text_awarded_clients');
 		$data['text_awarded_clients_help'] = $this->language->get('text_awarded_clients_help');
 		$data['column_customer'] = $this->language->get('column_customer');
+		$data['column_loyalty_level'] = $this->language->get('column_loyalty_level');
 		$data['column_total_awarded'] = $this->language->get('column_total_awarded');
 		$data['column_total_remaining'] = $this->language->get('column_total_remaining');
 		$data['column_last_award_date'] = $this->language->get('column_last_award_date');

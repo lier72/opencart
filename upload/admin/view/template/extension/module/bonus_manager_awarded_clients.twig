@@ -67,6 +67,7 @@
                 <thead>
                   <tr>
                     <td class="text-left">{{ column_customer }}</td>
+                    <td class="text-left">{{ column_loyalty_level }}</td>
                     <td class="text-right">{{ column_total_awarded }}</td>
                     <td class="text-right">{{ column_total_remaining }}</td>
                     <td class="text-left">{{ column_last_award_date }}</td>
@@ -81,6 +82,7 @@
                       {% endif %}
                       <tr{% if row_link %} class="js-row-link" data-href="{{ row_link }}"{% endif %}>
                         <td class="text-left">{{ client.customer_name }}<br/><small>{{ client.email }}</small></td>
+                        <td class="text-left">{{ client.loyalty_level }}</td>
                         <td class="text-right">{{ client.total_awarded }}</td>
                         <td class="text-right">{{ client.total_remaining }}</td>
                         <td class="text-left">{{ client.last_award_date }}</td>
@@ -88,7 +90,7 @@
                     {% endfor %}
                   {% else %}
                     <tr>
-                      <td class="text-center" colspan="4">No clients.</td>
+                      <td class="text-center" colspan="5">No clients.</td>
                     </tr>
                   {% endif %}
                 </tbody>
