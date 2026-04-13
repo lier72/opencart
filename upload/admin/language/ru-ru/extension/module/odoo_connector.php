@@ -17,10 +17,12 @@ $_['entry_username']        = 'Username';
 $_['entry_password']        = 'Password';
 $_['entry_port']            = 'Port';
 $_['entry_debug']            = 'Debug (1 - yes; 0 - no)';
+$_['entry_virtual_available_categories'] = 'Категории для virtual_available';
 
 // Sync batch size
 $_['entry_sync_batch_size']      = 'Sync Batch Size';
 $_['help_sync_batch_size']       = 'Number of products to sync in each batch (1-100). Higher values may cause timeout issues.';
+$_['help_virtual_available_categories'] = 'Для товаров из выбранных категорий при синхронизации остатков будет использоваться Odoo virtual_available вместо qty_available - outgoing_qty.';
 $_['error_sync_batch_size']      = 'Sync batch size must be between 1 and 100!';
 
 // Button

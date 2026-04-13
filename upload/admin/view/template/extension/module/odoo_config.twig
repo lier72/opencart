@@ -105,6 +105,26 @@
                         </div>
                     </div>
 
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label" for="input-virtual-available-categories">
+                            <span data-toggle="tooltip" title="{{ help_virtual_available_categories }}">
+                                {{ entry_virtual_available_categories }}
+                            </span>
+                        </label>
+                        <div class="col-sm-10">
+                            <div id="input-virtual-available-categories" class="well well-sm" style="height: 220px; overflow: auto;">
+                                {% for category in available_categories %}
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" name="virtual_available_category_ids[]" value="{{ category.category_id }}"{% if category.category_id in selected_virtual_available_category_ids %} checked="checked"{% endif %} />
+                                        {{ category.name }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
                 </form>
             </div>
         </div>
