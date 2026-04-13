@@ -16,6 +16,7 @@ $_['text_no_results_found'] = 'Ничего не найдено';
 $_['text_newest_first'] = 'Сначала новые';
 $_['text_bessteller_first'] = 'Бестселлеры';
 $_['text_instock_first'] = 'Сначала большие количества';
+$_['error_smart_sorting_disabled'] = 'Умная сортировка отключена. Включите ее, чтобы добавлять предпочтения.';
 
 // Gender values
 $_['gender_men']       = 'Мужской';

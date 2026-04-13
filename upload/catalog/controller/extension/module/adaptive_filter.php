@@ -30,6 +30,8 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
             return;
         }
 
+        $this->load->model('extension/module/adaptive_filter');
+
         // Clean up if 'enable-personalized' is stuck in session (from previous bug)
         if (isset($this->session->data['user_sort_preference']) &&
             $this->session->data['user_sort_preference'] === 'enable-personalized') {
@@ -40,7 +42,9 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         // Handle sort persistence
         if (isset($this->request->get['sort'])) {
             // User explicitly selected a sort - store it (but not the 'enable-personalized' trigger)
-            if ($this->request->get['sort'] !== 'enable-personalized') {
+            if ($this->request->get['sort'] !== 'enable-personalized' &&
+                !($this->request->get['sort'] === 'personalized' &&
+                !$this->model_extension_module_adaptive_filter->isSmartSortingEnabled())) {
                 $this->session->data['user_sort_preference'] = $this->request->get['sort'];
                 if (isset($this->request->get['order'])) {
                     $this->session->data['user_order_preference'] = $this->request->get['order'];
@@ -49,18 +53,20 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         } else {
             // No explicit sort in URL - check for stored preference
             if (isset($this->session->data['user_sort_preference'])) {
-                // Apply stored sort preference
-                $this->request->get['sort'] = $this->session->data['user_sort_preference'];
-                if (isset($this->session->data['user_order_preference'])) {
-                    $this->request->get['order'] = $this->session->data['user_order_preference'];
+                if ($this->session->data['user_sort_preference'] === 'personalized' &&
+                    !$this->model_extension_module_adaptive_filter->isSmartSortingEnabled()) {
+                    unset($this->session->data['user_sort_preference']);
+                    unset($this->session->data['user_order_preference']);
+                } else {
+                    // Apply stored sort preference
+                    $this->request->get['sort'] = $this->session->data['user_sort_preference'];
+                    if (isset($this->session->data['user_order_preference'])) {
+                        $this->request->get['order'] = $this->session->data['user_order_preference'];
+                    }
                 }
             } else {
                 // No stored preference - check if we should default to personalized
-                $this->load->model('extension/module/adaptive_filter');
-                $preferences = $this->model_extension_module_adaptive_filter->getPreferences();
-
-                if (!empty($preferences['sizes']) || !empty($preferences['colors']) ||
-                    !empty($preferences['genders']) || !empty($preferences['sports'])) {
+                if ($this->model_extension_module_adaptive_filter->hasActivePreferences()) {
                     // User has preferences - default to personalized sort
                     $this->request->get['sort'] = 'personalized';
                     $this->request->get['order'] = 'DESC';
@@ -268,11 +274,15 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
      * Add a manual preference (AJAX endpoint)
      */
     public function addPreference() {
+        $this->load->language('extension/module/adaptive_filter');
         $this->load->model('extension/module/adaptive_filter');
 
         $json = array('success' => false);
 
         if (isset($this->request->post['type']) && isset($this->request->post['value'])) {
+            if (!$this->model_extension_module_adaptive_filter->isSmartSortingEnabled()) {
+                $json['message'] = $this->language->get('error_smart_sorting_disabled');
+            } else {
             $type = $this->request->post['type'];
             $value = $this->request->post['value'];
 
@@ -283,6 +293,7 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
 
             $json['success'] = true;
             $json['message'] = 'Preference added successfully';
+            }
         } else {
             $json['message'] = 'Missing type or value parameter';
         }
@@ -368,7 +379,12 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         $this->load->language('extension/module/adaptive_filter');
         $this->load->model('extension/module/adaptive_filter');
 
-        $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getPreferences();
+        $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getActivePreferences();
+
+        if (!$this->model_extension_module_adaptive_filter->hasPreferences($data['user_preferences'])) {
+            return '';
+        }
+
         $data['text_your_preferences'] = $this->language->get('text_your_preferences');
         $data['text_preferences_subtitle'] = $this->language->get('text_preferences_subtitle');
         $data['text_add_preference'] = $this->language->get('text_add_preference');
@@ -433,11 +449,10 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         $this->load->language('extension/module/adaptive_filter');
         $this->load->model('extension/module/adaptive_filter');
 
-        $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getPreferences();
+        $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getActivePreferences();
 
         // Only render if user has preferences
-        if (empty($data['user_preferences']['sizes']) && empty($data['user_preferences']['colors']) &&
-            empty($data['user_preferences']['genders']) && empty($data['user_preferences']['sports'])) {
+        if (!$this->model_extension_module_adaptive_filter->hasPreferences($data['user_preferences'])) {
             return '';
         }
 
@@ -504,7 +519,12 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         $this->load->language('extension/module/adaptive_filter');
         $this->load->model('extension/module/adaptive_filter');
 
-        $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getPreferences();
+        $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getActivePreferences();
+
+        if (!$this->model_extension_module_adaptive_filter->hasPreferences($data['user_preferences'])) {
+            return '';
+        }
+
         $data['text_no_results_found'] = $this->language->get('text_no_results_found');
         $data['text_disable_confirm'] = $this->language->get('text_disable_confirm');
 
@@ -513,14 +533,11 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
 
         // Check stored sort preference in session
         if (isset($this->session->data['user_sort_preference'])) {
-            $is_personalized_default = $this->session->data['user_sort_preference'] === 'personalized';
+            $is_personalized_default =
+                $this->session->data['user_sort_preference'] === 'personalized' &&
+                $this->model_extension_module_adaptive_filter->isSmartSortingEnabled();
         } else {
-            // Check if user has preferences - if yes, personalized is the default
-            $preferences = $this->model_extension_module_adaptive_filter->getPreferences();
-            if (!empty($preferences['sizes']) || !empty($preferences['colors']) ||
-                !empty($preferences['genders']) || !empty($preferences['sports'])) {
-                $is_personalized_default = true;
-            }
+            $is_personalized_default = $this->model_extension_module_adaptive_filter->hasActivePreferences($data['user_preferences']);
         }
 
         $data['is_personalized_default'] = $is_personalized_default;

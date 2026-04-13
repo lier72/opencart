@@ -96,6 +96,20 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
     }
 
     /**
+     * Return the canonical empty preferences structure.
+     *
+     * @return array
+     */
+    private function getEmptyPreferences() {
+        return array(
+            'sizes' => array(),
+            'colors' => array(),
+            'genders' => array(),
+            'sports' => array()
+        );
+    }
+
+    /**
      * Get current preferences for user
      */
     public function getPreferences() {
@@ -103,12 +117,7 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
 
         // Return empty preferences for bots
         if ($user === null) {
-            return array(
-                'sizes' => array(),
-                'colors' => array(),
-                'genders' => array(),
-                'sports' => array()
-            );
+            return $this->getEmptyPreferences();
         }
 
         if ($user['type'] == 'user') {
@@ -144,18 +153,61 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             );
         }
 
-        return array(
-            'sizes' => array(),
-            'colors' => array(),
-            'genders' => array(),
-            'sports' => array()
-        );
+        return $this->getEmptyPreferences();
+    }
+
+    /**
+     * Check whether a preference set contains any stored values.
+     *
+     * @param array|null $preferences
+     * @return bool
+     */
+    public function hasPreferences($preferences = null) {
+        if ($preferences === null) {
+            $preferences = $this->getPreferences();
+        }
+
+        return !empty($preferences['sizes']) || !empty($preferences['colors']) ||
+            !empty($preferences['genders']) || !empty($preferences['sports']);
+    }
+
+    /**
+     * Check whether Smart Sorting is enabled and there are preferences to use.
+     *
+     * @param array|null $preferences
+     * @return bool
+     */
+    public function hasActivePreferences($preferences = null) {
+        if (!$this->isSmartSortingEnabled()) {
+            return false;
+        }
+
+        return $this->hasPreferences($preferences);
+    }
+
+    /**
+     * Return preferences only when Smart Sorting is active for the current user.
+     *
+     * @return array
+     */
+    public function getActivePreferences() {
+        $preferences = $this->getPreferences();
+
+        if (!$this->hasActivePreferences($preferences)) {
+            return $this->getEmptyPreferences();
+        }
+
+        return $preferences;
     }
 
     /**
      * Record a signal (product view, cart add, etc.)
      */
     public function recordSignal($type, $data, $weight = 1) {
+        if (!$this->isSmartSortingEnabled()) {
+            return false;
+        }
+
         $preferences = $this->getPreferences();
 
         // Only record explicitly selected attributes
@@ -185,6 +237,8 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         }
 
         $this->savePreferences($preferences);
+
+        return true;
     }
 
     /**
@@ -689,6 +743,20 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         // Start performance timer
         $perf_start = microtime(true);
 
+        if (!$this->isSmartSortingEnabled()) {
+            $this->load->model('catalog/product');
+
+            $filter_data_default = $filter_data;
+            $filter_data_default['sort'] = 'p.sort_order';
+            $filter_data_default['order'] = 'ASC';
+            $filter_data_default['start'] = $start;
+            $filter_data_default['limit'] = $limit;
+
+            $this->session->data['adaptive_filter_personalized_total'] = $this->model_catalog_product->getTotalProducts($filter_data_default);
+
+            return $this->model_catalog_product->getProducts($filter_data_default);
+        }
+
         // Get user preferences
         $preferences = $this->getPreferences();
 
@@ -932,12 +1000,15 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             return $products;
         }
 
+        if (!$this->isSmartSortingEnabled()) {
+            return $products;
+        }
+
         // Get user preferences
         $preferences = $this->getPreferences();
 
         // If no preferences, return products as-is
-        if (empty($preferences['sizes']) && empty($preferences['colors']) &&
-            empty($preferences['genders']) && empty($preferences['sports'])) {
+        if (!$this->hasPreferences($preferences)) {
             return $products;
         }
 

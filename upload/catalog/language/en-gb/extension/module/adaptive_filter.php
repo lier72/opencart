@@ -16,6 +16,7 @@ $_['text_no_results_found'] = 'No results found';
 $_['text_newest_first'] = 'Newest First';
 $_['text_bessteller_first'] = 'Bestsellers';
 $_['text_instock_first'] = 'In Stock First';
+$_['error_smart_sorting_disabled'] = 'Smart Sorting is disabled. Enable it to add preferences.';
 
 // Gender values
 $_['gender_men']       = 'Men';

@@ -523,6 +523,13 @@ class ControllerJournal3Filter extends ModuleController {
 		$this->load->model('extension/module/adaptive_filter');
 		$debug_mode = (bool)($this->config->get('module_adaptive_filter_debug_mode') ?? false);
 
+		if (!$this->model_extension_module_adaptive_filter->isSmartSortingEnabled()) {
+			if ($debug_mode) {
+				$this->log->write('[Adaptive Filter - Journal3] Smart Sorting disabled, skipping filter selection capture');
+			}
+			return;
+		}
+
 		$preferences = array();
 		if ($debug_mode) {
 		$this->log->write('[Adaptive Filter - Journal3] Checking for filter selections in URL: ' . http_build_query($this->request->get));

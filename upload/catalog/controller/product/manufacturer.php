@@ -106,6 +106,15 @@ class ControllerProductManufacturer extends Controller {
 			$limit = (int)$this->config->get('theme_' . $this->config->get('config_theme') . '_product_limit');
 		}
 
+		if ($sort === 'personalized' && $this->config->get('module_adaptive_filter_status')) {
+			$this->load->model('extension/module/adaptive_filter');
+
+			if (!$this->model_extension_module_adaptive_filter->isSmartSortingEnabled()) {
+				$sort = 'p.sort_order';
+				$order = 'ASC';
+			}
+		}
+
 		$data['breadcrumbs'] = array();
 
 		$data['breadcrumbs'][] = array(
