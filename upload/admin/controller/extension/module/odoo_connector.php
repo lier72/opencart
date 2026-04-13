@@ -24,6 +24,7 @@ class ControllerExtensionModuleOdooConnector extends Controller {
         $this->load->language('extension/module/odoo_connector');
 
         $this->load->model('extension/module/odoo_connector');
+        $this->load->model('catalog/category');
 
 
         $this->document->setTitle($this->language->get('heading_title'));
@@ -45,6 +46,8 @@ class ControllerExtensionModuleOdooConnector extends Controller {
         $data['entry_sync_batch_size'] = $this->language->get('entry_sync_batch_size');
         $data['help_sync_batch_size'] = $this->language->get('help_sync_batch_size');
         $data['entry_debug'] = $this->language->get('entry_debug');
+        $data['entry_virtual_available_categories'] = $this->language->get('entry_virtual_available_categories');
+        $data['help_virtual_available_categories'] = $this->language->get('help_virtual_available_categories');
 
         // Buttons
         $data['button_save'] = $this->language->get('button_save');
@@ -77,15 +80,28 @@ class ControllerExtensionModuleOdooConnector extends Controller {
 //        $this->log->write("Info odoo_connector Controller config_data: " . serialize($config_values));
 
         // Form fields
-        $data['odoo_url'] = isset($this->request->post['odoo_url']) ? $this->request->post['odoo_url'] : $config_values['url'];
-        $data['odoo_db_name'] = isset($this->request->post['odoo_db_name']) ? $this->request->post['odoo_db_name'] : $config_values['db_name'];
-        $data['odoo_user'] = isset($this->request->post['odoo_user']) ? $this->request->post['odoo_user'] : $config_values['user'];
-        $data['odoo_password'] = isset($this->request->post['odoo_password']) ? $this->request->post['odoo_password'] : $config_values['password'];
-        $data['odoo_port'] = isset($this->request->post['odoo_port']) ? $this->request->post['odoo_port'] : $config_values['port'];
-        $data['sync_batch_size'] = isset($this->request->post['sync_batch_size']) ? $this->request->post['sync_batch_size'] : $config_values['sync_batch_size'];
+        $data['odoo_url'] = isset($this->request->post['odoo_url']) ? $this->request->post['odoo_url'] : (isset($config_values['url']) ? $config_values['url'] : '');
+        $data['odoo_db_name'] = isset($this->request->post['odoo_db_name']) ? $this->request->post['odoo_db_name'] : (isset($config_values['db_name']) ? $config_values['db_name'] : '');
+        $data['odoo_user'] = isset($this->request->post['odoo_user']) ? $this->request->post['odoo_user'] : (isset($config_values['user']) ? $config_values['user'] : '');
+        $data['odoo_password'] = isset($this->request->post['odoo_password']) ? $this->request->post['odoo_password'] : (isset($config_values['password']) ? $config_values['password'] : '');
+        $data['odoo_port'] = isset($this->request->post['odoo_port']) ? $this->request->post['odoo_port'] : (isset($config_values['port']) ? $config_values['port'] : '');
+        $data['sync_batch_size'] = isset($this->request->post['sync_batch_size']) ? $this->request->post['sync_batch_size'] : (isset($config_values['sync_batch_size']) ? $config_values['sync_batch_size'] : 20);
     // Add error for sync_batch_size
         $data['error_sync_batch_size'] = isset($this->error['sync_batch_size']) ?  $this->error['sync_batch_size']: '';
-        $data['debug'] = isset($this->error['debug']) ? $this->request->post['debug'] : $config_values['debug'];
+        $data['debug'] = isset($this->request->post['debug']) ? $this->request->post['debug'] : (isset($config_values['debug']) ? $config_values['debug'] : 0);
+        if ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            $data['selected_virtual_available_category_ids'] = $this->model_extension_module_odoo_connector->normalizeCategoryIds(
+                isset($this->request->post['virtual_available_category_ids']) ?
+                    $this->request->post['virtual_available_category_ids'] :
+                    array()
+            );
+        } else {
+            $data['selected_virtual_available_category_ids'] = $this->model_extension_module_odoo_connector->getVirtualAvailableCategoryIds();
+        }
+        $data['available_categories'] = $this->model_catalog_category->getCategories(array(
+            'sort' => 'name',
+            'order' => 'ASC'
+        ));
 
     // Test environment status
     $data['test_environment'] = ModelExtensionModuleOdooConnector::$test_environment;
@@ -248,6 +264,12 @@ class ControllerExtensionModuleOdooConnector extends Controller {
     }
 
     private function saveConfig() {
+        $category_ids = $this->model_extension_module_odoo_connector->normalizeCategoryIds(
+            isset($this->request->post['virtual_available_category_ids']) ?
+                $this->request->post['virtual_available_category_ids'] :
+                array()
+        );
+
         $config_data = array(
             'url' => $this->request->post['odoo_url'],
             'db_name' => $this->request->post['odoo_db_name'],
@@ -256,9 +278,19 @@ class ControllerExtensionModuleOdooConnector extends Controller {
             'port' => $this->request->post['odoo_port'],
             'sync_batch_size' => max(1, min(100, (int)$this->request->post['sync_batch_size'])),
             'debug' => $this->request->post['debug'],
+            ModelExtensionModuleOdooConnector::CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS => implode(',', $category_ids),
         );
 
-        $this->db->query("DELETE FROM " . DB_PREFIX . "odoo_config");
+        $managed_keys = array();
+
+        foreach ($this->model_extension_module_odoo_connector->getManagedConfigKeys() as $key) {
+            $managed_keys[] = "'" . $this->db->escape($key) . "'";
+        }
+
+        if ($managed_keys) {
+            $this->db->query("DELETE FROM " . DB_PREFIX . "odoo_config
+                WHERE `key` IN (" . implode(',', $managed_keys) . ")");
+        }
 
         foreach ($config_data as $key => $value) {
             $this->db->query("INSERT INTO " . DB_PREFIX . "odoo_config SET 

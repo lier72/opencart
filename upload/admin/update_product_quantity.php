@@ -7,12 +7,15 @@
  */
 
 class OpencartOdooStockModel {
+    const CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS = 'virtual_available_category_ids';
 
     protected $userData = array();
     protected $test_environment = true;
     private $debug = false;
     protected $db;
     public $connection;
+    private $virtualAvailableCategoryIds = array();
+    private $virtualAvailableProductIds = array();
 
     function __construct(){
 // Configuration
@@ -28,6 +31,12 @@ class OpencartOdooStockModel {
         while($row = $res->fetch_assoc()){
             $this->userData [$row['key']]=$row['value'];
         } //       print_r($this->userData);
+        $this->virtualAvailableCategoryIds = $this->parseCategoryIds(
+            isset($this->userData[self::CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS]) ?
+                $this->userData[self::CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS] :
+                ''
+        );
+        $this->virtualAvailableProductIds = $this->loadVirtualAvailableProductIds($this->virtualAvailableCategoryIds);
         $this->connection = $this->connectRpc();
         if ($this->userData['url']=="https://portal.uniqsport.ru") $this->test_environment = false;
     }
@@ -178,6 +187,58 @@ class OpencartOdooStockModel {
         return mysqli_fetch_assoc($result);
     }
 
+    function parseCategoryIds($value) {
+        if (!is_string($value) || $value === '') {
+            return array();
+        }
+
+        $category_ids = array();
+
+        foreach (explode(',', $value) as $category_id) {
+            $category_id = (int)$category_id;
+
+            if ($category_id > 0) {
+                $category_ids[$category_id] = $category_id;
+            }
+        }
+
+        ksort($category_ids);
+
+        return array_values($category_ids);
+    }
+
+    function loadVirtualAvailableProductIds($category_ids) {
+        if (!$category_ids) {
+            return array();
+        }
+
+        $sql = "SELECT DISTINCT pc.product_id
+                FROM " . DB_PREFIX . "product_to_category pc
+                LEFT JOIN " . DB_PREFIX . "category_path cp ON (cp.category_id = pc.category_id)
+                WHERE cp.path_id IN (" . implode(',', array_map('intval', $category_ids)) . ")";
+        $result = $this->db->query($sql) or die("Error in selecting virtual quantity categories " . mysqli_error($this->db));
+
+        $product_ids = array();
+
+        while ($row = $result->fetch_assoc()) {
+            $product_ids[(int)$row['product_id']] = true;
+        }
+
+        return $product_ids;
+    }
+
+    function shouldUseVirtualAvailable($opencart_product_id) {
+        return isset($this->virtualAvailableProductIds[(int)$opencart_product_id]);
+    }
+
+    function getMappedQuantity($item, $opencart_product_id) {
+        if ($this->shouldUseVirtualAvailable($opencart_product_id)) {
+            return (int)$item['virtual_available'];
+        }
+
+        return (int)($item['qty_available'] - $item['outgoing_qty']);
+    }
+
     function UpdateOpenCartProductQty ($params){
 //        $status = 5;
         $debug_array=array(); //array(3329,3326,3325,3327,3328); array(6839,6853,6860,6861);
@@ -186,7 +247,6 @@ class OpencartOdooStockModel {
         foreach ($params as $item) {
             if (in_array($item['id'],$debug_array)) {$this->debug=true;}
             else{$this->debug=false;}
-            $total_odoo_qty += $item['qty_available'] - $item['outgoing_qty'];
 
             $sql = "SELECT opencart_product_id, opencart_product_option_id FROM " . DB_PREFIX . "odoo_product_variant_map
             WHERE odoo_product_id = " . (int)$item['id'] . ";";
@@ -194,24 +254,30 @@ class OpencartOdooStockModel {
             $update_product_variant = mysqli_fetch_assoc($result);
             if($this->debug){ print_r($update_product_variant); echo "\n";}
             if ($update_product_variant && $update_product_variant['opencart_product_id']) { //there would be an empty array if no corresponding prod found
+                $quantity = $this->getMappedQuantity($item, (int)$update_product_variant['opencart_product_id']);
+                $total_odoo_qty += $quantity;
                 if ($update_product_variant['opencart_product_option_id'] == -1) { // The product has no options
-                    $sql = "UPDATE " . DB_PREFIX . "product SET quantity =" . (int)($item['qty_available'] - $item['outgoing_qty']).
+                    $sql = "UPDATE " . DB_PREFIX . "product SET quantity =" . $quantity .
                         " WHERE product_id =" . (int)$update_product_variant['opencart_product_id'] . ";";
           if($this->debug) {
               echo $update_product_variant["opencart_product_id"] . " -> ";
               echo $item["id"] . "\n";
-              echo "Quantity =" . $item['qty_available'] . " - " . $item['outgoing_qty'] . "\n";
+              echo "Quantity = " . $quantity . " (" .
+                  ($this->shouldUseVirtualAvailable((int)$update_product_variant['opencart_product_id']) ?
+                      "virtual_available" :
+                      ($item['qty_available'] . " - " . $item['outgoing_qty'])) .
+                  ")\n";
               print_r($sql);
               echo "\n";
           }
                     $result=$this->db->query($sql) or die("Error in modifying product quantity" . mysqli_error($this->db));
                     if( $this->debug ) { echo "Result -> "; print_r (serialize($result)); echo "\n";}
-                    $total_opencart_qty += (int)($item['qty_available'] - $item['outgoing_qty']);
+                    $total_opencart_qty += $quantity;
                 } else {
-                    $sql = "UPDATE ".DB_PREFIX."product_option_value SET quantity =".(int)($item['qty_available'] - $item['outgoing_qty']).
+                    $sql = "UPDATE ".DB_PREFIX."product_option_value SET quantity =". $quantity .
                         " WHERE product_option_value_id =".$update_product_variant['opencart_product_option_id'].";";
              if($this->debug) { print_r($sql); echo "\n"; }
-                    $total_opencart_qty += (int)($item['qty_available'] - $item['outgoing_qty']);
+                    $total_opencart_qty += $quantity;
                     $result=$this->db->query($sql) or die("Error in modifying product variant quantity" . mysqli_error($this->db));
              if( $this->debug ) { echo "Result -> "; print_r (serialize($result)); echo "\n";}
                 }

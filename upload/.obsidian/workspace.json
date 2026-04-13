@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "doc/EVENT_SYSTEM_FIX.md",
+                "file": "doc/SIZE_SELECTOR_UNIQSPORT_SETUP.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "EVENT_SYSTEM_FIX"
+              "title": "SIZE_SELECTOR_UNIQSPORT_SETUP"
             }
           }
         ]
@@ -157,6 +157,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:Create new base": false,
       "switcher:Open quick switcher": false,
       "graph:Open graph view": false,
       "canvas:Create new canvas": false,
@@ -165,19 +166,30 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "7d21b446e23a6e18",
+  "active": "b353880a281113d4",
   "lastOpenFiles": [
+    "doc/SIZE_SELECTOR_README.md",
+    "doc/SIMPLIFICATION_COMPLETE.md",
+    "doc/SALES_BASED_INTERLEAVING.md",
+    "doc/RETAIL_PRICE_FIX_COMPLETE.md",
+    "doc/RETAIL_PRICE_BUG_ANALYSIS.md",
+    "doc/ADAPTIVE_FILTER_SUMMARY.md",
+    "doc/ADAPTIVE_FILTER_SIMPLIFICATION_PLAN.md",
+    "doc/ADAPTIVE_FILTER_SETUP_GUIDE.md",
+    "doc/ADAPTIVE_FILTER_README.md",
+    "doc/ADAPTIVE_FILTER_QUICK_START.md",
+    "doc/ADAPTIVE_FILTER_FILES.md",
+    "doc/ADAPTIVE_FILTER_CONFIGURATION_GUIDE.md",
+    "doc/EVENT_SYSTEM_FIX.md",
     "system/config/bonuscron.php",
     "doc/EVENT_SYSTEM_EXPLAINED.md",
     "doc/CONFIGURATION_CLEANUP.md",
-    "doc/ADAPTIVE_FILTER_SIMPLIFICATION_PLAN.md",
     "doc/Reafctoring_tables_bonus_rewards.md",
     "doc/YANDEX_FEED_NAME_FIX.md",
     "doc/YANDEX_FEED_DESCRIPTION_AND_COLOR_FIX.md",
     "doc/CRON_JOBS.md",
     "doc/CDEK_CRITICAL_FIXES_README.md",
     "CLAUDE.md",
-    "doc/ADAPTIVE_FILTER_CONFIGURATION_GUIDE.md",
     "doc"
   ]
 }

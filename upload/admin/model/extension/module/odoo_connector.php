@@ -10,6 +10,7 @@
  */
 
 class ModelExtensionModuleOdooConnector extends Model {
+    const CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS = 'virtual_available_category_ids';
 
     protected $config_data = array();
     protected $debug = False;
@@ -23,6 +24,59 @@ class ModelExtensionModuleOdooConnector extends Model {
 
     public function setConfigData($data) {
         $this->config_data = $data;
+    }
+
+    public function getManagedConfigKeys() {
+        return array(
+            'url',
+            'db_name',
+            'user',
+            'password',
+            'port',
+            'sync_batch_size',
+            'debug',
+            self::CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS
+        );
+    }
+
+    public function normalizeCategoryIds($category_ids) {
+        if (!is_array($category_ids)) {
+            return array();
+        }
+
+        $normalized = array();
+
+        foreach ($category_ids as $category_id) {
+            $category_id = (int)$category_id;
+
+            if ($category_id > 0) {
+                $normalized[$category_id] = $category_id;
+            }
+        }
+
+        ksort($normalized);
+
+        return array_values($normalized);
+    }
+
+    public function parseCategoryIdsFromConfigValue($value) {
+        if (!is_string($value) || $value === '') {
+            return array();
+        }
+
+        return $this->normalizeCategoryIds(explode(',', $value));
+    }
+
+    public function getVirtualAvailableCategoryIds() {
+        if (!$this->config_data) {
+            $this->getConfig();
+        }
+
+        return $this->parseCategoryIdsFromConfigValue(
+            isset($this->config_data[self::CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS]) ?
+                $this->config_data[self::CONFIG_KEY_VIRTUAL_AVAILABLE_CATEGORY_IDS] :
+                ''
+        );
     }
 
     public function getConnection() {
