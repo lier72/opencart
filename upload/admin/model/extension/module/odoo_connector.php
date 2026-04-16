@@ -1769,11 +1769,11 @@ class ModelExtensionModuleOdooConnector extends Model {
 
         $sql = "SELECT oom.*, o.order_status_id, os.name as order_status_name,
             o.firstname, o.lastname, o.total as order_total, o.currency_code,
-            o.date_added as order_date 
-            FROM " . DB_PREFIX . "odoo_order_map oom 
-            LEFT JOIN `" . DB_PREFIX . "order` o ON (oom.opencart_order_id = o.order_id) 
-            LEFT JOIN " . DB_PREFIX . "order_status os ON (o.order_status_id = os.order_status_id) 
-            WHERE os.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+            o.date_added as order_date
+            FROM " . DB_PREFIX . "odoo_order_map oom
+            LEFT JOIN `" . DB_PREFIX . "order` o ON (oom.opencart_order_id = o.order_id)
+            LEFT JOIN " . DB_PREFIX . "order_status os ON (o.order_status_id = os.order_status_id AND os.language_id = '" . (int)$this->config->get('config_language_id') . "')
+            WHERE 1=1";
 
         // Add filters
         if (!empty($data['filter_order_id'])) {
@@ -1839,11 +1839,11 @@ class ModelExtensionModuleOdooConnector extends Model {
 
 //        $this->log->write("Info odoo_connector getTotalMappedOrders: received data: " . serialize($data));
 
-        $sql = "SELECT COUNT(DISTINCT oom.opencart_order_id) AS total 
-            FROM " . DB_PREFIX . "odoo_order_map oom 
-            LEFT JOIN `" . DB_PREFIX . "order` o ON (oom.opencart_order_id = o.order_id) 
-            LEFT JOIN " . DB_PREFIX . "order_status os ON (o.order_status_id = os.order_status_id) 
-            WHERE os.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+        $sql = "SELECT COUNT(DISTINCT oom.opencart_order_id) AS total
+            FROM " . DB_PREFIX . "odoo_order_map oom
+            LEFT JOIN `" . DB_PREFIX . "order` o ON (oom.opencart_order_id = o.order_id)
+            LEFT JOIN " . DB_PREFIX . "order_status os ON (o.order_status_id = os.order_status_id AND os.language_id = '" . (int)$this->config->get('config_language_id') . "')
+            WHERE 1=1";
 
         // Add the same filters as in getMappedOrders
         if (!empty($data['filter_order_id'])) {
