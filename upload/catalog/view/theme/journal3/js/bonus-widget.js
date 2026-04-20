@@ -19,45 +19,53 @@
       $('head').append(`
         <style id="bonus-flip-styles">
           .bonus-flip-container {
-            perspective: 1000px;
             margin: 15px 0;
-            position: relative;
           }
 
+          /* Grid stacking: both sides occupy the same cell so container
+             height = max(front, back) — no layout shift on flip.
+             perspective() on each face directly avoids needing
+             transform-style: preserve-3d on the grid parent. */
           .bonus-flip-card {
-            position: relative;
+            display: grid;
             width: 100%;
-            height: 100%;
-            transition: transform 0.6s ease;
-            transform-style: preserve-3d;
-          }
-
-          .bonus-flip-card.flipped {
-            transform: rotateY(180deg);
           }
 
           .bonus-card-front,
           .bonus-card-back {
+            grid-row: 1;
+            grid-column: 1;
             width: 100%;
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
+            transition: transform 0.9s ease;
+          }
+
+          /* Stretch inner gradient card to fill the full grid cell height */
+          .bonus-card-front > div,
+          .bonus-card-back > div {
+            height: 100%;
+            box-sizing: border-box;
           }
 
           .bonus-card-front {
-            transform: rotateY(0deg);
+            transform: perspective(600px) rotateY(0deg);
+            pointer-events: auto;
           }
 
           .bonus-card-back {
-            transform: rotateY(180deg);
-            display: none !important;
+            transform: perspective(600px) rotateY(-180deg);
+            pointer-events: none;
           }
 
           .bonus-flip-card.flipped .bonus-card-front {
-            display: none !important;
+            transform: perspective(600px) rotateY(180deg);
+            pointer-events: none;
           }
 
           .bonus-flip-card.flipped .bonus-card-back {
-            display: block !important;
+            transform: perspective(600px) rotateY(0deg);
+            pointer-events: auto;
           }
         </style>
       `);
@@ -110,11 +118,11 @@
         return;
       }
 
-      // Determine current page
-      var isCheckoutPage = window.location.href.indexOf('checkout/checkout') !== -1;
+      // Detect checkout page by Journal3 Vue instance presence (handles SEO URLs like /checkout)
+      var isCheckoutPage = !!(window._QuickCheckout);
 
       // On checkout page, use Journal3's Vue instance to update without reload
-      if (isCheckoutPage && window._QuickCheckout && window._QuickCheckout.reward !== undefined) {
+      if (isCheckoutPage && window._QuickCheckout.reward !== undefined) {
         $.ajax({
           url: 'index.php?route=extension/total/reward/reward',
           type: 'post',
@@ -217,11 +225,11 @@
         return;
       }
 
-      // Determine current page
-      var isCheckoutPage = window.location.href.indexOf('checkout/checkout') !== -1;
+      // Detect checkout page by Journal3 Vue instance presence (handles SEO URLs like /checkout)
+      var isCheckoutPage = !!(window._QuickCheckout);
 
       // On checkout page, use Journal3's Vue instance to update without reload
-      if (isCheckoutPage && window._QuickCheckout && window._QuickCheckout.reward !== undefined) {
+      if (isCheckoutPage && window._QuickCheckout.reward !== undefined) {
         $.ajax({
           url: 'index.php?route=extension/total/reward/reward',
           type: 'post',
