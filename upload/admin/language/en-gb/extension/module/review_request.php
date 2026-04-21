@@ -1,0 +1,56 @@
+<?php
+$_['heading_title']                   = 'Review Request';
+
+$_['text_extension']                  = 'Extensions';
+$_['text_success']                    = 'Success: You have modified review request settings!';
+$_['text_edit']                       = 'Edit Review Request Module';
+$_['text_enabled']                    = 'Enabled';
+$_['text_disabled']                   = 'Disabled';
+$_['text_general']                    = 'General';
+$_['text_google']                     = 'Google';
+$_['text_yandex']                     = 'Yandex';
+$_['text_email']                      = 'Email Flow';
+$_['text_storefront']                 = 'Storefront';
+$_['text_cron']                       = 'Cron';
+$_['text_product_only']                = 'Send Product Reviews Only';
+$_['text_skip_email']                  = 'Skip Email';
+
+$_['entry_status']                    = 'Module Status';
+$_['entry_email_status']              = 'Send Emails';
+$_['entry_show_on_order_page']        = 'Show on Account Order Page';
+$_['entry_delay_days']                = 'Delay Before Sending';
+$_['entry_order_statuses']            = 'Queue on Order Statuses';
+$_['entry_include_product_reviews']   = 'Include Product Review Links';
+$_['entry_org_review_cooldown_days']   = 'Organization Review Cooldown';
+$_['entry_org_review_suppressed_mode'] = 'During Cooldown';
+$_['entry_track_review_clicks']        = 'Track Review Button Clicks';
+$_['entry_email_subject']              = 'Email Subject';
+$_['entry_email_body']                 = 'Email Body';
+$_['entry_google_status']             = 'Google Review CTA';
+$_['entry_google_reference']          = 'Google Reference';
+$_['entry_google_review_url']         = 'Google Review URL';
+$_['entry_google_widget_code']        = 'Google SmartWidgets HTML';
+$_['entry_yandex_status']             = 'Yandex Review CTA';
+$_['entry_yandex_reference']          = 'Yandex Reference';
+$_['entry_yandex_review_url']         = 'Yandex Review URL';
+$_['entry_yandex_widget_code']        = 'Yandex SmartWidgets HTML';
+
+$_['help_delay_days']                 = 'Number of days to wait after the selected order status is added.';
+$_['help_order_statuses']             = 'When one of these statuses is added to an order, the module queues a follow-up review email.';
+$_['help_org_review_cooldown_days']    = 'Do not ask the same email address for an organization review again until this many days have passed. Product reviews can still be sent depending on the next setting.';
+$_['help_org_review_suppressed_mode']  = 'Choose what to send for later orders while the organization-review cooldown is still active.';
+$_['help_track_review_clicks']         = 'Send Google and Yandex email buttons through a local redirect first. Clicking a button starts or refreshes the cooldown for that email address.';
+$_['help_email_subject']               = 'Editable subject template for the review request email.';
+$_['help_email_body']                  = 'Editable HTML body template for the review request email.';
+$_['help_email_placeholders']          = 'Available placeholders: {store_name}, {order_id}, {order_date}, {customer_firstname}, {customer_lastname}, {customer_name}, {email_intro}, {organization_review_section}, {review_buttons}, {google_button}, {yandex_button}, {google_review_url}, {yandex_review_url}, {product_reviews_section}, {order_button}, {order_link}.';
+$_['help_google_reference']           = 'Store the Google Maps organization URL or place reference here. If the review URL field is empty and this value is a full URL, it will be used for the button.';
+$_['help_google_review_url']          = 'Direct customer-facing Google review link. This button is shown first in the email and order view.';
+$_['help_yandex_reference']           = 'Store the Yandex Maps organization URL or OID here. If the review URL field is empty and you enter a full URL or OID, it will be used automatically.';
+$_['help_yandex_review_url']          = 'Direct customer-facing Yandex review link. This button is shown first in the email and order view.';
+$_['help_widget_code']                = 'Paste the SmartWidgets installation HTML or iframe code here. This code is rendered in the storefront module block.';
+$_['help_layout']                     = 'Use Google or Yandex as the primary call to action. Product review links remain secondary. To show the widget block on normal storefront pages, place the module in a layout under Design > Layouts.';
+$_['help_cron']                       = 'Run this command daily from cron. The script sends queued review emails and retries failed attempts up to 3 times.';
+
+$_['error_permission']                = 'Warning: You do not have permission to modify the review request module!';
+$_['error_delay_days']                = 'Delay must be zero or a positive integer.';
+$_['error_org_cooldown_days']          = 'Cooldown must be zero or a positive integer.';

@@ -338,6 +338,8 @@ class ControllerAccountOrder extends Controller {
 				}
 			}
 
+			$data['review_request_order_block'] = $this->load->controller('extension/module/review_request/order');
+
 			$data['column_left'] = $this->load->controller('common/column_left');
 			$data['column_right'] = $this->load->controller('common/column_right');
 			$data['content_top'] = $this->load->controller('common/content_top');

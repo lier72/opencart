@@ -1,0 +1,402 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="submit" form="form-review-request" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
+      </div>
+      <div class="panel-body">
+        <style>
+          .email-preview-container {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            background: #fff;
+          }
+          .email-preview-header {
+            background: #f5f5f5;
+            padding: 10px 15px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .email-preview-header .subject-preview {
+            font-weight: bold;
+            color: #333;
+            padding-right: 15px;
+          }
+          .email-preview-frame {
+            padding: 20px;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #fff;
+          }
+          .email-editor-container {
+            display: none;
+            padding: 15px;
+            background: #fafafa;
+            border-top: 1px solid #ddd;
+          }
+          .email-editor-container.active {
+            display: block;
+          }
+          .btn-edit-email {
+            padding: 4px 12px;
+            font-size: 12px;
+            white-space: nowrap;
+          }
+          .btn-edit-email .fa {
+            margin-right: 4px;
+          }
+        </style>
+        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-review-request" class="form-horizontal">
+          <div class="row">
+            <div class="col-sm-8">
+              <fieldset>
+                <legend>{{ text_general }}</legend>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-status">{{ entry_status }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_status" id="input-status" class="form-control">
+                      {% if module_review_request_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-email-status">{{ entry_email_status }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_email_status" id="input-email-status" class="form-control">
+                      {% if module_review_request_email_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-show-on-order-page">{{ entry_show_on_order_page }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_show_on_order_page" id="input-show-on-order-page" class="form-control">
+                      {% if module_review_request_show_on_order_page %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-delay-days">{{ entry_delay_days }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_delay_days" value="{{ module_review_request_delay_days }}" placeholder="7" id="input-delay-days" class="form-control" />
+                    <div class="help-block">{{ help_delay_days }}</div>
+                    {% if error_delay_days %}
+                    <div class="text-danger">{{ error_delay_days }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-order-statuses">{{ entry_order_statuses }}</label>
+                  <div class="col-sm-8">
+                    <div class="well well-sm" id="input-order-statuses" style="height: 180px; overflow: auto;">
+                      {% for order_status in order_statuses %}
+                      <div class="checkbox">
+                        <label>
+                          {% if order_status.order_status_id in module_review_request_order_status_ids %}
+                          <input type="checkbox" name="module_review_request_order_status_ids[]" value="{{ order_status.order_status_id }}" checked="checked" />
+                          {{ order_status.name }}
+                          {% else %}
+                          <input type="checkbox" name="module_review_request_order_status_ids[]" value="{{ order_status.order_status_id }}" />
+                          {{ order_status.name }}
+                          {% endif %}
+                        </label>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <div class="help-block">{{ help_order_statuses }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-product-reviews">{{ entry_include_product_reviews }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_include_product_reviews" id="input-product-reviews" class="form-control">
+                      {% if module_review_request_include_product_reviews %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-org-cooldown-days">{{ entry_org_review_cooldown_days }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_org_review_cooldown_days" value="{{ module_review_request_org_review_cooldown_days }}" placeholder="180" id="input-org-cooldown-days" class="form-control" />
+                    <div class="help-block">{{ help_org_review_cooldown_days }}</div>
+                    {% if error_org_cooldown_days %}
+                    <div class="text-danger">{{ error_org_cooldown_days }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-org-suppressed-mode">{{ entry_org_review_suppressed_mode }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_org_review_suppressed_mode" id="input-org-suppressed-mode" class="form-control">
+                      {% if module_review_request_org_review_suppressed_mode == 'skip_email' %}
+                      <option value="product_only">{{ text_product_only }}</option>
+                      <option value="skip_email" selected="selected">{{ text_skip_email }}</option>
+                      {% else %}
+                      <option value="product_only" selected="selected">{{ text_product_only }}</option>
+                      <option value="skip_email">{{ text_skip_email }}</option>
+                      {% endif %}
+                    </select>
+                    <div class="help-block">{{ help_org_review_suppressed_mode }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-track-review-clicks">{{ entry_track_review_clicks }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_track_review_clicks" id="input-track-review-clicks" class="form-control">
+                      {% if module_review_request_track_review_clicks %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                    <div class="help-block">{{ help_track_review_clicks }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-email-subject">{{ entry_email_subject }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_email_subject" value="{{ module_review_request_email_subject }}" id="input-email-subject" class="form-control" />
+                    <div class="help-block">{{ help_email_subject }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label">{{ entry_email_body }}</label>
+                  <div class="col-sm-8">
+                    <div class="email-preview-container" id="preview-container-review-request">
+                      <div class="email-preview-header">
+                        <span class="subject-preview" id="subject-preview-review-request">{{ module_review_request_email_subject }}</span>
+                        <button type="button" class="btn btn-default btn-edit-email" onclick="toggleEmailEditor('review-request');">
+                          <i class="fa fa-code"></i> Edit HTML
+                        </button>
+                      </div>
+                      <div class="email-preview-frame" id="preview-frame-review-request">
+                        {{ module_review_request_email_body|raw }}
+                      </div>
+                      <div class="email-editor-container" id="editor-container-review-request">
+                        <textarea name="module_review_request_email_body" rows="16" id="input-email-body" class="form-control" onchange="updateEmailPreview('review-request');">{{ module_review_request_email_body|raw }}</textarea>
+                        <div class="help-block" style="margin-top: 10px;">{{ help_email_body }}</div>
+                        <div class="help-block">{{ help_email_placeholders }}</div>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top: 10px;" onclick="toggleEmailEditor('review-request');">
+                          <i class="fa fa-eye"></i> Preview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend>{{ text_google }}</legend>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-google-status">{{ entry_google_status }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_google_status" id="input-google-status" class="form-control">
+                      {% if module_review_request_google_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-google-reference">{{ entry_google_reference }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_google_reference" value="{{ module_review_request_google_reference }}" id="input-google-reference" class="form-control" />
+                    <div class="help-block">{{ help_google_reference }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-google-review-url">{{ entry_google_review_url }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_google_review_url" value="{{ module_review_request_google_review_url }}" id="input-google-review-url" class="form-control" />
+                    <div class="help-block">{{ help_google_review_url }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-google-widget-code">{{ entry_google_widget_code }}</label>
+                  <div class="col-sm-8">
+                    <textarea name="module_review_request_google_widget_code" rows="8" id="input-google-widget-code" class="form-control">{{ module_review_request_google_widget_code }}</textarea>
+                    <div class="help-block">{{ help_widget_code }}</div>
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend>{{ text_yandex }}</legend>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-yandex-status">{{ entry_yandex_status }}</label>
+                  <div class="col-sm-8">
+                    <select name="module_review_request_yandex_status" id="input-yandex-status" class="form-control">
+                      {% if module_review_request_yandex_status %}
+                      <option value="1" selected="selected">{{ text_enabled }}</option>
+                      <option value="0">{{ text_disabled }}</option>
+                      {% else %}
+                      <option value="1">{{ text_enabled }}</option>
+                      <option value="0" selected="selected">{{ text_disabled }}</option>
+                      {% endif %}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-yandex-reference">{{ entry_yandex_reference }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_yandex_reference" value="{{ module_review_request_yandex_reference }}" id="input-yandex-reference" class="form-control" />
+                    <div class="help-block">{{ help_yandex_reference }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-yandex-review-url">{{ entry_yandex_review_url }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_yandex_review_url" value="{{ module_review_request_yandex_review_url }}" id="input-yandex-review-url" class="form-control" />
+                    <div class="help-block">{{ help_yandex_review_url }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-yandex-widget-code">{{ entry_yandex_widget_code }}</label>
+                  <div class="col-sm-8">
+                    <textarea name="module_review_request_yandex_widget_code" rows="8" id="input-yandex-widget-code" class="form-control">{{ module_review_request_yandex_widget_code }}</textarea>
+                    <div class="help-block">{{ help_widget_code }}</div>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+
+            <div class="col-sm-4">
+              <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h3 class="panel-title"><i class="fa fa-envelope"></i> {{ text_email }}</h3>
+                </div>
+                <div class="panel-body">
+                  <p>{{ help_layout }}</p>
+                </div>
+              </div>
+
+              <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h3 class="panel-title"><i class="fa fa-desktop"></i> {{ text_storefront }}</h3>
+                </div>
+                <div class="panel-body">
+                  <p>{{ help_widget_code }}</p>
+                </div>
+              </div>
+
+              <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h3 class="panel-title"><i class="fa fa-clock-o"></i> {{ text_cron }}</h3>
+                </div>
+                <div class="panel-body">
+                  <p>{{ help_cron }}</p>
+                  <pre style="white-space: pre-wrap;">{{ cron_command }}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript"><!--
+function toggleEmailEditor(type) {
+  var editorContainer = $('#editor-container-' + type);
+  var previewFrame = $('#preview-frame-' + type);
+  var editButton = $('#preview-container-' + type + ' .btn-edit-email');
+
+  if (editorContainer.hasClass('active')) {
+    editorContainer.removeClass('active');
+    previewFrame.show();
+    editButton.html('<i class="fa fa-code"></i> Edit HTML');
+    updateEmailPreview(type);
+  } else {
+    editorContainer.addClass('active');
+    previewFrame.hide();
+    editButton.html('<i class="fa fa-eye"></i> Preview');
+  }
+}
+
+function updateEmailPreview(type) {
+  var textarea = $('#input-email-body');
+  var previewFrame = $('#preview-frame-' + type);
+
+  if (textarea.length && previewFrame.length) {
+    previewFrame.html(textarea.val());
+  }
+}
+
+$('#input-email-subject').on('input', function() {
+  $('#subject-preview-review-request').text($(this).val() || '{{ module_review_request_email_subject|e('js') }}');
+});
+//--></script>
+{{ footer }}

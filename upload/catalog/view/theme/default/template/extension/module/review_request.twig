@@ -1,0 +1,44 @@
+{% if channels or product_review_links %}
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">{{ heading_title }}</h3>
+  </div>
+  <div class="panel-body">
+    <p>{{ text_intro }}</p>
+
+    {% for channel in channels %}
+      {% if channel.url %}
+      <a href="{{ channel.url }}" target="_blank" rel="noopener" class="btn {{ channel.button_class }}" style="margin: 0 10px 10px 0;">{{ channel.button_text }}</a>
+      {% endif %}
+    {% endfor %}
+
+    {% if show_widgets %}
+      {% for channel in channels %}
+        {% if channel.widget_code %}
+        <div style="margin-top: 20px;">
+          <div style="font-weight: bold; margin-bottom: 10px;">
+            {% if channel.code == 'google' %}
+            Google
+            {% else %}
+            Yandex
+            {% endif %}
+            {{ text_widgets }}
+          </div>
+          {{ channel.widget_code|raw }}
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if product_review_links %}
+    <hr />
+    <div style="font-weight: bold; margin-bottom: 12px;">{{ text_product_reviews }}</div>
+    <div>
+      {% for product in product_review_links %}
+      <a href="{{ product.url }}" class="btn btn-default" style="margin: 0 10px 10px 0;">{{ text_write_review }}: {{ product.name }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
