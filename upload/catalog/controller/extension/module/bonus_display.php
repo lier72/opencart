@@ -202,6 +202,27 @@ class ControllerExtensionModuleBonusDisplay extends Controller {
 		$data['max_usage_percent'] = (int)$max_usage_percent;
 		$data['applied_reward'] = isset($this->session->data['reward']) ? (int)$this->session->data['reward'] : 0;
 
+		// Loyalty level name + widget gradient (matches badge colors from account/reward page)
+		$current_level = $this->model_extension_module_bonus_manager->getLoyaltyLevel($customer_group_id);
+		$loyalty_level_name = ($current_level && !empty($current_level['display_name'])) ? trim($current_level['display_name']) : '';
+		if (!$loyalty_level_name) {
+			$group_q = $this->db->query("SELECT name FROM " . DB_PREFIX . "customer_group_description WHERE customer_group_id = '" . (int)$customer_group_id . "' AND language_id = '" . (int)$this->config->get('config_language_id') . "'");
+			if ($group_q->num_rows) {
+				$loyalty_level_name = $group_q->row['name'];
+			}
+		}
+		$color_name = $this->getLoyaltyLevelColor($current_level);
+		$gradient_map = array(
+			'silver'    => 'linear-gradient(135deg, #636e72 0%, #95a5a6 50%, #bdc3c7 100%)',
+			'gold'      => 'linear-gradient(135deg, #b8860b 0%, #c9921a 50%, #e8c84d 100%)',
+			'platinum'  => 'linear-gradient(135deg, #1a6fa8 0%, #4a90e2 50%, #87bbf0 100%)',
+			'warning'   => 'linear-gradient(135deg, #cd7f32 0%, #d4935c 50%, #f0c080 100%)',
+			'secondary' => 'linear-gradient(135deg, #4a4a4a 0%, #6c757d 50%, #8e8e8e 100%)',
+		);
+		$loyalty_gradient = isset($gradient_map[$color_name]) ? $gradient_map[$color_name] : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+		$data['loyalty_level_name'] = $loyalty_level_name;
+		$data['loyalty_gradient'] = $loyalty_gradient;
+
 		// Pass translation variables to template
 		$data['text_bonus_earned'] = $this->language->get('text_bonus_earned');
 		$data['text_bonus_balance'] = $this->language->get('text_bonus_balance');
@@ -409,6 +430,29 @@ class ControllerExtensionModuleBonusDisplay extends Controller {
 		// Template path: catalog/view/theme/journal3/template/extension/module/bonus_display_register.twig
 		// Returns rendered HTML string ready for output
 		return $this->load->view('extension/module/bonus_display_register', $data);
+	}
+
+	/**
+	 * Returns color name for a loyalty level — mirrors account/reward getLoyaltyLevelColor().
+	 * Used to select widget background gradient.
+	 */
+	private function getLoyaltyLevelColor($level) {
+		if (empty($level) || !isset($level['display_name'])) {
+			return 'default';
+		}
+		$name = mb_strtolower($level['display_name'], 'UTF-8');
+		$map = array(
+			'базов' => 'secondary', 'бронз' => 'warning', 'серебр' => 'silver',
+			'золот' => 'gold', 'платин' => 'platinum', 'алмаз' => 'primary',
+			'basic' => 'secondary', 'bronze' => 'warning', 'silver' => 'silver',
+			'gold' => 'gold', 'platinum' => 'platinum', 'diamond' => 'primary',
+		);
+		foreach ($map as $keyword => $color) {
+			if (strpos($name, $keyword) !== false) {
+				return $color;
+			}
+		}
+		return 'primary';
 	}
 
 	/**

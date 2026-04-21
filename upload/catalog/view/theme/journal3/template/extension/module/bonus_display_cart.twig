@@ -5,8 +5,8 @@
 
     {# FRONT SIDE - Earn Bonuses #}
     <div class="bonus-card-front">
-      <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; display: flex; flex-direction: column;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <div style="padding: 15px; background: {{ loyalty_gradient }}; border-radius: 8px; color: white; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <div style="display: flex; align-items: center;">
             <i class="fa fa-gift" style="font-size: 24px; margin-right: 12px; opacity: 0.9;"></i>
             <div>
@@ -28,6 +28,14 @@
           </div>
         </div>
 
+        {% if loyalty_level_name %}
+        <div style="text-align: center; margin: 4px 0 10px;">
+          <span style="display: inline-block; padding: 3px 16px; border: 1px solid rgba(255,255,255,0.6); border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9;">
+            {{ loyalty_level_name }}
+          </span>
+        </div>
+        {% endif %}
+
         {% if total_bonus > 0 %}
         <div style="padding: 10px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 4px; font-size: 12px; color: white; margin-bottom: 12px;">
           <i class="fa fa-info-circle" style="margin-right: 6px;"></i>
@@ -47,10 +55,10 @@
     {# BACK SIDE - Spend Bonuses #}
     {% if current_balance > 0 and max_can_spend > 0 %}
     <div class="bonus-card-back">
-      <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+      <div style="padding: 15px; background: {{ loyalty_gradient }}; border-radius: 8px; color: white;">
 
         {# Balance display #}
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <div style="display: flex; align-items: center;">
             <i class="fa fa-diamond" style="font-size: 22px; margin-right: 10px; opacity: 0.9;"></i>
             <div>
@@ -62,6 +70,14 @@
             <i class="fa fa-arrow-left"></i> {{ button_back }}
           </button>
         </div>
+
+        {% if loyalty_level_name %}
+        <div style="text-align: center; margin: 4px 0 10px;">
+          <span style="display: inline-block; padding: 3px 16px; border: 1px solid rgba(255,255,255,0.6); border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9;">
+            {{ loyalty_level_name }}
+          </span>
+        </div>
+        {% endif %}
 
         {# Input section #}
         <div style="margin-bottom: 10px;">
@@ -123,7 +139,7 @@ if (typeof initBonusWidget === 'function') {
 {% elseif current_balance == 0 and total_bonus > 0 %}
 {# Show simple info when customer has no balance yet #}
 <div style="margin: 15px 0;">
-  <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+  <div style="padding: 15px; background: {{ loyalty_gradient }}; border-radius: 8px; color: white;">
     <div style="display: flex; align-items: center; margin-bottom: 10px;">
       <i class="fa fa-gift" style="font-size: 24px; margin-right: 12px; opacity: 0.9;"></i>
       <div>
