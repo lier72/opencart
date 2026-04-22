@@ -1447,7 +1447,8 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             arsort($sales_mix);
             $highest_subcat = key($sales_mix);
             if (isset($slots_per_cycle[$highest_subcat])) {
-                $slots_per_cycle[$highest_subcat] += ($products_per_page - $total_allocated);
+                // Never let a slot count drop below 1 to avoid stalling the while loop
+                $slots_per_cycle[$highest_subcat] = max(1, $slots_per_cycle[$highest_subcat] + ($products_per_page - $total_allocated));
             }
         }
 
@@ -1466,12 +1467,18 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             return $b['percentage'] - $a['percentage'];
         });
 
+        // If no sales mix data overlaps with the actual product buckets, return as-is
+        if (empty($sorted_subcats)) {
+            return $products;
+        }
+
         // Interleave products in cycles (based on products_per_page)
         $interleaved = array();
         $indices = array_fill_keys(array_keys($buckets), 0);
         $total_products = count($products);
 
         while (count($interleaved) < $total_products) {
+            $cycle_start = count($interleaved);
             // For each cycle, add products according to slot allocation
             foreach ($sorted_subcats as $subcat_info) {
                 $subcat_id = $subcat_info['id'];
@@ -1498,6 +1505,10 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
                         }
                     }
                 }
+            }
+            // Safety: if a full cycle passed without adding any product, bail out
+            if (count($interleaved) === $cycle_start) {
+                break;
             }
         }
 
