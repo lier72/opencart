@@ -123,6 +123,40 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 						$output .= '  <g:quantity>' . $product['quantity'] . '</g:quantity>';
 						$output .= '  <g:weight>' . $this->weight->format($product['weight'], $product['weight_class_id']) . '</g:weight>';
 						$output .= '  <g:availability><![CDATA[' . ($product['quantity'] ? 'in stock' : 'out of stock') . ']]></g:availability>';
+
+						// Color, material, size — for shoes and apparel
+						$attrs = $this->model_extension_feed_google_base->getProductAttributes($product['product_id']);
+
+						$color = '';
+						if (!empty($attrs['Цвет'])) {
+							$color = $this->stripColorHex($attrs['Цвет']);
+						}
+						if ($color) {
+							$output .= '  <g:color><![CDATA[' . $color . ']]></g:color>';
+						}
+
+						$type = $this->detectProductType($product['name'], $attrs);
+
+						if ($type === 'shoes') {
+							$mat_upper = !empty($attrs['Материал кроссовок']) ? $attrs['Материал кроссовок'] : 'SYNTHETIC LEATHER+TEXTILE';
+							$mat_sole  = !empty($attrs['Материал подошвы'])  ? $attrs['Материал подошвы']  : 'RUBBER';
+							$output .= '  <g:material><![CDATA[' . $mat_upper . ']]></g:material>';
+							$output .= '  <g:additional_sizeType><![CDATA[regular]]></g:additional_sizeType>';
+						} elseif ($type === 'apparel') {
+							$mat = !empty($attrs['Материал']) ? $attrs['Материал'] : 'SHELL:POLYESTER100%';
+							$output .= '  <g:material><![CDATA[' . $mat . ']]></g:material>';
+						}
+
+						if ($type === 'shoes' || $type === 'apparel') {
+							$sizes = $this->model_extension_feed_google_base->getProductSizes($product['product_id']);
+							if (!empty($sizes)) {
+								$output .= '  <g:size_system>EU</g:size_system>';
+								foreach ($sizes as $size) {
+									$output .= '  <g:size><![CDATA[' . $size . ']]></g:size>';
+								}
+							}
+						}
+
 						$output .= '</item>';
 					}
 				}
@@ -134,6 +168,32 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 			$this->response->addHeader('Content-Type: application/rss+xml');
 			$this->response->setOutput($output);
 		}
+	}
+
+	/**
+	 * Strips hex color code from attribute values like "Черный (#000000)" → "Черный".
+	 */
+	private function stripColorHex($color) {
+		return trim(preg_replace('/\s*\(#[0-9A-Fa-f]+\)/u', '', $color));
+	}
+
+	/**
+	 * Detects whether a product is footwear or apparel based on attributes then name keywords.
+	 * Returns 'shoes', 'apparel', or null.
+	 * Use before outputting g:material / g:size to pick correct fallbacks and field names.
+	 */
+	private function detectProductType($product_name, $attributes) {
+		if (isset($attributes['Материал кроссовок']) || isset($attributes['Материал подошвы']) || isset($attributes['Серия кроссовок'])) {
+			return 'shoes';
+		}
+		$lower = mb_strtolower($product_name, 'UTF-8');
+		foreach (array('кроссовк', 'тапочк', 'кеды', 'обувь') as $kw) {
+			if (mb_strpos($lower, $kw) !== false) return 'shoes';
+		}
+		foreach (array('футболк', 'шорты', 'куртк', 'ветровк', 'брюки', 'носк', 'костюм', 'толстовк', 'поло', 'платье', 'юбк', 'майк', 'пуховик') as $kw) {
+			if (mb_strpos($lower, $kw) !== false) return 'apparel';
+		}
+		return null;
 	}
 
 	protected function getPath($parent_id, $current_path = '') {

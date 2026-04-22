@@ -214,12 +214,38 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 					$data['typePrefix'] = $parsed['typePrefix'];
 				}
 
-				// Add color as param if detected
-				if (!empty($parsed['color'])) {
-					$data['param'][] = array(
-						'name' => 'Цвет',
-						'value' => $parsed['color']
-					);
+				// Load product attributes (color, material, etc.)
+				$attrs = $this->model_extension_feed_yandex_market->getProductAttributes($product['product_id']);
+
+				// Color: prefer Цвет attribute (strip hex), fall back to name-parsed color
+				$color = '';
+				if (!empty($attrs['Цвет'])) {
+					$color = $this->stripColorHex($attrs['Цвет']);
+				} elseif (!empty($parsed['color'])) {
+					$color = $parsed['color'];
+				}
+				if (!empty($color)) {
+					$data['param'][] = array('name' => 'Цвет', 'value' => $color);
+				}
+
+				// Detect shoes vs apparel for material and size params
+				$product_type = $this->detectProductType($product['name'], $attrs);
+
+				if ($product_type === 'shoes') {
+					$mat_upper = !empty($attrs['Материал кроссовок']) ? $attrs['Материал кроссовок'] : 'SYNTHETIC LEATHER+TEXTILE';
+					$mat_sole  = !empty($attrs['Материал подошвы'])  ? $attrs['Материал подошвы']  : 'RUBBER';
+					$data['param'][] = array('name' => 'Материал верха',    'value' => $mat_upper);
+					$data['param'][] = array('name' => 'Материал подошвы',  'value' => $mat_sole);
+				} elseif ($product_type === 'apparel') {
+					$mat = !empty($attrs['Материал']) ? $attrs['Материал'] : 'SHELL:POLYESTER100%';
+					$data['param'][] = array('name' => 'Материал', 'value' => $mat);
+				}
+
+				if ($product_type === 'shoes' || $product_type === 'apparel') {
+					$sizes = $this->model_extension_feed_yandex_market->getProductSizes($product['product_id']);
+					if (!empty($sizes)) {
+						$data['param'][] = array('name' => 'Размер', 'value' => implode(', ', $sizes));
+					}
 				}
 
 				$data['description'] = $product['description'];
@@ -307,7 +333,8 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 			               $product['manufacturer'] . '|' .
 			               $product['model'] . '|' .
 			               $product['quantity'] . '|' .
-			               $product['image'];
+			               $product['image'] . '|' .
+			               $product['date_modified'];
 		}
 
 		return md5(serialize($hash_data));
@@ -522,6 +549,32 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Strips hex color code from attribute values like "Черный (#000000)" → "Черный".
+	 */
+	private function stripColorHex($color) {
+		return trim(preg_replace('/\s*\(#[0-9A-Fa-f]+\)/u', '', $color));
+	}
+
+	/**
+	 * Detects whether a product is footwear or apparel based on attributes then name keywords.
+	 * Returns 'shoes', 'apparel', or null.
+	 * Use before building material/size params to pick correct fallbacks and param names.
+	 */
+	private function detectProductType($product_name, $attributes) {
+		if (isset($attributes['Материал кроссовок']) || isset($attributes['Материал подошвы']) || isset($attributes['Серия кроссовок'])) {
+			return 'shoes';
+		}
+		$lower = mb_strtolower($product_name, 'UTF-8');
+		foreach (array('кроссовк', 'тапочк', 'кеды', 'обувь') as $kw) {
+			if (mb_strpos($lower, $kw) !== false) return 'shoes';
+		}
+		foreach (array('футболк', 'шорты', 'куртк', 'ветровк', 'брюки', 'носк', 'костюм', 'толстовк', 'поло', 'платье', 'юбк', 'майк', 'пуховик') as $kw) {
+			if (mb_strpos($lower, $kw) !== false) return 'apparel';
+		}
+		return null;
 	}
 
 	/**
