@@ -146,4 +146,12 @@ class AdminReviewRequestModelTest extends TestCase {
 		$this->assertSame('2026-10-17 10:30:00', $state['org_review_suppressed_until']);
 		$this->assertFalse($this->model->canAskOrganizationReview('buyer@example.com'));
 	}
+
+	public function testIsExcludedCustomerGroupReadsConfiguredGroupList(): void {
+		$this->config->set('module_review_request_excluded_customer_group_ids', array(3, 8));
+
+		$this->assertTrue($this->model->isExcludedCustomerGroup(3));
+		$this->assertTrue($this->model->isExcludedCustomerGroup('8'));
+		$this->assertFalse($this->model->isExcludedCustomerGroup(5));
+	}
 }

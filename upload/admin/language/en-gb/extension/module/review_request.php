@@ -20,6 +20,7 @@ $_['entry_email_status']              = 'Send Emails';
 $_['entry_show_on_order_page']        = 'Show on Account Order Page';
 $_['entry_delay_days']                = 'Delay Before Sending';
 $_['entry_order_statuses']            = 'Queue on Order Statuses';
+$_['entry_excluded_customer_groups']   = 'Do Not Send to Customer Groups';
 $_['entry_include_product_reviews']   = 'Include Product Review Links';
 $_['entry_org_review_cooldown_days']   = 'Organization Review Cooldown';
 $_['entry_org_review_suppressed_mode'] = 'During Cooldown';
@@ -37,6 +38,7 @@ $_['entry_yandex_widget_code']        = 'Yandex SmartWidgets HTML';
 
 $_['help_delay_days']                 = 'Number of days to wait after the selected order status is added.';
 $_['help_order_statuses']             = 'When one of these statuses is added to an order, the module queues a follow-up review email.';
+$_['help_excluded_customer_groups']    = 'Customers in the selected groups will not receive review-request emails and will not see the review-request block on the account order page.';
 $_['help_org_review_cooldown_days']    = 'Do not ask the same email address for an organization review again until this many days have passed. Product reviews can still be sent depending on the next setting.';
 $_['help_org_review_suppressed_mode']  = 'Choose what to send for later orders while the organization-review cooldown is still active.';
 $_['help_track_review_clicks']         = 'Send Google and Yandex email buttons through a local redirect first. Clicking a button starts or refreshes the cooldown for that email address.';

@@ -10,6 +10,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$this->load->model('extension/module/review_request');
 		$this->load->model('setting/setting');
 		$this->load->model('localisation/order_status');
+		$this->load->model('customer/customer_group');
 		$this->model_extension_module_review_request->ensureSchema();
 
 		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
@@ -29,6 +30,8 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 					$post_data[$field] = mb_encode_numericentity($decoded, [0x10000, 0x10FFFF, 0, 0xFFFFFF], 'UTF-8');
 				}
 			}
+
+			$post_data['module_review_request_excluded_customer_group_ids'] = isset($post_data['module_review_request_excluded_customer_group_ids']) ? array_map('intval', (array)$post_data['module_review_request_excluded_customer_group_ids']) : array();
 
 			$this->model_setting_setting->editSetting('module_review_request', $post_data);
 
@@ -65,6 +68,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$data['module_review_request_email_status'] = $this->getSettingValue('module_review_request_email_status', 1);
 		$data['module_review_request_show_on_order_page'] = $this->getSettingValue('module_review_request_show_on_order_page', 1);
 		$data['module_review_request_delay_days'] = $this->getSettingValue('module_review_request_delay_days', 7);
+		$data['module_review_request_excluded_customer_group_ids'] = array_map('intval', (array)$this->getSettingValue('module_review_request_excluded_customer_group_ids', array()));
 		$data['module_review_request_include_product_reviews'] = $this->getSettingValue('module_review_request_include_product_reviews', 1);
 		$data['module_review_request_org_review_cooldown_days'] = $this->getSettingValue('module_review_request_org_review_cooldown_days', 180);
 		$data['module_review_request_org_review_suppressed_mode'] = $this->getSettingValue('module_review_request_org_review_suppressed_mode', 'product_only');
@@ -84,6 +88,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$data['module_review_request_yandex_widget_code'] = $this->getSettingValue('module_review_request_yandex_widget_code', '');
 
 		$data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
+		$data['customer_groups'] = $this->model_customer_customer_group->getCustomerGroups();
 		$data['cron_command'] = 'php admin/review_request_cron.php';
 
 		$language_keys = array(
@@ -103,6 +108,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'entry_show_on_order_page',
 			'entry_delay_days',
 			'entry_order_statuses',
+			'entry_excluded_customer_groups',
 			'entry_include_product_reviews',
 			'entry_org_review_cooldown_days',
 			'entry_org_review_suppressed_mode',
@@ -119,6 +125,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'entry_yandex_widget_code',
 			'help_delay_days',
 			'help_order_statuses',
+			'help_excluded_customer_groups',
 			'help_org_review_cooldown_days',
 			'help_org_review_suppressed_mode',
 			'help_track_review_clicks',
@@ -250,6 +257,13 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 
 		if (!$order_info) {
 			throw new Exception('Order not found');
+		}
+
+		if ($this->model_extension_module_review_request->isExcludedCustomerGroup(isset($order_info['customer_group_id']) ? $order_info['customer_group_id'] : 0)) {
+			return array(
+				'status' => 'skipped',
+				'reason' => 'customer group is excluded from review requests'
+			);
 		}
 
 		if (!$order_info['email']) {

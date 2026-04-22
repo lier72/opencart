@@ -38,6 +38,10 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			return '';
 		}
 
+		if ($this->model_extension_module_review_request->isExcludedCustomerGroup(isset($order_info['customer_group_id']) ? $order_info['customer_group_id'] : 0)) {
+			return '';
+		}
+
 		$order_products = $this->model_account_order->getOrderProducts($order_id);
 		$product_review_links = $this->getProductReviewLinks($order_products);
 		$channels = $this->model_extension_module_review_request->getChannels();

@@ -134,6 +134,26 @@ class CatalogReviewRequestModelTest extends TestCase {
 		$this->assertSame('2026-04-20 10:30:00', $queue_row['date_send_after']);
 	}
 
+	public function testQueueOrderSkipsExcludedCustomerGroups(): void {
+		$this->config->set('module_review_request_order_status_ids', array(5));
+		$this->config->set('module_review_request_excluded_customer_group_ids', array(6, 9));
+		$this->config->set('module_review_request_google_status', 1);
+		$this->config->set('module_review_request_google_review_url', 'https://google.example/review');
+		$this->config->set('module_review_request_include_product_reviews', 0);
+
+		$order_info = array(
+			'order_id' => 404,
+			'customer_id' => 25,
+			'customer_group_id' => 9,
+			'store_id' => 1,
+			'language_code' => 'en-gb',
+			'email' => 'dealer@example.com'
+		);
+
+		$this->assertFalse($this->model->queueOrder($order_info, 5));
+		$this->assertCount(0, $this->db->getQueueRows());
+	}
+
 	public function testCanAskOrganizationReviewUsesSuppressedUntilForEmailCooldown(): void {
 		$this->config->set('module_review_request_org_review_cooldown_days', 180);
 		$this->db->seedCustomerState(array(

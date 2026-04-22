@@ -29,6 +29,7 @@ class ModelExtensionModuleReviewRequest extends Model {
 			'module_review_request_show_on_order_page' => 1,
 			'module_review_request_delay_days' => 7,
 			'module_review_request_order_status_ids' => $order_statuses,
+			'module_review_request_excluded_customer_group_ids' => array(),
 			'module_review_request_include_product_reviews' => 1,
 			'module_review_request_org_review_cooldown_days' => 180,
 			'module_review_request_org_review_suppressed_mode' => 'product_only',
@@ -186,6 +187,10 @@ class ModelExtensionModuleReviewRequest extends Model {
 		return strtotime($state['org_review_suppressed_until']) <= time();
 	}
 
+	public function isExcludedCustomerGroup($customer_group_id) {
+		return in_array((int)$customer_group_id, $this->getExcludedCustomerGroupIds(), true);
+	}
+
 	public function markOrganizationReviewSent($email, $customer_id, $order_id) {
 		$this->ensureSchema();
 
@@ -256,5 +261,11 @@ class ModelExtensionModuleReviewRequest extends Model {
 
 	private function normalizeEmail($email) {
 		return strtolower(trim((string)$email));
+	}
+
+	private function getExcludedCustomerGroupIds() {
+		$customer_group_ids = array_map('intval', (array)$this->config->get('module_review_request_excluded_customer_group_ids'));
+
+		return array_values(array_filter($customer_group_ids));
 	}
 }

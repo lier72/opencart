@@ -155,6 +155,28 @@
                 </div>
 
                 <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-excluded-customer-groups">{{ entry_excluded_customer_groups }}</label>
+                  <div class="col-sm-8">
+                    <div class="well well-sm" id="input-excluded-customer-groups" style="height: 180px; overflow: auto;">
+                      {% for customer_group in customer_groups %}
+                      <div class="checkbox">
+                        <label>
+                          {% if customer_group.customer_group_id in module_review_request_excluded_customer_group_ids %}
+                          <input type="checkbox" name="module_review_request_excluded_customer_group_ids[]" value="{{ customer_group.customer_group_id }}" checked="checked" />
+                          {{ customer_group.name }}
+                          {% else %}
+                          <input type="checkbox" name="module_review_request_excluded_customer_group_ids[]" value="{{ customer_group.customer_group_id }}" />
+                          {{ customer_group.name }}
+                          {% endif %}
+                        </label>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    <div class="help-block">{{ help_excluded_customer_groups }}</div>
+                  </div>
+                </div>
+
+                <div class="form-group">
                   <label class="col-sm-4 control-label" for="input-product-reviews">{{ entry_include_product_reviews }}</label>
                   <div class="col-sm-8">
                     <select name="module_review_request_include_product_reviews" id="input-product-reviews" class="form-control">

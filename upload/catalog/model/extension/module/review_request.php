@@ -10,6 +10,10 @@ class ModelExtensionModuleReviewRequest extends Model {
 		return $this->isEnabled() && (bool)$this->config->get('module_review_request_show_on_order_page');
 	}
 
+	public function isExcludedCustomerGroup($customer_group_id) {
+		return in_array((int)$customer_group_id, $this->getExcludedCustomerGroupIds(), true);
+	}
+
 	public function getChannels() {
 		$channels = array();
 
@@ -61,6 +65,10 @@ class ModelExtensionModuleReviewRequest extends Model {
 		$this->ensureSchema();
 
 		if (!$this->hasEligibleStatus($order_status_id)) {
+			return false;
+		}
+
+		if ($this->isExcludedCustomerGroup(isset($order_info['customer_group_id']) ? $order_info['customer_group_id'] : 0)) {
 			return false;
 		}
 
@@ -330,5 +338,11 @@ class ModelExtensionModuleReviewRequest extends Model {
 
 	private function normalizeEmail($email) {
 		return strtolower(trim((string)$email));
+	}
+
+	private function getExcludedCustomerGroupIds() {
+		$customer_group_ids = array_map('intval', (array)$this->config->get('module_review_request_excluded_customer_group_ids'));
+
+		return array_values(array_filter($customer_group_ids));
 	}
 }
