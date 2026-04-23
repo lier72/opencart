@@ -133,7 +133,6 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 			$this->setShop('name', $this->config->get('feed_yandex_market_shopname'));
 			$this->setShop('company', $this->config->get('feed_yandex_market_company'));
 			$this->setShop('url', HTTPS_SERVER . 'index.php?route=extension/feed/yandex_market');
-			$this->setShop('phone', $this->config->get('config_telephone'));
 			$this->setShop('platform', 'ocStore');
 			$this->setShop('version', VERSION);
 

@@ -140,8 +140,7 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 						if ($type === 'shoes') {
 							$mat_upper = !empty($attrs['Материал кроссовок']) ? $attrs['Материал кроссовок'] : 'SYNTHETIC LEATHER+TEXTILE';
 							$mat_sole  = !empty($attrs['Материал подошвы'])  ? $attrs['Материал подошвы']  : 'RUBBER';
-							$output .= '  <g:material><![CDATA[' . $mat_upper . ']]></g:material>';
-							$output .= '  <g:additional_sizeType><![CDATA[regular]]></g:additional_sizeType>';
+							$output .= '  <g:material><![CDATA[' . $mat_upper . ' / ' . $mat_sole . ']]></g:material>';
 						} elseif ($type === 'apparel') {
 							$mat = !empty($attrs['Материал']) ? $attrs['Материал'] : 'SHELL:POLYESTER100%';
 							$output .= '  <g:material><![CDATA[' . $mat . ']]></g:material>';
