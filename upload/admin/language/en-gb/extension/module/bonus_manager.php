@@ -73,6 +73,11 @@ $_['column_total_awarded']        = 'Total Awarded';
 $_['column_total_remaining']      = 'Total Remaining';
 $_['column_last_award_date']      = 'Last Award';
 $_['column_loyalty_level']        = 'Loyalty Level';
+$_['column_current_loyalty_level'] = 'Current Level';
+$_['column_recommended_loyalty_level'] = 'Recommended Level';
+$_['column_total_spent']          = 'Spent This Period';
+$_['column_required_total_spent'] = 'Required for Current Level';
+$_['column_period']               = 'Program Period';
 
 // Help
 $_['help_status']               = 'Enable or disable the bonus system';
@@ -102,6 +107,8 @@ $_['button_add_setting']        = 'Add Setting';
 $_['button_save']               = 'Save';
 $_['button_cancel']             = 'Cancel';
 $_['button_filter']              = 'Filter';
+$_['button_apply_downgrade']     = 'Apply';
+$_['button_dismiss_downgrade']   = 'Dismiss';
 
 // Statistics
 $_['text_total_issued']         = 'Total Issued';
@@ -126,6 +133,14 @@ $_['text_active_bonus_awards']     = 'Active Bonuses';
 $_['text_awarded_clients']         = 'Clients with Awards';
 $_['text_awarded_clients_help']    = 'Totals are based on awarded bonus entries. Remaining shows the current unspent balance.';
 $_['text_view_all_awarded_clients'] = 'View all awarded clients';
+$_['text_pending_loyalty_downgrades'] = 'Pending Loyalty Downgrades';
+$_['text_pending_loyalty_downgrades_help'] = 'Customers keep their current loyalty level until a manager applies or dismisses the downgrade review.';
+$_['text_view_all_loyalty_reviews'] = 'Review all downgrade requests';
+$_['text_no_pending_loyalty_downgrades'] = 'No pending loyalty downgrade reviews.';
+$_['text_loyalty_downgrade_applied'] = 'Loyalty downgrade applied.';
+$_['text_loyalty_downgrade_dismissed'] = 'Loyalty downgrade dismissed for this period.';
+$_['text_confirm_apply_downgrade'] = 'Apply this loyalty downgrade? No customer congratulation email will be sent.';
+$_['text_confirm_dismiss_downgrade'] = 'Dismiss this loyalty downgrade for the current program period?';
 $_['text_all_categories']       = 'All Categories (Default)';
 
 // Descriptions (for database records)
@@ -134,3 +149,4 @@ $_['text_return_deduction']     = 'Return deduction for return #%s';
 // Error
 $_['error_permission']          = 'Warning: You do not have permission to modify bonus manager module!';
 $_['error_customer_group']      = 'Customer group is required!';
+$_['error_loyalty_review_not_found'] = 'Pending loyalty downgrade review was not found.';

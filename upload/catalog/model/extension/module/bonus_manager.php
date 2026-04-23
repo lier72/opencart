@@ -759,11 +759,13 @@ class ModelExtensionModuleBonusManager extends Model {
 	// =============================================================================
 
 	/**
-	 * Check customer loyalty level and upgrade if needed
-	 * Can be called manually or automatically after order completion
+	 * Check customer loyalty level after order completion.
+	 *
+	 * Upgrades remain automatic. Downgrades are converted into admin review items
+	 * so the customer keeps the current level until a manager makes a decision.
 	 *
 	 * @param int $customer_id Customer ID to check
-	 * @return bool True if customer was upgraded/downgraded, false otherwise
+	 * @return bool True if an automatic upgrade happened or a downgrade review was queued
 	 */
 	public function checkAndUpgradeCustomer($customer_id) {
 		// Check if loyalty auto-upgrade is enabled
@@ -782,21 +784,25 @@ class ModelExtensionModuleBonusManager extends Model {
 			return $b['min_total_spent'] - $a['min_total_spent'];
 		});
 
+		$period = $this->getCurrentLoyaltyPeriod();
+
 		// Get customer's total spent in current program period
 		$total_spent = $this->getCustomerTotalSpent($customer_id);
 
 		// Find highest level customer qualifies for
-		$target_group_id = null;
+		$target_level = null;
 		foreach ($levels as $level) {
 			if ($total_spent >= $level['min_total_spent']) {
-				$target_group_id = (int)$level['customer_group_id'];
+				$target_level = $level;
 				break;
 			}
 		}
 
-		if ($target_group_id === null) {
+		if ($target_level === null) {
 			return false;
 		}
+
+		$target_group_id = (int)$target_level['customer_group_id'];
 
 		// Get customer's current group and info
 		$query = $this->db->query("SELECT customer_group_id, firstname, lastname, email, language_id FROM " . DB_PREFIX . "customer
@@ -809,13 +815,29 @@ class ModelExtensionModuleBonusManager extends Model {
 
 		$customer_info = $query->row;
 		$current_group_id = (int)$customer_info['customer_group_id'];
+		$current_level = $this->getLoyaltyLevel($current_group_id);
+		$current_min_total_spent = $current_level ? (float)$current_level['min_total_spent'] : null;
+		$target_min_total_spent = (float)$target_level['min_total_spent'];
 
 		// Get language code from language_id for email
 		$lang_query = $this->db->query("SELECT code FROM " . DB_PREFIX . "language WHERE language_id = '" . (int)$customer_info['language_id'] . "'");
 		$customer_info['language_code'] = $lang_query->num_rows ? $lang_query->row['code'] : 'en-gb';
 
-		// Only upgrade if different (allows both upgrades and downgrades)
+		$should_upgrade = false;
+		$is_downgrade_candidate = false;
+
 		if ($target_group_id !== $current_group_id) {
+			if ($current_level) {
+				$should_upgrade = $target_min_total_spent > $current_min_total_spent;
+				$is_downgrade_candidate = $target_min_total_spent < $current_min_total_spent;
+			} else {
+				$should_upgrade = true;
+			}
+		}
+
+		if ($should_upgrade) {
+			$this->clearPendingLoyaltyReview($customer_id, $period['start_date']);
+
 			// Get customer group names for email notification
 			$old_group_name = $this->getCustomerGroupName($current_group_id);
 			$new_group_name = $this->getCustomerGroupName($target_group_id);
@@ -851,7 +873,175 @@ class ModelExtensionModuleBonusManager extends Model {
 			return true;
 		}
 
+		// Downgrades are reviewed by admin. Keep the current group and queue a
+		// pending record once per loyalty period.
+		if ($is_downgrade_candidate) {
+			$review_status = $this->queueLoyaltyDowngradeReview(
+				$customer_id,
+				$current_group_id,
+				$target_group_id,
+				$total_spent,
+				$current_min_total_spent,
+				$period
+			);
+
+			if ($review_status === 'created') {
+				$this->log->write(
+					'LOYALTY REVIEW: Customer #' . $customer_id .
+					' flagged for manual downgrade from group #' . $current_group_id .
+					' to group #' . $target_group_id .
+					' (spent: ' . $total_spent .
+					', required: ' . $current_min_total_spent .
+					', period: ' . $period['start_date'] . ' - ' . $period['end_date'] . ')'
+				);
+			} elseif ($review_status === 'updated') {
+				$this->log->write(
+					'LOYALTY REVIEW: Updated pending downgrade for customer #' . $customer_id .
+					' (current group #' . $current_group_id .
+					', recommended group #' . $target_group_id .
+					', spent: ' . $total_spent .
+					', required: ' . $current_min_total_spent . ')'
+				);
+			}
+
+			return in_array($review_status, array('created', 'updated'), true);
+		}
+
+		// Customer still qualifies for the same level, or there is no downgrade path
+		// to review. Remove any unresolved record for the current period.
+		$this->clearPendingLoyaltyReview($customer_id, $period['start_date']);
+
 		return false;
+	}
+
+	/**
+	 * Ensure the admin review table exists for loyalty downgrade decisions.
+	 *
+	 * This keeps existing installations working without requiring a reinstall.
+	 *
+	 * @return void
+	 */
+	private function ensureLoyaltyReviewTable() {
+		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "bonus_loyalty_review` (
+			`loyalty_review_id` int(11) NOT NULL AUTO_INCREMENT,
+			`customer_id` int(11) NOT NULL,
+			`period_start` date NOT NULL,
+			`period_end` date NOT NULL,
+			`current_group_id` int(11) NOT NULL,
+			`recommended_group_id` int(11) NOT NULL,
+			`total_spent` decimal(15,4) NOT NULL DEFAULT 0.0000,
+			`required_total_spent` decimal(15,4) NOT NULL DEFAULT 0.0000,
+			`status` enum('pending','applied','dismissed') NOT NULL DEFAULT 'pending',
+			`date_created` datetime NOT NULL,
+			`date_modified` datetime NOT NULL,
+			`date_resolved` datetime DEFAULT NULL,
+			`resolved_by_user_id` int(11) DEFAULT NULL,
+			PRIMARY KEY (`loyalty_review_id`),
+			UNIQUE KEY `customer_period` (`customer_id`, `period_start`),
+			KEY `status` (`status`),
+			KEY `recommended_group_id` (`recommended_group_id`)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+	}
+
+	/**
+	 * Get the current loyalty period boundaries.
+	 *
+	 * @return array
+	 */
+	private function getCurrentLoyaltyPeriod() {
+		$period_start_date = $this->config->get('module_bonus_manager_loyalty_period_start');
+		if (!$period_start_date) {
+			$period_start_date = '01-01';
+		}
+
+		$current_year = date('Y');
+		$period_start_full = $current_year . '-' . $period_start_date . ' 00:00:00';
+
+		if (strtotime($period_start_full) > time()) {
+			$current_year--;
+			$period_start_full = $current_year . '-' . $period_start_date . ' 00:00:00';
+		}
+
+		$period_end_full = date('Y-m-d H:i:s', strtotime('+1 year', strtotime($period_start_full)));
+
+		return array(
+			'start_at' => $period_start_full,
+			'end_at' => $period_end_full,
+			'start_date' => date('Y-m-d', strtotime($period_start_full)),
+			'end_date' => date('Y-m-d', strtotime('-1 day', strtotime($period_end_full)))
+		);
+	}
+
+	/**
+	 * Create or update a pending downgrade review for the current loyalty period.
+	 *
+	 * Dismissed or already applied reviews stay resolved for the same period.
+	 *
+	 * @param int   $customer_id
+	 * @param int   $current_group_id
+	 * @param int   $target_group_id
+	 * @param float $total_spent
+	 * @param float $required_total_spent
+	 * @param array $period
+	 *
+	 * @return string created|updated|ignored
+	 */
+	private function queueLoyaltyDowngradeReview($customer_id, $current_group_id, $target_group_id, $total_spent, $required_total_spent, array $period) {
+		$this->ensureLoyaltyReviewTable();
+
+		$query = $this->db->query("SELECT loyalty_review_id, status
+			FROM `" . DB_PREFIX . "bonus_loyalty_review`
+			WHERE customer_id = '" . (int)$customer_id . "'
+			AND period_start = '" . $this->db->escape($period['start_date']) . "'
+			LIMIT 1");
+
+		if ($query->num_rows) {
+			if ($query->row['status'] !== 'pending') {
+				return 'ignored';
+			}
+
+			$this->db->query("UPDATE `" . DB_PREFIX . "bonus_loyalty_review`
+				SET current_group_id = '" . (int)$current_group_id . "',
+					recommended_group_id = '" . (int)$target_group_id . "',
+					total_spent = '" . (float)$total_spent . "',
+					required_total_spent = '" . (float)$required_total_spent . "',
+					period_end = '" . $this->db->escape($period['end_date']) . "',
+					date_modified = NOW()
+				WHERE loyalty_review_id = '" . (int)$query->row['loyalty_review_id'] . "'");
+
+			return 'updated';
+		}
+
+		$this->db->query("INSERT INTO `" . DB_PREFIX . "bonus_loyalty_review`
+			SET customer_id = '" . (int)$customer_id . "',
+				period_start = '" . $this->db->escape($period['start_date']) . "',
+				period_end = '" . $this->db->escape($period['end_date']) . "',
+				current_group_id = '" . (int)$current_group_id . "',
+				recommended_group_id = '" . (int)$target_group_id . "',
+				total_spent = '" . (float)$total_spent . "',
+				required_total_spent = '" . (float)$required_total_spent . "',
+				status = 'pending',
+				date_created = NOW(),
+				date_modified = NOW()");
+
+		return 'created';
+	}
+
+	/**
+	 * Remove any unresolved downgrade review for the active loyalty period.
+	 *
+	 * @param int    $customer_id
+	 * @param string $period_start
+	 *
+	 * @return void
+	 */
+	private function clearPendingLoyaltyReview($customer_id, $period_start) {
+		$this->ensureLoyaltyReviewTable();
+
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "bonus_loyalty_review`
+			WHERE customer_id = '" . (int)$customer_id . "'
+			AND period_start = '" . $this->db->escape($period_start) . "'
+			AND status = 'pending'");
 	}
 
 	/**
@@ -900,25 +1090,7 @@ class ModelExtensionModuleBonusManager extends Model {
 			$accrual_status_id = 5; // Default: Complete status
 		}
 
-		// Get program period start date (format: MM-DD, default: 01-01)
-		$period_start_date = $this->config->get('module_bonus_manager_loyalty_period_start');
-		if (!$period_start_date) {
-			$period_start_date = '01-01'; // Default: January 1st
-		}
-
-		// Calculate current program period dates
-		$current_year = date('Y');
-		$period_start_full = $current_year . '-' . $period_start_date . ' 00:00:00';
-
-		// If we're before the start date, use previous year's period
-		if (strtotime($period_start_full) > time()) {
-			$current_year--;
-			$period_start_full = $current_year . '-' . $period_start_date . ' 00:00:00';
-		}
-
-		// Calculate period end (1 year from start)
-		$period_end_timestamp = strtotime('+1 year', strtotime($period_start_full));
-		$period_end_full = date('Y-m-d H:i:s', $period_end_timestamp - 1); // -1 second to not overlap
+		$period = $this->getCurrentLoyaltyPeriod();
 
 		// Sum order totals for this customer in current program period
 		$query = $this->db->query("
@@ -926,8 +1098,8 @@ class ModelExtensionModuleBonusManager extends Model {
 			FROM " . DB_PREFIX . "order
 			WHERE customer_id = '" . (int)$customer_id . "'
 			AND order_status_id = '" . (int)$accrual_status_id . "'
-			AND date_added >= '" . $this->db->escape($period_start_full) . "'
-			AND date_added < '" . $this->db->escape($period_end_full) . "'
+			AND date_added >= '" . $this->db->escape($period['start_at']) . "'
+			AND date_added < '" . $this->db->escape($period['end_at']) . "'
 		");
 
 		return $query->row && $query->row['total_spent'] ? (float)$query->row['total_spent'] : 0.00;

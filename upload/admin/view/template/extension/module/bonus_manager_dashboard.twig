@@ -1,5 +1,34 @@
 {{ header }}{{ column_left }}
 <div id="content">
+  <style type="text/css">
+    .bonus-dashboard-widgets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .bonus-dashboard-widget {
+      min-width: 0;
+    }
+
+    .bonus-dashboard-widget .panel {
+      height: 100%;
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+
+    .bonus-dashboard-widget .panel-heading {
+      height: 100%;
+      min-height: 112px;
+    }
+
+    @media (max-width: 767px) {
+      .bonus-dashboard-widgets {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
   <div class="page-header">
     <div class="container-fluid">
       <div class="pull-right">
@@ -15,9 +44,9 @@
   </div>
 
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-lg-3 col-md-6 col-sm-6">
-      <div class="panel panel-primary js-dashboard-panel" data-target="operations-table" style="cursor: pointer;">
+    <div class="bonus-dashboard-widgets">
+      <div class="bonus-dashboard-widget">
+      <div class="panel panel-primary js-dashboard-panel" data-target="operations-table">
           <div class="panel-heading">
             <div class="row">
               <div class="col-xs-3">
@@ -32,8 +61,8 @@
         </div>
       </div>
 
-      <div class="col-lg-3 col-md-6 col-sm-6">
-      <div class="panel panel-success js-dashboard-panel" data-target="spent-table" style="cursor: pointer;">
+      <div class="bonus-dashboard-widget">
+      <div class="panel panel-success js-dashboard-panel" data-target="spent-table">
           <div class="panel-heading">
             <div class="row">
               <div class="col-xs-3">
@@ -48,8 +77,8 @@
         </div>
       </div>
 
-      <div class="col-lg-3 col-md-6 col-sm-6">
-      <div class="panel panel-info js-dashboard-panel" data-target="active-table" style="cursor: pointer;">
+      <div class="bonus-dashboard-widget">
+      <div class="panel panel-info js-dashboard-panel" data-target="active-table">
           <div class="panel-heading">
             <div class="row">
               <div class="col-xs-3">
@@ -64,8 +93,8 @@
         </div>
       </div>
 
-      <div class="col-lg-3 col-md-6 col-sm-6">
-      <div class="panel panel-warning js-dashboard-panel" data-target="awarded-clients-table" style="cursor: pointer;">
+      <div class="bonus-dashboard-widget">
+      <div class="panel panel-warning js-dashboard-panel" data-target="awarded-clients-table">
           <div class="panel-heading">
             <div class="row">
               <div class="col-xs-3">
@@ -74,6 +103,22 @@
               <div class="col-xs-9 text-right">
                 <div class="huge">{{ statistics.customers_count }}</div>
                 <div>{{ text_customers_count }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bonus-dashboard-widget">
+      <div class="panel panel-danger js-dashboard-panel" data-target="loyalty-reviews-table">
+          <div class="panel-heading">
+            <div class="row">
+              <div class="col-xs-3">
+                <i class="fa fa-level-down fa-5x"></i>
+              </div>
+              <div class="col-xs-9 text-right">
+                <div class="huge">{{ statistics.pending_loyalty_downgrades }}</div>
+                <div>{{ text_pending_loyalty_downgrades }}</div>
               </div>
             </div>
           </div>
@@ -311,6 +356,50 @@
             <a href="{{ awarded_clients_link }}" class="btn btn-default">{{ text_view_all_awarded_clients }}</a>
           </div>
         </div>
+
+        <div id="loyalty-reviews-table" style="display: none;">
+          <h4>{{ text_pending_loyalty_downgrades }}</h4>
+          <p class="text-muted">{{ text_pending_loyalty_downgrades_help }}</p>
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <td class="text-left">{{ column_customer }}</td>
+                  <td class="text-left">{{ column_current_loyalty_level }}</td>
+                  <td class="text-left">{{ column_recommended_loyalty_level }}</td>
+                  <td class="text-right">{{ column_total_spent }}</td>
+                  <td class="text-right">{{ column_required_total_spent }}</td>
+                  <td class="text-left">{{ column_period }}</td>
+                </tr>
+              </thead>
+              <tbody>
+                {% if pending_loyalty_downgrades|length > 0 %}
+                  {% for review in pending_loyalty_downgrades %}
+                    {% set row_link = '' %}
+                    {% if review.customer_id %}
+                      {% set row_link = 'index.php?route=customer/customer/edit&user_token=' ~ user_token ~ '&customer_id=' ~ review.customer_id %}
+                    {% endif %}
+                    <tr{% if row_link %} class="js-row-link" data-href="{{ row_link }}"{% endif %}>
+                      <td class="text-left">{{ review.customer_name }}<br/><small>{{ review.email }}</small></td>
+                      <td class="text-left">{{ review.current_loyalty_level }}</td>
+                      <td class="text-left">{{ review.recommended_loyalty_level }}</td>
+                      <td class="text-right">{{ review.total_spent|number_format(2, '.', ' ') }}</td>
+                      <td class="text-right">{{ review.required_total_spent|number_format(2, '.', ' ') }}</td>
+                      <td class="text-left">{{ review.period_start }} - {{ review.period_end }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td class="text-center" colspan="6">{{ text_no_pending_loyalty_downgrades }}</td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-right">
+            <a href="{{ loyalty_reviews_link }}" class="btn btn-default">{{ text_view_all_loyalty_reviews }}</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -324,7 +413,8 @@
     'operations-table': document.getElementById('operations-table'),
     'spent-table': document.getElementById('spent-table'),
     'active-table': document.getElementById('active-table'),
-    'awarded-clients-table': document.getElementById('awarded-clients-table')
+    'awarded-clients-table': document.getElementById('awarded-clients-table'),
+    'loyalty-reviews-table': document.getElementById('loyalty-reviews-table')
   };
 
   function showSection(key) {

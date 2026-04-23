@@ -76,6 +76,11 @@ $_['column_total_awarded']        = 'Начислено всего';
 $_['column_total_remaining']      = 'Остаток всего';
 $_['column_last_award_date']      = 'Последнее начисление';
 $_['column_loyalty_level']        = 'Уровень лояльности';
+$_['column_current_loyalty_level'] = 'Текущий уровень';
+$_['column_recommended_loyalty_level'] = 'Рекомендуемый уровень';
+$_['column_total_spent']          = 'Потрачено за период';
+$_['column_required_total_spent'] = 'Нужно для текущего уровня';
+$_['column_period']               = 'Период программы';
 
 // Help
 $_['help_status']               = 'Включить или отключить систему бонусов';
@@ -108,6 +113,8 @@ $_['button_add_setting']        = 'Добавить настройку';
 $_['button_save']               = 'Сохранить';
 $_['button_cancel']             = 'Отмена';
 $_['button_filter']              = 'Фильтр';
+$_['button_apply_downgrade']     = 'Понизить';
+$_['button_dismiss_downgrade']   = 'Оставить';
 
 // Statistics
 $_['text_total_issued']         = 'Всего начислено';
@@ -125,6 +132,14 @@ $_['text_active_bonus_awards']     = 'Активные бонусы';
 $_['text_awarded_clients']         = 'Клиенты с начислениями';
 $_['text_awarded_clients_help']    = 'Итоги рассчитываются по начислениям. Остаток показывает текущий неиспользованный баланс.';
 $_['text_view_all_awarded_clients'] = 'Смотреть всех клиентов';
+$_['text_pending_loyalty_downgrades'] = 'Ожидающие понижения уровня';
+$_['text_pending_loyalty_downgrades_help'] = 'Покупатель сохраняет текущий уровень, пока менеджер не применит или не отклонит понижение.';
+$_['text_view_all_loyalty_reviews'] = 'Открыть все запросы на понижение';
+$_['text_no_pending_loyalty_downgrades'] = 'Нет ожидающих запросов на понижение уровня.';
+$_['text_loyalty_downgrade_applied'] = 'Понижение уровня лояльности применено.';
+$_['text_loyalty_downgrade_dismissed'] = 'Понижение уровня отклонено для текущего периода.';
+$_['text_confirm_apply_downgrade'] = 'Применить понижение уровня? Поздравительное письмо покупателю отправлено не будет.';
+$_['text_confirm_dismiss_downgrade'] = 'Отклонить это понижение для текущего периода программы?';
 $_['text_all_categories']       = 'Все категории (по умолчанию)';
 
 // Registration Widget Defaults
@@ -140,3 +155,4 @@ $_['text_return_deduction']     = 'Списание за возврат #%s';
 // Error
 $_['error_permission']          = 'У вас нет прав для изменения этого модуля!';
 $_['error_customer_group']      = 'Необходимо выбрать группу покупателей!';
+$_['error_loyalty_review_not_found'] = 'Ожидающий запрос на понижение не найден.';

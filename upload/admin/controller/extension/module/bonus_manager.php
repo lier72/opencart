@@ -61,7 +61,6 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$data['tab_bonus_settings'] = $this->language->get('tab_bonus_settings');
 		$data['tab_loyalty_levels'] = 'Loyalty Levels'; // Add to language file
 		$data['tab_notifications'] = $this->language->get('tab_notifications');
-		$data['tab_statistics'] = $this->language->get('tab_statistics');
 		$data['entry_notification_email'] = $this->language->get('entry_notification_email');
 		$data['entry_email_subject'] = $this->language->get('entry_email_subject');
 		$data['entry_email_body'] = $this->language->get('entry_email_body');
@@ -342,13 +341,6 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		// Get all bonus settings
 		$data['bonus_settings'] = $this->model_extension_module_bonus_manager->getAllBonusSettings();
 
-		// Get statistics
-		$data['statistics'] = $this->model_extension_module_bonus_manager->getBonusStatistics();
-		$data['recent_transactions'] = $this->model_extension_module_bonus_manager->getRecentBonusTransactions(20);
-
-		// Get today's birthdays for display
-		$data['todays_birthdays'] = $this->model_extension_module_bonus_manager->getTodaysBirthdays();
-
 		// Loyalty Levels Settings
 		if (isset($this->request->post['module_bonus_manager_loyalty_status'])) {
 			$data['module_bonus_manager_loyalty_status'] = $this->request->post['module_bonus_manager_loyalty_status'];
@@ -450,6 +442,7 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$this->document->setTitle($this->language->get('heading_title'));
 
 		$this->load->model('extension/module/bonus_manager');
+		$this->model_extension_module_bonus_manager->syncPendingLoyaltyDowngrades();
 
 		$data['heading_title'] = $this->language->get('heading_title');
 		$data['text_dashboard'] = $this->language->get('text_dashboard');
@@ -463,6 +456,14 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$data['text_customers_count'] = $this->language->get('text_customers_count');
 		$data['text_orders_with_bonuses'] = $this->language->get('text_orders_with_bonuses');
 		$data['text_settings'] = $this->language->get('text_settings');
+		$data['text_awarded_clients'] = $this->language->get('text_awarded_clients');
+		$data['text_view_all_awarded_clients'] = $this->language->get('text_view_all_awarded_clients');
+		$data['text_pending_loyalty_downgrades'] = $this->language->get('text_pending_loyalty_downgrades');
+		$data['text_pending_loyalty_downgrades_help'] = $this->language->get('text_pending_loyalty_downgrades_help');
+		$data['text_view_all_loyalty_reviews'] = $this->language->get('text_view_all_loyalty_reviews');
+		$data['text_no_pending_loyalty_downgrades'] = $this->language->get('text_no_pending_loyalty_downgrades');
+		$data['text_spent_bonuses'] = $this->language->get('text_spent_bonuses');
+		$data['text_active_bonus_awards'] = $this->language->get('text_active_bonus_awards');
 		$data['column_order_id'] = $this->language->get('column_order_id');
 		$data['column_customer'] = $this->language->get('column_customer');
 		$data['column_points'] = $this->language->get('column_points');
@@ -474,10 +475,11 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$data['column_total_awarded'] = $this->language->get('column_total_awarded');
 		$data['column_total_remaining'] = $this->language->get('column_total_remaining');
 		$data['column_last_award_date'] = $this->language->get('column_last_award_date');
-		$data['text_awarded_clients'] = $this->language->get('text_awarded_clients');
-		$data['text_view_all_awarded_clients'] = $this->language->get('text_view_all_awarded_clients');
-		$data['text_spent_bonuses'] = $this->language->get('text_spent_bonuses');
-		$data['text_active_bonus_awards'] = $this->language->get('text_active_bonus_awards');
+		$data['column_current_loyalty_level'] = $this->language->get('column_current_loyalty_level');
+		$data['column_recommended_loyalty_level'] = $this->language->get('column_recommended_loyalty_level');
+		$data['column_total_spent'] = $this->language->get('column_total_spent');
+		$data['column_required_total_spent'] = $this->language->get('column_required_total_spent');
+		$data['column_period'] = $this->language->get('column_period');
 
 		$data['statistics'] = $this->model_extension_module_bonus_manager->getBonusStatistics();
 		$data['recent_transactions'] = $this->model_extension_module_bonus_manager->getRecentBonusTransactions(10);
@@ -491,11 +493,16 @@ class ControllerExtensionModuleBonusManager extends Controller {
 			'start' => 0,
 			'limit' => 10
 		));
+		$data['pending_loyalty_downgrades'] = $this->model_extension_module_bonus_manager->getPendingLoyaltyDowngrades(array(
+			'start' => 0,
+			'limit' => 10
+		));
 		$data['todays_birthdays'] = $this->model_extension_module_bonus_manager->getTodaysBirthdays();
 
 		$data['settings_link'] = $this->url->link('extension/module/bonus_manager', 'user_token=' . $this->session->data['user_token'], true);
 		$data['operations_link'] = $this->url->link('extension/module/bonus_manager/operations', 'user_token=' . $this->session->data['user_token'], true);
 		$data['awarded_clients_link'] = $this->url->link('extension/module/bonus_manager/awardedClients', 'user_token=' . $this->session->data['user_token'], true);
+		$data['loyalty_reviews_link'] = $this->url->link('extension/module/bonus_manager/loyaltyReviews', 'user_token=' . $this->session->data['user_token'], true);
 		$data['user_token'] = $this->session->data['user_token'];
 
 		$data['breadcrumbs'] = array();
@@ -519,7 +526,151 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		$this->response->setOutput($this->load->view('extension/module/bonus_manager_dashboard', $data));
 	}
 
-	public function operations() {
+	public function loyaltyReviews() {
+		$this->load->language('extension/module/bonus_manager');
+		$this->document->setTitle($this->language->get('heading_title'));
+
+		$this->load->model('extension/module/bonus_manager');
+		$this->model_extension_module_bonus_manager->syncPendingLoyaltyDowngrades();
+
+		$page = isset($this->request->get['page']) ? (int)$this->request->get['page'] : 1;
+		$limit = isset($this->request->get['limit']) ? (int)$this->request->get['limit'] : 20;
+		$filter_customer = isset($this->request->get['filter_customer']) ? trim($this->request->get['filter_customer']) : '';
+
+		if ($page < 1) {
+			$page = 1;
+		}
+
+		if ($limit < 1) {
+			$limit = 20;
+		}
+
+		$filter_data = array(
+			'start' => ($page - 1) * $limit,
+			'limit' => $limit,
+			'filter_customer' => $filter_customer
+		);
+
+		$total = $this->model_extension_module_bonus_manager->getPendingLoyaltyDowngradesTotal($filter_data);
+		$data['reviews'] = $this->model_extension_module_bonus_manager->getPendingLoyaltyDowngrades($filter_data);
+
+		$data['heading_title'] = $this->language->get('heading_title');
+		$data['text_dashboard'] = $this->language->get('text_dashboard');
+		$data['text_pending_loyalty_downgrades'] = $this->language->get('text_pending_loyalty_downgrades');
+		$data['text_pending_loyalty_downgrades_help'] = $this->language->get('text_pending_loyalty_downgrades_help');
+		$data['text_filter'] = $this->language->get('text_filter');
+		$data['button_filter'] = $this->language->get('button_filter');
+		$data['button_apply_downgrade'] = $this->language->get('button_apply_downgrade');
+		$data['button_dismiss_downgrade'] = $this->language->get('button_dismiss_downgrade');
+		$data['entry_customer'] = $this->language->get('entry_customer');
+		$data['column_customer'] = $this->language->get('column_customer');
+		$data['column_current_loyalty_level'] = $this->language->get('column_current_loyalty_level');
+		$data['column_recommended_loyalty_level'] = $this->language->get('column_recommended_loyalty_level');
+		$data['column_total_spent'] = $this->language->get('column_total_spent');
+		$data['column_required_total_spent'] = $this->language->get('column_required_total_spent');
+		$data['column_period'] = $this->language->get('column_period');
+		$data['column_action'] = $this->language->get('column_action');
+		$data['text_no_pending_loyalty_downgrades'] = $this->language->get('text_no_pending_loyalty_downgrades');
+		$data['text_confirm_apply_downgrade'] = $this->language->get('text_confirm_apply_downgrade');
+		$data['text_confirm_dismiss_downgrade'] = $this->language->get('text_confirm_dismiss_downgrade');
+
+		$data['filter_customer'] = $filter_customer;
+		$data['dashboard_link'] = $this->url->link('extension/module/bonus_manager/dashboard', 'user_token=' . $this->session->data['user_token'], true);
+		$data['apply_downgrade_action'] = $this->url->link('extension/module/bonus_manager/applyLoyaltyDowngrade', 'user_token=' . $this->session->data['user_token'], true);
+		$data['dismiss_downgrade_action'] = $this->url->link('extension/module/bonus_manager/dismissLoyaltyDowngrade', 'user_token=' . $this->session->data['user_token'], true);
+		$data['user_token'] = $this->session->data['user_token'];
+
+		if (isset($this->session->data['success'])) {
+			$data['success'] = $this->session->data['success'];
+			unset($this->session->data['success']);
+		} else {
+			$data['success'] = '';
+		}
+
+		if (isset($this->session->data['error_warning'])) {
+			$data['error_warning'] = $this->session->data['error_warning'];
+			unset($this->session->data['error_warning']);
+		} else {
+			$data['error_warning'] = '';
+		}
+
+		$data['breadcrumbs'] = array();
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_home'),
+			'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_extension'),
+			'href' => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_dashboard'),
+			'href' => $this->url->link('extension/module/bonus_manager/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+		);
+		$data['breadcrumbs'][] = array(
+			'text' => $this->language->get('text_pending_loyalty_downgrades'),
+			'href' => $this->url->link('extension/module/bonus_manager/loyaltyReviews', 'user_token=' . $this->session->data['user_token'], true)
+		);
+
+		$pagination = new Pagination();
+		$pagination->total = $total;
+		$pagination->page = $page;
+		$pagination->limit = $limit;
+
+		$url = '';
+		if ($filter_customer !== '') {
+			$url .= '&filter_customer=' . urlencode(html_entity_decode($filter_customer, ENT_QUOTES, 'UTF-8'));
+		}
+
+		$pagination->url = $this->url->link('extension/module/bonus_manager/loyaltyReviews', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}&limit=' . $limit, true);
+		$data['pagination'] = $pagination->render();
+
+		$data['header'] = $this->load->controller('common/header');
+		$data['column_left'] = $this->load->controller('common/column_left');
+		$data['footer'] = $this->load->controller('common/footer');
+
+		$this->response->setOutput($this->load->view('extension/module/bonus_manager_loyalty_reviews', $data));
+	}
+
+	public function applyLoyaltyDowngrade() {
+		$this->load->language('extension/module/bonus_manager');
+		$this->load->model('extension/module/bonus_manager');
+
+		if (!$this->user->hasPermission('modify', 'extension/module/bonus_manager')) {
+			$this->session->data['error_warning'] = $this->language->get('error_permission');
+		} else {
+			$review_id = isset($this->request->post['loyalty_review_id']) ? (int)$this->request->post['loyalty_review_id'] : 0;
+
+			if ($review_id > 0 && $this->model_extension_module_bonus_manager->applyPendingLoyaltyDowngrade($review_id, (int)$this->user->getId())) {
+				$this->session->data['success'] = $this->language->get('text_loyalty_downgrade_applied');
+			} else {
+				$this->session->data['error_warning'] = $this->language->get('error_loyalty_review_not_found');
+			}
+		}
+
+		$this->response->redirect($this->url->link('extension/module/bonus_manager/loyaltyReviews', 'user_token=' . $this->session->data['user_token'], true));
+	}
+
+	public function dismissLoyaltyDowngrade() {
+		$this->load->language('extension/module/bonus_manager');
+		$this->load->model('extension/module/bonus_manager');
+
+		if (!$this->user->hasPermission('modify', 'extension/module/bonus_manager')) {
+			$this->session->data['error_warning'] = $this->language->get('error_permission');
+		} else {
+			$review_id = isset($this->request->post['loyalty_review_id']) ? (int)$this->request->post['loyalty_review_id'] : 0;
+
+			if ($review_id > 0 && $this->model_extension_module_bonus_manager->dismissPendingLoyaltyDowngrade($review_id, (int)$this->user->getId())) {
+				$this->session->data['success'] = $this->language->get('text_loyalty_downgrade_dismissed');
+			} else {
+				$this->session->data['error_warning'] = $this->language->get('error_loyalty_review_not_found');
+			}
+		}
+
+		$this->response->redirect($this->url->link('extension/module/bonus_manager/loyaltyReviews', 'user_token=' . $this->session->data['user_token'], true));
+	}
+
+		public function operations() {
 		$this->load->language('extension/module/bonus_manager');
 		$this->document->setTitle($this->language->get('heading_title'));
 
