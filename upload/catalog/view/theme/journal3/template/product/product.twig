@@ -152,7 +152,7 @@
                 {% else %}
                   <div class="additional-images">
                     {% for index, image in journal3_images_additional %}
-                      <div class="additional-image" data-index="{{ index }}">
+                      <div class="additional-image" data-index="{{ index }}" style="width: {{ journal3_image_additional_width }}px; flex: 0 0 {{ journal3_image_additional_width }}px;">
                         <img src="{{ image.additional }}" {% if image.additional2x %}srcset="{{ image.additional }} 1x, {{ image.additional2x }} 2x"{% endif %} width="{{ journal3.get('image_dimensions_additional.width') }}" height="{{ journal3.get('image_dimensions_additional.height') }}" alt="{{ heading_title }}" title="{{ heading_title }}"/>
                       </div>
                     {% endfor %}
@@ -613,9 +613,28 @@
     const $img = document.querySelector('.direction-vertical .main-image .swiper-slide img');
     const $ad = document.querySelector('.direction-vertical .additional-images');
 
-    if ($img && $ad) {
-      $ad.style.height = $img.offsetHeight + 'px';
+    if (!$img || !$ad) {
+      return;
     }
+
+    const updateHeight = function () {
+      const height = Math.round(Math.max($img.offsetHeight, $img.getBoundingClientRect().height || 0));
+
+      if (height > 20) {
+        $ad.style.height = height + 'px';
+      }
+    };
+
+    if ($img.complete) {
+      updateHeight();
+    } else {
+      $img.addEventListener('load', updateHeight, { once: true });
+    }
+
+    window.addEventListener('resize', updateHeight);
+    setTimeout(updateHeight, 50);
+    setTimeout(updateHeight, 200);
+    setTimeout(updateHeight, 500);
   })();
 </script>
 {% if journal3_is_oc3 %}

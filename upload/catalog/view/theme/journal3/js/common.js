@@ -348,6 +348,29 @@ window['update_popup_height'] = function (iframe) {
 	const iframeWindow = iframe.contentWindow;
 	const iframeDocument = iframeWindow.document;
 
+	const refreshIframeCarousels = function () {
+		if (!iframeWindow.jQuery) {
+			return;
+		}
+
+		iframeWindow.jQuery('.swiper').each(function () {
+			const $swiper = iframeWindow.jQuery(this);
+			const swiper = $swiper.data('swiper');
+
+			if (!swiper || typeof swiper.update !== 'function') {
+				return;
+			}
+
+			swiper.update();
+
+			if (typeof swiper.slideTo === 'function' && typeof swiper.activeIndex === 'number') {
+				swiper.slideTo(swiper.activeIndex, 0, false);
+			}
+		});
+
+		iframeWindow.dispatchEvent(new Event('resize'));
+	};
+
 	const recalc = function () {
 		const body = iframeDocument.body;
 		const docEl = iframeDocument.documentElement;
@@ -372,6 +395,9 @@ window['update_popup_height'] = function (iframe) {
 
 		iframe.style.height = height + 'px';
 		document.documentElement.classList.add('popup-iframe-loaded');
+
+		clearTimeout(iframe.__journalPopupRefreshTimer);
+		iframe.__journalPopupRefreshTimer = setTimeout(refreshIframeCarousels, 0);
 	};
 
 	if (!iframe.__journalPopupHeightBound) {
