@@ -63,6 +63,13 @@
     {% endif %}
   </div>
 {% endmacro %}
+{% set journal3_product_is_out_of_stock = journal3_product_classes['out-of-stock'] ?? false %}
+<style>
+  .btn.quickbuy-stock-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+</style>
 {{ header }}
 {% if journal3.get('pageTitlePosition') == 'top' %}
   <h1 class="title page-title {{ journal3.get('title_color_scheme') }}"><span class="page-title-text">{{ heading_title }}</span></h1>
@@ -519,7 +526,7 @@
                       {% if journal3_product_extra_buttons and not journal3.is_popup %}
                         <div class="extra-group">
                           {% for id, extra_button in journal3_product_extra_buttons %}
-                            <a class="btn btn-extra btn-extra-{{ id }} btn-{{ loop.index }}-extra" {% if journal3.is_desktop and (journal3.get(stylePrefix ~ 'Extra' ~ loop.index ~ 'ButtonDisplay') == "icon") and (journal3.get(stylePrefix ~ 'ExtraTooltipStatus')) %} data-toggle="tooltip-hover" data-tooltip-class="extra-tooltip pp-extra-tooltip" data-placement="{{ journal3.get(stylePrefix ~ 'ExtraTooltipPosition') }}" title="{{ extra_button.label }}" {% endif %} {% if extra_button.action == 'quickbuy' %}data-quick-buy{% endif %} {% if extra_button.action == 'link' and extra_button.link.href %}href="{{ extra_button.link.href }}" {{ journal3.linkAttrs(extra_button.link) }} data-product_id="{{ product_id }}" {% else %}role="button" {% endif %} data-loading-text="<span class='btn-text'>{{ extra_button.label }}</span>"><span class="btn-text">{{ extra_button.label }}</span></a>
+                            <a class="btn btn-extra btn-extra-{{ id }} btn-{{ loop.index }}-extra{% if extra_button.action == 'quickbuy' and journal3_product_is_out_of_stock %} quickbuy-stock-disabled{% endif %}" {% if journal3.is_desktop and (journal3.get(stylePrefix ~ 'Extra' ~ loop.index ~ 'ButtonDisplay') == "icon") and (journal3.get(stylePrefix ~ 'ExtraTooltipStatus')) %} data-toggle="tooltip-hover" data-tooltip-class="extra-tooltip pp-extra-tooltip" data-placement="{{ journal3.get(stylePrefix ~ 'ExtraTooltipPosition') }}" title="{{ extra_button.label }}" {% endif %} {% if extra_button.action == 'quickbuy' %}data-quick-buy aria-disabled="{{ journal3_product_is_out_of_stock ? 'true' : 'false' }}" {% if journal3_product_is_out_of_stock %}tabindex="-1"{% endif %}{% endif %} {% if extra_button.action == 'link' and extra_button.link.href %}href="{{ extra_button.link.href }}" {{ journal3.linkAttrs(extra_button.link) }} data-product_id="{{ product_id }}" {% else %}role="button" {% endif %} data-loading-text="<span class='btn-text'>{{ extra_button.label }}</span>"><span class="btn-text">{{ extra_button.label }}</span></a>
                           {% endfor %}
                         </div>
                       {% endif %}
@@ -636,6 +643,12 @@ $('select[name=\'recurring_id\'], input[name="quantity"]').change(function(){
 <script type="text/javascript"><!--
 $('#button-cart, [data-quick-buy]').on('click', function () {
   var $btn = $(this);
+  var isQuickBuy = $btn.data('quick-buy') !== undefined;
+
+  if (isQuickBuy && ($btn.prop('disabled') || $btn.hasClass('disabled') || $btn.hasClass('quickbuy-stock-disabled') || $btn.attr('aria-disabled') === 'true')) {
+    return false;
+  }
+
 	$.ajax({
 		url: 'index.php?route=checkout/cart{{ constant('JOURNAL3_ROUTE_SEPARATOR') }}add{% if journal3_is_oc4 %}&language={{ language }}{% endif %}',
 		type: 'post',
@@ -646,12 +659,13 @@ $('#button-cart, [data-quick-buy]').on('click', function () {
     ),
 		dataType: 'json',
 		beforeSend: function() {
-			$('#button-cart').jbutton('loading');
+			$btn.jbutton('loading');
 		},
 		complete: function() {
-			$('#button-cart').jbutton('reset');
+			$btn.jbutton('reset');
 		},
 		success: function(json) {
+      $btn.jbutton('reset');
 			$('.alert-dismissible, .text-danger').remove();
 			$('.form-group').removeClass('has-error');
       $('#product').find('.is-invalid').removeClass('is-invalid');
@@ -723,7 +737,7 @@ $('#button-cart, [data-quick-buy]').on('click', function () {
           parent.location.href = Journal['checkoutUrl'];
         }
 
-        if ($btn.data('quick-buy') !== undefined) {
+        if (isQuickBuy) {
           location = Journal['checkoutUrl'];
         }
 
@@ -737,6 +751,7 @@ $('#button-cart, [data-quick-buy]').on('click', function () {
       }
 		},
         error: function(xhr, ajaxOptions, thrownError) {
+            $btn.jbutton('reset');
             alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
         }
 	});

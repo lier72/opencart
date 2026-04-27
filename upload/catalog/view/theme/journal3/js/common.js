@@ -345,21 +345,59 @@ window['voucher'].remove = function (key) {
 };
 
 window['update_popup_height'] = function (iframe) {
-	const iframeDocument = iframe.contentWindow.document;
-	let height = iframeDocument.body.clientHeight + 4;
+	const iframeWindow = iframe.contentWindow;
+	const iframeDocument = iframeWindow.document;
 
-	const buttons = iframeDocument.querySelector('.button-group-page');
+	const recalc = function () {
+		const body = iframeDocument.body;
+		const docEl = iframeDocument.documentElement;
+		const buttons = iframeDocument.querySelector('.button-group-page');
 
-	if (iframe.contentWindow.Journal['isQuickviewPopup']) {
-		height += 20;
+		let height = Math.max(
+			body ? body.scrollHeight : 0,
+			body ? body.offsetHeight : 0,
+			body ? body.clientHeight : 0,
+			docEl ? docEl.scrollHeight : 0,
+			docEl ? docEl.offsetHeight : 0,
+			docEl ? docEl.clientHeight : 0
+		) + 4;
+
+		if (iframeWindow.Journal && iframeWindow.Journal['isQuickviewPopup']) {
+			height += 20;
+		}
+
+		if (iframeWindow.Journal && iframeWindow.Journal['isOptionsPopup'] && buttons) {
+			height += buttons.offsetHeight;
+		}
+
+		iframe.style.height = height + 'px';
+		document.documentElement.classList.add('popup-iframe-loaded');
+	};
+
+	if (!iframe.__journalPopupHeightBound) {
+		iframe.__journalPopupHeightBound = true;
+
+		iframeWindow.addEventListener('resize', recalc);
+
+		if (iframeDocument.body && window.MutationObserver) {
+			iframe.__journalPopupHeightObserver = new MutationObserver(recalc);
+			iframe.__journalPopupHeightObserver.observe(iframeDocument.body, {
+				childList: true,
+				subtree: true,
+				attributes: true,
+				characterData: true
+			});
+		}
+
+		Array.prototype.forEach.call(iframeDocument.images || [], function (image) {
+			image.addEventListener('load', recalc);
+		});
 	}
-	if (iframe.contentWindow.Journal['isOptionsPopup']) {
-		height += buttons.offsetHeight;
-	}
 
-	iframe.style.height = height + 'px';
-
-	document.documentElement.classList.add('popup-iframe-loaded');
+	recalc();
+	setTimeout(recalc, 100);
+	setTimeout(recalc, 300);
+	setTimeout(recalc, 1000);
 };
 
 window['quickview'] = function (product_id) {

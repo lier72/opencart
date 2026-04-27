@@ -80,6 +80,17 @@
 
 	// Auto Update Price
 	if (Journal['isPopup'] ? Journal['quickviewPageStylePriceUpdate'] : Journal['productPageStylePriceUpdate']) {
+		function setQuickBuyAvailability(isInStock) {
+			var $quickBuy = $('[data-quick-buy]');
+
+			$quickBuy
+				.prop('disabled', false)
+				.attr('aria-disabled', isInStock ? 'false' : 'true')
+				.attr('tabindex', isInStock ? null : '-1')
+				.removeClass('disabled')
+				.toggleClass('quickbuy-stock-disabled', !isInStock);
+		}
+
 		function autoUpdatePrice() {
 			$.ajax({
 				url: 'index.php?route=journal3/price&popup=' + (Journal['isPopup'] ? 1 : 0) + (Journal['ocv'] == 4 ? '&language=' + Journal['language'] : ''),
@@ -98,6 +109,8 @@
 							message: json.response.message
 						});
 					} else {
+						setQuickBuyAvailability(Boolean(json['response']['in_stock']));
+
 						if (Journal['isPopup'] ? Journal['quickviewPageStyleProductStockUpdate'] : Journal['productPageStyleProductStockUpdate']) {
 							if (json['response']['stock']) {
 								$('.product-stock span').html(json['response']['stock']);
