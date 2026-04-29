@@ -69,6 +69,14 @@
     pointer-events: none;
     opacity: 0.5;
   }
+
+  .popup-quickview .product-image.direction-horizontal .additional-images:not(.swiper) {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
 </style>
 {{ header }}
 {% if journal3.get('pageTitlePosition') == 'top' %}
@@ -612,10 +620,25 @@
   (function () {
     const $img = document.querySelector('.direction-vertical .main-image .swiper-slide img');
     const $ad = document.querySelector('.direction-vertical .additional-images');
+    const $mainImage = document.querySelector('.direction-vertical .main-image');
+    const scheduleUpdate = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) { return setTimeout(callback, 0); };
+    const cancelUpdate = window.cancelAnimationFrame ? window.cancelAnimationFrame.bind(window) : clearTimeout;
+    let rafId = null;
 
     if (!$img || !$ad) {
       return;
     }
+
+    const queueUpdate = function () {
+      if (rafId !== null) {
+        cancelUpdate(rafId);
+      }
+
+      rafId = scheduleUpdate(function () {
+        rafId = null;
+        updateHeight();
+      });
+    };
 
     const updateHeight = function () {
       const height = Math.round(Math.max($img.offsetHeight, $img.getBoundingClientRect().height || 0));
@@ -626,15 +649,26 @@
     };
 
     if ($img.complete) {
-      updateHeight();
+      queueUpdate();
     } else {
-      $img.addEventListener('load', updateHeight, { once: true });
+      $img.addEventListener('load', queueUpdate, { once: true });
     }
 
-    window.addEventListener('resize', updateHeight);
-    setTimeout(updateHeight, 50);
-    setTimeout(updateHeight, 200);
-    setTimeout(updateHeight, 500);
+    if (window.ResizeObserver) {
+      const resizeObserver = new ResizeObserver(queueUpdate);
+
+      resizeObserver.observe($img);
+
+      if ($mainImage) {
+        resizeObserver.observe($mainImage);
+      }
+    }
+
+    window.addEventListener('resize', queueUpdate);
+    window.addEventListener('load', queueUpdate);
+    scheduleUpdate(queueUpdate);
+    setTimeout(queueUpdate, 50);
+    setTimeout(queueUpdate, 150);
   })();
 </script>
 {% if journal3_is_oc3 %}

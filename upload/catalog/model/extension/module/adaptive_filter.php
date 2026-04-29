@@ -522,6 +522,78 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
     }
 
     /**
+     * Build category distance map for sport resolution.
+     * Lower distance means the category is more specific to the product.
+     */
+    private function buildCategoryDistanceMap($product_categories, $hierarchy = null) {
+        $category_distances = array();
+
+        foreach ($product_categories as $cat_id) {
+            $parents = ($hierarchy === null)
+                ? $this->getCategoryParents($cat_id)
+                : $this->getCategoryParentsWithCache($cat_id, $hierarchy);
+
+            foreach ($parents as $distance => $parent_id) {
+                $parent_id = (int)$parent_id;
+
+                if (!isset($category_distances[$parent_id]) || $distance < $category_distances[$parent_id]) {
+                    $category_distances[$parent_id] = $distance;
+                }
+            }
+        }
+
+        return $category_distances;
+    }
+
+    /**
+     * Choose between two mappings for the same category.
+     * Higher weight wins; ties fall back to sport name for deterministic results.
+     */
+    private function isBetterCategorySportMapping($candidate, $current) {
+        if ($candidate['weight'] !== $current['weight']) {
+            return $candidate['weight'] > $current['weight'];
+        }
+
+        return strcmp($candidate['sport'], $current['sport']) < 0;
+    }
+
+    /**
+     * Resolve a single sport for a product using category distance and sport weight.
+     * Higher weight wins; ties prefer the more specific category.
+     */
+    private function resolveSportFromCategoryMappings($category_distances, $sport_mappings) {
+        if (empty($category_distances) || empty($sport_mappings)) {
+            return null;
+        }
+
+        $best_sport = null;
+        $best_weight = PHP_INT_MIN;
+        $best_distance = PHP_INT_MAX;
+        $best_category_id = PHP_INT_MAX;
+
+        foreach ($category_distances as $category_id => $distance) {
+            if (!isset($sport_mappings[$category_id])) {
+                continue;
+            }
+
+            $mapping = $sport_mappings[$category_id];
+            $weight = (int)$mapping['weight'];
+            $category_id = (int)$category_id;
+
+            if ($weight > $best_weight ||
+                ($weight === $best_weight && $distance < $best_distance) ||
+                ($weight === $best_weight && $distance === $best_distance && $category_id < $best_category_id)) {
+                $best_sport = $mapping['sport'];
+                $best_weight = $weight;
+                $best_distance = $distance;
+                $best_category_id = $category_id;
+            }
+        }
+
+        return $best_sport;
+    }
+
+    /**
      * Infer sport using cached product categories and sport mappings (no database queries)
      */
     private function inferSportFromProductWithCache($product_id, $product_categories, $hierarchy, $all_sport_mappings) {
@@ -530,36 +602,9 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             return null;
         }
 
-        $categories = $product_categories[$product_id];
+        $category_distances = $this->buildCategoryDistanceMap($product_categories[$product_id], $hierarchy);
 
-        // Get all parent categories for each product category
-        $all_category_ids = array();
-        foreach ($categories as $cat_id) {
-            $parents = $this->getCategoryParentsWithCache($cat_id, $hierarchy);
-            $all_category_ids = array_merge($all_category_ids, $parents);
-        }
-        $all_category_ids = array_unique($all_category_ids);
-
-        // Find sport mapping for any of these categories (including parents) from cached data
-        if (empty($all_category_ids)) {
-            return null;
-        }
-
-        // Find best matching sport from pre-loaded mappings
-        $best_sport = null;
-        $best_weight = -1;
-
-        foreach ($all_category_ids as $cat_id) {
-            if (isset($all_sport_mappings[$cat_id])) {
-                $mapping = $all_sport_mappings[$cat_id];
-                if ($mapping['weight'] > $best_weight) {
-                    $best_sport = $mapping['sport'];
-                    $best_weight = $mapping['weight'];
-                }
-            }
-        }
-
-        return $best_sport;
+        return $this->resolveSportFromCategoryMappings($category_distances, $all_sport_mappings);
     }
 
     /**
@@ -575,11 +620,13 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         foreach ($query->rows as $row) {
             // If multiple mappings exist for same category, keep the highest weight
             $cat_id = (int)$row['category_id'];
-            if (!isset($mappings[$cat_id]) || $row['weight'] > $mappings[$cat_id]['weight']) {
-                $mappings[$cat_id] = array(
-                    'sport' => $row['sport'],
-                    'weight' => (int)$row['weight']
-                );
+            $candidate = array(
+                'sport' => $row['sport'],
+                'weight' => (int)$row['weight']
+            );
+
+            if (!isset($mappings[$cat_id]) || $this->isBetterCategorySportMapping($candidate, $mappings[$cat_id])) {
+                $mappings[$cat_id] = $candidate;
             }
         }
 
@@ -602,35 +649,39 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         }
 
         $product_categories = array_column($query->rows, 'category_id');
-
-        // Get all parent categories for each product category
-        $all_category_ids = array();
-        foreach ($product_categories as $cat_id) {
-            $parents = $this->getCategoryParents($cat_id);
-            $all_category_ids = array_merge($all_category_ids, $parents);
-        }
-        $all_category_ids = array_unique($all_category_ids);
+        $category_distances = $this->buildCategoryDistanceMap($product_categories);
 
         // Find sport mapping for any of these categories (including parents)
-        if (empty($all_category_ids)) {
+        if (empty($category_distances)) {
             return null;
         }
 
-        $category_ids_str = implode(',', array_map('intval', $all_category_ids));
+        $category_ids_str = implode(',', array_map('intval', array_keys($category_distances)));
 
         $query = $this->db->query("
-            SELECT sm.sport, sm.weight
+            SELECT sm.category_id, sm.sport, sm.weight
             FROM `" . DB_PREFIX . "sport_mapping` sm
             WHERE sm.category_id IN (" . $category_ids_str . ")
-            ORDER BY sm.weight DESC
-            LIMIT 1
         ");
 
-        if ($query->num_rows) {
-            return $query->row['sport'];
+        if (!$query->num_rows) {
+            return null;
         }
 
-        return null;
+        $sport_mappings = array();
+        foreach ($query->rows as $row) {
+            $category_id = (int)$row['category_id'];
+            $candidate = array(
+                'sport' => $row['sport'],
+                'weight' => (int)$row['weight']
+            );
+
+            if (!isset($sport_mappings[$category_id]) || $this->isBetterCategorySportMapping($candidate, $sport_mappings[$category_id])) {
+                $sport_mappings[$category_id] = $candidate;
+            }
+        }
+
+        return $this->resolveSportFromCategoryMappings($category_distances, $sport_mappings);
     }
 
     // User overrides feature removed - not used
