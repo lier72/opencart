@@ -72,7 +72,6 @@ class ControllerJournal3EventHeader extends Controller {
 			if ($cache) {
 				$this->journal3_document->addCss($cache, 'google-fonts', -1);
 			} else {
-				$this->journal3_document->addLink($fonts_url, 'preload', ['as' => 'style']);
 				$this->journal3_document->addLink($fonts_url, 'stylesheet', ['media' => 'print', 'onload' => "this.media='all'"]);
 			}
 		}
@@ -86,8 +85,6 @@ class ControllerJournal3EventHeader extends Controller {
 				foreach ($font as $type => $ver) {
 					$src[] = "url('{$this->journal3_assets->url('catalog/view/theme/journal3/fonts_custom/' . $font_family . '.' . $type, $ver)}') format('{$type}')";
 				}
-
-				$this->journal3_document->addLink($this->journal3_assets->url('catalog/view/theme/journal3/fonts_custom/' . $font_family . '.' . array_keys($font)[0], array_values($font)[0]), 'preload', ['as' => 'font', 'type' => 'font/woff2', 'crossorigin' => 'anonymous']);
 
 				$src = implode(',', $src);
 
@@ -143,16 +140,9 @@ class ControllerJournal3EventHeader extends Controller {
 
 			$args['styles'] = $this->journal3_assets->styles($args['styles']);
 
-			foreach ($args['styles'] as $style) {
-				// Disabled CSS preload to prevent "preload not used" warnings
-				// Stylesheets still load normally through regular <link> tags in the head
-				// This has negligible performance impact since they're already in the head
-				// $this->journal3_document->addLink($style['href'], 'preload', ['as' => 'style']);
-
-				if (!JOURNAL3_STATIC_URL && $this->journal3->get('performancePushCSS')) {
-					$this->journal3_response->addPushAsset($style['href'], 'rel=preload; as=style');
-				}
-			}
+			// Avoid preload/push hints for regular stylesheets. They create noisy
+			// "preload not used" warnings and provide little benefit for CSS that
+			// is already linked normally in the document head.
 		}
 
 		// inline scripts

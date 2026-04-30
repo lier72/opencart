@@ -23,7 +23,6 @@ class ControllerJournal3Assets extends Controller {
 
 		if ($this->journal3->get('performanceCSSDefer')) {
 			$this->document->addStyle('catalog/view/theme/journal3/lib/font-awesome/css/font-awesome-critical.min.css');
-			$this->journal3_document->addLink($font_awesome, 'preload', ['as' => 'style']);
 			$this->journal3_document->addLink($font_awesome, 'stylesheet', ['media' => 'print', 'onload' => "this.media='all'"]);
 		} else {
 			$this->document->addStyle($font_awesome);
@@ -40,7 +39,6 @@ class ControllerJournal3Assets extends Controller {
 
 		if ($this->journal3->get('performanceCSSDefer')) {
 			$this->document->addStyle('catalog/view/theme/journal3/lib/bootstrap/css/bootstrap-critical.min.css');
-			$this->journal3_document->addLink($bootstrap_css, 'preload', ['as' => 'style']);
 			$this->journal3_document->addLink($bootstrap_css, 'stylesheet', ['media' => 'print', 'onload' => "this.media='all'"]);
 		} else {
 			$this->document->addStyle($bootstrap_css);
@@ -128,17 +126,9 @@ class ControllerJournal3Assets extends Controller {
 
 		$this->journal3_document->addCss($cache, 'icons', -2);
 
-		if (is_file($icons_folder . '/fonts/icomoon.woff2')) {
-			$icons_font = $icons_folder . '/fonts/icomoon.woff2';
-		} else {
-			$icons_font = $icons_folder . '/fonts/icomoon.woff';
-		}
-
-		$this->journal3_document->addLink($this->journal3_assets->url($icons_font, $icons_ver), 'preload', ['as' => 'font', 'type' => 'font/woff2', 'crossorigin' => 'anonymous']);
-
-		if (!JOURNAL3_STATIC_URL && $this->journal3->get('performancePushIcons')) {
-			$this->journal3_response->addPushAsset($this->journal3_assets->url($icons_font, $icons_ver), 'rel=preload; as=font; crossorigin');
-		}
+		// Let the inlined @font-face rules request the icon font on demand.
+		// Preloading it here creates persistent "preload not used" warnings on pages
+		// where icon glyphs are not consumed immediately after load.
 
 		// opencart common.js
 		$this->document->addScript('catalog/view/javascript/common.js');
