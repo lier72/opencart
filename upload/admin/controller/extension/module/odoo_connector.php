@@ -35,6 +35,7 @@ class ControllerExtensionModuleOdooConnector extends Controller {
         $data['text_environment_status'] = $this->language->get('text_environment_status');
         $data['text_test_mode'] = $this->language->get('text_test_mode');
         $data['text_production_mode'] = $this->language->get('text_production_mode');
+        $data['text_order_total_mapping'] = $this->language->get('text_order_total_mapping');
 
         // Form entries
         $data['entry_url'] = $this->language->get('entry_url');
@@ -124,6 +125,7 @@ class ControllerExtensionModuleOdooConnector extends Controller {
         // Actions
         $data['action'] = $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true);
         $data['test_connection_url'] = $this->url->link('extension/module/odoo_connector/testConnection', 'user_token=' . $this->session->data['user_token'], true);
+        $data['order_total_mapping_url'] = $this->url->link('extension/module/odoo_connector/orderTotalMapping', 'user_token=' . $this->session->data['user_token'], true);
         $data['cancel'] = $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true);
 
         $data['user_token'] = $this->session->data['user_token'];
@@ -409,6 +411,69 @@ class ControllerExtensionModuleOdooConnector extends Controller {
         $this->response->setOutput($this->load->view('extension/module/odoo_currency_mapping', $data));
     }
 
+    public function orderTotalMapping() {
+        $this->load->language('extension/module/odoo_connector');
+        $this->load->model('extension/module/odoo_connector');
+
+        $this->document->setTitle($this->language->get('text_order_total_mapping'));
+
+        $data['heading_title'] = $this->language->get('text_order_total_mapping');
+        $data['text_list'] = $this->language->get('text_order_total_mapping_list');
+        $data['text_no_results'] = $this->language->get('text_no_results');
+        $data['text_confirm'] = $this->language->get('text_confirm');
+        $data['text_order_total_mapping_help'] = $this->language->get('text_order_total_mapping_help');
+
+        $data['column_total_code'] = $this->language->get('column_total_code');
+        $data['column_include_pattern'] = $this->language->get('column_include_pattern');
+        $data['column_exclude_pattern'] = $this->language->get('column_exclude_pattern');
+        $data['column_odoo_product_id'] = $this->language->get('column_odoo_product_id');
+        $data['column_odoo_product_name'] = $this->language->get('column_odoo_product_name');
+        $data['column_priority'] = $this->language->get('column_priority');
+        $data['column_active'] = $this->language->get('column_active');
+        $data['column_action'] = $this->language->get('column_action');
+
+        $data['button_save'] = $this->language->get('button_save');
+        $data['button_cancel'] = $this->language->get('button_cancel');
+        $data['button_add_mapping'] = $this->language->get('button_add_mapping');
+        $data['button_delete'] = $this->language->get('button_delete');
+
+        $data['breadcrumbs'] = array();
+        $data['breadcrumbs'][] = array(
+            'text' => $this->language->get('text_home'),
+            'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], true)
+        );
+        $data['breadcrumbs'][] = array(
+            'text' => $this->language->get('heading_title'),
+            'href' => $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true)
+        );
+        $data['breadcrumbs'][] = array(
+            'text' => $this->language->get('text_order_total_mapping'),
+            'href' => $this->url->link('extension/module/odoo_connector/orderTotalMapping', 'user_token=' . $this->session->data['user_token'], true)
+        );
+
+        $data['mappings'] = $this->model_extension_module_odoo_connector->getOrderTotalMappings();
+        $data['create_mapping_url'] = $this->url->link('extension/module/odoo_connector/createOrderTotalMapping', 'user_token=' . $this->session->data['user_token'], true);
+        $data['update_mapping_url'] = $this->url->link('extension/module/odoo_connector/updateOrderTotalMapping', 'user_token=' . $this->session->data['user_token'], true);
+        $data['delete_mapping_url'] = $this->url->link('extension/module/odoo_connector/deleteOrderTotalMapping', 'user_token=' . $this->session->data['user_token'], true);
+        $data['cancel'] = $this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], true);
+
+        $data['user_token'] = $this->session->data['user_token'];
+        $data['header'] = $this->load->controller('common/header');
+        $data['column_left'] = $this->load->controller('common/column_left');
+        $data['footer'] = $this->load->controller('common/footer');
+
+        $this->response->setOutput($this->load->view('extension/module/odoo_order_total_mapping', $data));
+    }
+
+    private function sendJsonResponse($json) {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json, JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_UNESCAPED_UNICODE));
+    }
+
     /**
      * Update payment acquirer mapping via AJAX
      */
@@ -422,8 +487,7 @@ class ControllerExtensionModuleOdooConnector extends Controller {
             $json = $result;
         }
 
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($json));
+        $this->sendJsonResponse($json);
     }
 
     /**
@@ -439,8 +503,59 @@ class ControllerExtensionModuleOdooConnector extends Controller {
             $json = $result;
         }
 
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($json));
+        $this->sendJsonResponse($json);
+    }
+
+    public function createOrderTotalMapping() {
+        $this->load->language('extension/module/odoo_connector');
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = array('success' => false);
+
+        if (!$this->user->hasPermission('modify', 'extension/module/odoo_connector')) {
+            $json['error'] = $this->language->get('error_permission');
+        } elseif ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            $json = $this->model_extension_module_odoo_connector->createOrderTotalMapping($this->request->post);
+        } else {
+            $json['error'] = $this->language->get('error_invalid_request');
+        }
+
+        $this->sendJsonResponse($json);
+    }
+
+    public function updateOrderTotalMapping() {
+        $this->load->language('extension/module/odoo_connector');
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = array('success' => false);
+
+        if (!$this->user->hasPermission('modify', 'extension/module/odoo_connector')) {
+            $json['error'] = $this->language->get('error_permission');
+        } elseif ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            $json = $this->model_extension_module_odoo_connector->updateOrderTotalMapping($this->request->post);
+        } else {
+            $json['error'] = $this->language->get('error_invalid_request');
+        }
+
+        $this->sendJsonResponse($json);
+    }
+
+    public function deleteOrderTotalMapping() {
+        $this->load->language('extension/module/odoo_connector');
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = array('success' => false);
+
+        if (!$this->user->hasPermission('modify', 'extension/module/odoo_connector')) {
+            $json['error'] = $this->language->get('error_permission');
+        } elseif ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            $mapping_id = isset($this->request->post['id']) ? (int)$this->request->post['id'] : 0;
+            $json = $this->model_extension_module_odoo_connector->deleteOrderTotalMapping($mapping_id);
+        } else {
+            $json['error'] = $this->language->get('error_invalid_request');
+        }
+
+        $this->sendJsonResponse($json);
     }
 
     /**
@@ -451,8 +566,7 @@ class ControllerExtensionModuleOdooConnector extends Controller {
 
         $json = $this->model_extension_module_odoo_connector->fetchOdooPaymentAcquirers();
 
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($json));
+        $this->sendJsonResponse($json);
     }
 
     /**
@@ -463,8 +577,7 @@ class ControllerExtensionModuleOdooConnector extends Controller {
 
         $json = $this->model_extension_module_odoo_connector->fetchOdooCurrencies();
 
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($json));
+        $this->sendJsonResponse($json);
     }
 
 }

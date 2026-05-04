@@ -39,6 +39,96 @@ class ModelExtensionModuleOdooConnector extends Model {
         );
     }
 
+    public function ensureOrderTotalMappingTable() {
+        $this->db->query("CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "odoo_order_total_map (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `opencart_total_code` varchar(64) NOT NULL,
+            `title_include_pattern` varchar(255) NOT NULL DEFAULT '',
+            `title_exclude_pattern` varchar(255) NOT NULL DEFAULT '',
+            `odoo_product_id` int(11) NOT NULL DEFAULT 0,
+            `odoo_product_name` varchar(255) NOT NULL DEFAULT '',
+            `priority` int(11) NOT NULL DEFAULT 0,
+            `is_active` tinyint(1) NOT NULL DEFAULT 1,
+            `created_by` varchar(128) NOT NULL DEFAULT 'install',
+            `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `modified_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `unique_total_mapping` (`opencart_total_code`, `title_include_pattern`, `title_exclude_pattern`)
+          ) DEFAULT CHARSET=utf8 COMMENT='Maps OpenCart order_total rows to Odoo service products'");
+
+        $this->seedDefaultOrderTotalMappings();
+    }
+
+    private function seedDefaultOrderTotalMappings() {
+        foreach ($this->getDefaultOrderTotalMappings() as $mapping) {
+            $this->db->query("INSERT INTO " . DB_PREFIX . "odoo_order_total_map SET
+                opencart_total_code = '" . $this->db->escape($mapping['opencart_total_code']) . "',
+                title_include_pattern = '" . $this->db->escape($mapping['title_include_pattern']) . "',
+                title_exclude_pattern = '" . $this->db->escape($mapping['title_exclude_pattern']) . "',
+                odoo_product_id = '" . (int)$mapping['odoo_product_id'] . "',
+                odoo_product_name = '" . $this->db->escape($mapping['odoo_product_name']) . "',
+                priority = '" . (int)$mapping['priority'] . "',
+                is_active = '" . (int)$mapping['is_active'] . "',
+                created_by = '" . $this->db->escape($mapping['created_by']) . "'
+                ON DUPLICATE KEY UPDATE id = id");
+        }
+    }
+
+    private function getDefaultOrderTotalMappings() {
+        return array(
+            array(
+                'opencart_total_code' => 'shipping',
+                'title_include_pattern' => '',
+                'title_exclude_pattern' => 'Самовывоз из магазина',
+                'odoo_product_id' => 2,
+                'odoo_product_name' => 'Delivery',
+                'priority' => 100,
+                'is_active' => 1,
+                'created_by' => 'install',
+            ),
+            array(
+                'opencart_total_code' => 'cdek',
+                'title_include_pattern' => '',
+                'title_exclude_pattern' => '',
+                'odoo_product_id' => 3892,
+                'odoo_product_name' => 'Cash on Delivery',
+                'priority' => 100,
+                'is_active' => 1,
+                'created_by' => 'install',
+            ),
+            array(
+                'opencart_total_code' => 'cod_cdek_total',
+                'title_include_pattern' => '',
+                'title_exclude_pattern' => '',
+                'odoo_product_id' => 3892,
+                'odoo_product_name' => 'Cash on Delivery',
+                'priority' => 100,
+                'is_active' => 1,
+                'created_by' => 'install',
+            ),
+            array(
+                'opencart_total_code' => 'reward',
+                'title_include_pattern' => '',
+                'title_exclude_pattern' => '',
+                'odoo_product_id' => 10450,
+                'odoo_product_name' => 'Reward / Loyalty Discount',
+                'priority' => 100,
+                'is_active' => 0,
+                'created_by' => 'install',
+            ),
+            array(
+                'opencart_total_code' => 'voucher',
+                'title_include_pattern' => '',
+                'title_exclude_pattern' => '',
+                'odoo_product_id' => 10450,
+                'odoo_product_name' => 'Gift Certificate',
+                'priority' => 100,
+                'is_active' => 0,
+                'created_by' => 'install',
+            ),
+        );
+    }
+
     public function normalizeCategoryIds($category_ids) {
         if (!is_array($category_ids)) {
             return array();
@@ -269,6 +359,125 @@ class ModelExtensionModuleOdooConnector extends Model {
         return null;
     }
 
+    private function getOdooFaultDetail($response, $fallback = 'Unknown Odoo error')
+    {
+        if (!empty($response['faultString'])) {
+            return $response['faultString'];
+        }
+
+        if (!empty($response['faultCode'])) {
+            return $response['faultCode'];
+        }
+
+        return $fallback;
+    }
+
+    private function createOdooSaleOrderLine($models, $db_name, $uid, $password, array $line_data)
+    {
+        $response = $models->execute_kw(
+            $db_name,
+            $uid,
+            $password,
+            'sale.order.line',
+            'create',
+            array(array($line_data))
+        );
+
+        if (isset($response['faultCode']) && $response['faultCode']) {
+            return array(
+                'success' => false,
+                'error' => $this->getOdooFaultDetail($response)
+            );
+        }
+
+        return array(
+            'success' => true,
+            'id' => $response
+        );
+    }
+
+    private function getOrderTotalsForExport($oc_order_id)
+    {
+        $query = $this->db->query("SELECT code, title, value, sort_order
+            FROM " . DB_PREFIX . "order_total
+            WHERE order_id = '" . (int)$oc_order_id . "'
+            ORDER BY sort_order ASC, order_total_id ASC");
+
+        return $query->rows;
+    }
+
+    private function resolveOrderTotalMapping(array $total_data)
+    {
+        $query = $this->db->query("SELECT *
+            FROM " . DB_PREFIX . "odoo_order_total_map
+            WHERE opencart_total_code = '" . $this->db->escape($total_data['code']) . "'
+            AND is_active = 1
+            ORDER BY priority DESC, id ASC");
+
+        foreach ($query->rows as $mapping) {
+            if ((int)$mapping['odoo_product_id'] <= 0) {
+                continue;
+            }
+
+            $include_pattern = trim($mapping['title_include_pattern']);
+            $exclude_pattern = trim($mapping['title_exclude_pattern']);
+            $title = isset($total_data['title']) ? (string)$total_data['title'] : '';
+
+            if ($include_pattern !== '' && stripos($title, $include_pattern) === false) {
+                continue;
+            }
+
+            if ($exclude_pattern !== '' && stripos($title, $exclude_pattern) !== false) {
+                continue;
+            }
+
+            return $mapping;
+        }
+
+        return false;
+    }
+
+    private function exportMappedOrderTotalLines($models, $db_name, $uid, $password, $odoo_order_id, $odoo_partner, $oc_order_id)
+    {
+        foreach ($this->getOrderTotalsForExport($oc_order_id) as $total_data) {
+            if ((float)$total_data['value'] == 0.0) {
+                continue;
+            }
+
+            $mapping = $this->resolveOrderTotalMapping($total_data);
+
+            if (!$mapping) {
+                if ($this->debug) {
+                    $this->log->write('Model odoo_connector exportMappedOrderTotalLines: No active mapping found for total code "' .
+                        $total_data['code'] . '" and title "' . $total_data['title'] . '"');
+                }
+
+                continue;
+            }
+
+            $line_data = array(
+                'order_id' => (int)$odoo_order_id,
+                'product_id' => (int)$mapping['odoo_product_id'],
+                'order_partner_id' => (int)$odoo_partner,
+                'product_uom_qty' => 1,
+                'price_unit' => (float)$total_data['value'],
+                'name' => $total_data['title'] ? $total_data['title'] : $mapping['opencart_total_code'],
+            );
+
+            $response = $this->createOdooSaleOrderLine($models, $db_name, $uid, $password, $line_data);
+
+            if (!$response['success']) {
+                return array(
+                    'success' => false,
+                    'error' => 'Error creating mapped total line for code "' . $total_data['code'] .
+                        '" with Odoo product ID ' . (int)$mapping['odoo_product_id'] . ': ' . $response['error']
+                );
+            }
+        }
+
+        return array('success' => true);
+    }
+
     /**
      * Get Alfabank payment transaction data for an order
      * @param int $oc_order_id OpenCart order ID
@@ -427,36 +636,17 @@ class ModelExtensionModuleOdooConnector extends Model {
                         if ($res->num_rows > 0) { // product exists in the Mapping Table
                             $odoo_product = $res->row;
                             // Write Odoo order.product.line
-                            $response = $models->execute_kw($db_name, $uid, $password,
-                                'sale.order.line', 'create',
-                                array(array(
-//                                'create_uid' => 43, //Administrator
-                                    'order_id' => (int)$odoo_order_id,
-                                    'name' => $row['name'],
-                                    'product_id' => (int)$odoo_product['odoo_product_id'],
-                                    'order_partner_id' => (int)$odoo_partner,
-                                    'product_uom_qty' => (int)$row['quantity'],
-                                    'price_unit' => (float)$row['price']
-                                ))
-                            );
-                            // Check for Ripcord/XML-RPC errors
-                            if (isset($response['faultCode']) && $response['faultCode']) {
-                                // Extract error message - Odoo errors can be in faultCode or faultString
-                                $error_detail = '';
+                            $response = $this->createOdooSaleOrderLine($models, $db_name, $uid, $password, array(
+                                'order_id' => (int)$odoo_order_id,
+                                'name' => $row['name'],
+                                'product_id' => (int)$odoo_product['odoo_product_id'],
+                                'order_partner_id' => (int)$odoo_partner,
+                                'product_uom_qty' => (int)$row['quantity'],
+                                'price_unit' => (float)$row['price']
+                            ));
 
-                                // First try faultString
-                                if (!empty($response['faultString'])) {
-                                    $error_detail = $response['faultString'];
-                                }
-                                // If faultString is empty, use faultCode (Odoo often puts the full error here)
-                                elseif (!empty($response['faultCode'])) {
-                                    $error_detail = $response['faultCode'];
-                                }
-
-                                // If still empty, provide context
-                                if (empty($error_detail)) {
-                                    $error_detail = 'Product not found in Odoo (product.product ID: ' . ($odoo_product['odoo_product_id'] ?? 'unknown') . ')';
-                                }
+                            if (!$response['success']) {
+                                $error_detail = $response['error'];
 
                                 $error_msg = 'Error creating order line for product "' . $row['name'] . '" (OC Product ID: ' . $row['product_id'] . ', Odoo Product ID: ' . ($odoo_product['odoo_product_id'] ?? 'N/A') . '): ' . $error_detail;
                                 $this->log->write('Error Creating Order Line: ' . $error_detail);
@@ -496,81 +686,21 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
 
 
-                // Get delivery and other order options influencing to total amount
-                $order_delivery = false;
-                $sql = "SELECT code, title, value FROM " . DB_PREFIX . "order_total WHERE order_id =" . $oc_order_id;
-                $result = $this->db->query($sql) or die("Error in Selecting order " . mysqli_error($this->db));
-                if ($result->num_rows) {
-                    foreach ($result->rows as $total_data) {
-                        switch ($total_data['code']) {
-                            // In case of free delivery the following condition does not work!
-                            /*                        case 'sub_total': // If order total equals to subtottal that means no other options were selected
-                                                        if ($total_data['value'] == $customer_data['total']) $order_delivery = false;
-                                                        break;*/
-                            case 'shipping':
-                                if ($total_data['title'] == 'Самовывоз из магазина') $order_delivery = false; // Нет доставки
-                                else {
-                                    $order_delivery = true;
-                                    $delivery['product_id'] = 2; // id=2 Доставка СДЭК в odoo
-                                    $delivery['price_unit'] = round($total_data['value']);
-                                }
-                                break;
-                            case 'cdek':
-                                $cod['product_id'] = 3892; // id=3892 - Product variant ! Оплата при доставке СДЭК в odoo
-                                $cod['price_unit'] = round($total_data['value']);
-                                break;
-                            case 'cod_cdek_total':
-                                $cod['product_id'] = 3892; // the cod_cdek_total is from OC2 - id=3892 - Product variant ! Оплата при доставке Почта России в odoo
-                                $cod['price_unit'] = round($total_data['value']);
-                                break;
-                        }
-                    }
-                }
+                $response = $this->exportMappedOrderTotalLines(
+                    $models,
+                    $db_name,
+                    $uid,
+                    $password,
+                    $odoo_order_id,
+                    $odoo_partner,
+                    $oc_order_id
+                );
 
-                // Add delivery options if delivery is ordered
-                if ($order_delivery) {
-                    $response = $models->execute_kw($db_name, $uid, $password,
-                        'sale.order.line', 'create',
-                        array(array(
-                            //                      'create_uid' => 43, //Administrator
-                            'order_id' => (int)$odoo_order_id,
-                            'product_id' => (int)$delivery['product_id'],
-                            'order_partner_id' => (int)$odoo_partner,
-                            'product_uom_qty' => 1,
-                            'price_unit' => (float)$delivery['price_unit'],
-                            'purchase_price' => (float)$delivery['price_unit']
-                        ))
-                    );
-                    if (isset($response['faultCode']) && $response['faultCode']) {
-                        $error_detail = !empty($response['faultString']) ? $response['faultString'] : $response['faultCode'];
-                        $error_msg = 'Error creating delivery line: ' . $error_detail;
-                        $this->log->write('Error Creating Delivery Line: '. $error_detail);
-                        $json['errors'][]= $error_msg;
-                        $json['success'] = false;
-                        return $json;
-                    }
-                    if (isset($cod['product_id'])) {
-                        $response = $models->execute_kw($db_name, $uid, $password,
-                            'sale.order.line', 'create',
-                            array(array(
-//                            'create_uid' => 43, //Administrator
-                                'order_id' => (int)$odoo_order_id,
-                                'product_id' => (int)$cod['product_id'],
-                                'order_partner_id' => (int)$odoo_partner,
-                                'product_uom_qty' => 1,
-                                'price_unit' => (float)$cod['price_unit'],
-                                'purchase_price' => (float)$cod['price_unit']
-                            ))
-                        );
-                        if (isset($response['faultCode']) && $response['faultCode']) {
-                            $error_detail = !empty($response['faultString']) ? $response['faultString'] : $response['faultCode'];
-                            $error_msg = 'Error creating cash on delivery line: ' . $error_detail;
-                            $this->log->write('Error Creating Cash On Delivery Line: '. $error_detail);
-                            $json['errors'][]= $error_msg;
-                            $json['success'] = false;
-                            return $json;
-                        }
-                    }
+                if (!$response['success']) {
+                    $this->log->write('Error Creating Mapped Total Line: ' . $response['error']);
+                    $json['errors'][] = $response['error'];
+                    $json['success'] = false;
+                    return $json;
                 }
             }
             // Write comment that should consist of OpenCrat order number and
@@ -1747,6 +1877,8 @@ class ModelExtensionModuleOdooConnector extends Model {
             PRIMARY KEY (`id`),
             UNIQUE KEY `unique_currency_code` (`opencart_currency_code`)
           ) DEFAULT CHARSET=utf8 COMMENT='Maps OpenCart currencies to Odoo currencies'");
+
+        $this->ensureOrderTotalMappingTable();
     }
 
     function uninstall()
@@ -1757,7 +1889,8 @@ class ModelExtensionModuleOdooConnector extends Model {
         $sql .= "`" . DB_PREFIX . "odoo_client_map`, ";
         $sql .= "`" . DB_PREFIX . "odoo_region_map`, ";
         $sql .= "`" . DB_PREFIX . "odoo_payment_acquirer_map`, ";
-        $sql .= "`" . DB_PREFIX . "odoo_currency_map`";
+        $sql .= "`" . DB_PREFIX . "odoo_currency_map`, ";
+        $sql .= "`" . DB_PREFIX . "odoo_order_total_map`";
 
         $this->db->query($sql);
     }
@@ -1896,6 +2029,129 @@ class ModelExtensionModuleOdooConnector extends Model {
     public function getCurrencyMappings() {
         $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "odoo_currency_map ORDER BY opencart_currency_code");
         return $query->rows;
+    }
+
+    public function getOrderTotalMappings() {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "odoo_order_total_map
+            ORDER BY opencart_total_code ASC, priority DESC, id ASC");
+
+        return $query->rows;
+    }
+
+    private function normalizeOrderTotalMappingData($data) {
+        return array(
+            'id' => isset($data['id']) ? (int)$data['id'] : 0,
+            'opencart_total_code' => isset($data['opencart_total_code']) ? trim((string)$data['opencart_total_code']) : '',
+            'title_include_pattern' => isset($data['title_include_pattern']) ? trim((string)$data['title_include_pattern']) : '',
+            'title_exclude_pattern' => isset($data['title_exclude_pattern']) ? trim((string)$data['title_exclude_pattern']) : '',
+            'odoo_product_id' => isset($data['odoo_product_id']) ? (int)$data['odoo_product_id'] : 0,
+            'odoo_product_name' => isset($data['odoo_product_name']) ? trim((string)$data['odoo_product_name']) : '',
+            'priority' => isset($data['priority']) ? (int)$data['priority'] : 0,
+            'is_active' => !empty($data['is_active']) ? 1 : 0,
+        );
+    }
+
+    private function validateOrderTotalMappingData($data, $exclude_id = 0) {
+        if ($data['opencart_total_code'] === '') {
+            return 'OpenCart total code is required';
+        }
+
+        if ($data['is_active'] && $data['odoo_product_id'] <= 0) {
+            return 'Odoo product ID is required for active mappings';
+        }
+
+        $query = $this->db->query("SELECT id
+            FROM " . DB_PREFIX . "odoo_order_total_map
+            WHERE opencart_total_code = '" . $this->db->escape($data['opencart_total_code']) . "'
+            AND title_include_pattern = '" . $this->db->escape($data['title_include_pattern']) . "'
+            AND title_exclude_pattern = '" . $this->db->escape($data['title_exclude_pattern']) . "'
+            AND id != '" . (int)$exclude_id . "'
+            LIMIT 1");
+
+        if ($query->num_rows) {
+            return 'A mapping with the same total code and title filters already exists';
+        }
+
+        return '';
+    }
+
+    public function createOrderTotalMapping($data) {
+        $json = array('success' => false);
+
+        $mapping = $this->normalizeOrderTotalMappingData($data);
+        $error = $this->validateOrderTotalMappingData($mapping);
+
+        if ($error !== '') {
+            $json['error'] = $error;
+            return $json;
+        }
+
+        $this->db->query("INSERT INTO " . DB_PREFIX . "odoo_order_total_map SET
+            opencart_total_code = '" . $this->db->escape($mapping['opencart_total_code']) . "',
+            title_include_pattern = '" . $this->db->escape($mapping['title_include_pattern']) . "',
+            title_exclude_pattern = '" . $this->db->escape($mapping['title_exclude_pattern']) . "',
+            odoo_product_id = '" . (int)$mapping['odoo_product_id'] . "',
+            odoo_product_name = '" . $this->db->escape($mapping['odoo_product_name']) . "',
+            priority = '" . (int)$mapping['priority'] . "',
+            is_active = '" . (int)$mapping['is_active'] . "',
+            created_by = 'admin'");
+
+        $json['success'] = true;
+        $json['message'] = 'Order total mapping created successfully';
+        $json['id'] = $this->db->getLastId();
+
+        return $json;
+    }
+
+    public function updateOrderTotalMapping($data) {
+        $json = array('success' => false);
+
+        $mapping = $this->normalizeOrderTotalMappingData($data);
+
+        if ($mapping['id'] <= 0) {
+            $json['error'] = 'Missing mapping ID';
+            return $json;
+        }
+
+        $error = $this->validateOrderTotalMappingData($mapping, $mapping['id']);
+
+        if ($error !== '') {
+            $json['error'] = $error;
+            return $json;
+        }
+
+        $this->db->query("UPDATE " . DB_PREFIX . "odoo_order_total_map SET
+            opencart_total_code = '" . $this->db->escape($mapping['opencart_total_code']) . "',
+            title_include_pattern = '" . $this->db->escape($mapping['title_include_pattern']) . "',
+            title_exclude_pattern = '" . $this->db->escape($mapping['title_exclude_pattern']) . "',
+            odoo_product_id = '" . (int)$mapping['odoo_product_id'] . "',
+            odoo_product_name = '" . $this->db->escape($mapping['odoo_product_name']) . "',
+            priority = '" . (int)$mapping['priority'] . "',
+            is_active = '" . (int)$mapping['is_active'] . "',
+            modified_on = NOW()
+            WHERE id = '" . (int)$mapping['id'] . "'");
+
+        $json['success'] = true;
+        $json['message'] = 'Order total mapping updated successfully';
+
+        return $json;
+    }
+
+    public function deleteOrderTotalMapping($id) {
+        $json = array('success' => false);
+
+        if ((int)$id <= 0) {
+            $json['error'] = 'Missing mapping ID';
+            return $json;
+        }
+
+        $this->db->query("DELETE FROM " . DB_PREFIX . "odoo_order_total_map
+            WHERE id = '" . (int)$id . "'");
+
+        $json['success'] = true;
+        $json['message'] = 'Order total mapping deleted successfully';
+
+        return $json;
     }
 
     /**

@@ -19,6 +19,8 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
     ];
 
     public function index() {
+        $this->checkInstall();
+
         $this->load->language('extension/module/odoo_product_mapping');
         $this->document->setTitle($this->language->get('heading_title'));
 
@@ -194,6 +196,38 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
         $data['footer'] = $this->load->controller('common/footer');
 
         $this->response->setOutput($this->load->view('extension/module/odoo_product_mapping', $data));
+    }
+
+    public function checkInstall() {
+        $required_connector_tables = array(
+            'odoo_config',
+            'odoo_product_variant_map',
+            'odoo_order_total_map'
+        );
+
+        $connector_install_required = false;
+
+        foreach ($required_connector_tables as $table_name) {
+            $query = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . $this->db->escape($table_name) . "'");
+
+            if ($query->num_rows == 0) {
+                $connector_install_required = true;
+                break;
+            }
+        }
+
+        if ($connector_install_required) {
+            $this->load->model('extension/module/odoo_connector');
+            $this->model_extension_module_odoo_connector->install();
+        }
+
+        $query = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . "odoo_product_sync_log'");
+
+        if ($query->num_rows == 0) {
+            $this->load->controller('extension/module/odoo_product_sync/install');
+        }
+
+        return true;
     }
 
     public function sync()

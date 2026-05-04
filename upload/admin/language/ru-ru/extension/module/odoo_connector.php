@@ -9,6 +9,12 @@ $_['text_environment_status'] = 'Environment Status';
 $_['text_test_mode']        = 'Test Environment';
 $_['text_production_mode']  = 'Production Environment';
 $_['text_connection_success'] = 'Connection successfully tested!';
+$_['text_order_total_mapping'] = 'Сопоставление итогов заказа с Odoo';
+$_['text_order_total_mapping_list'] = 'Сопоставления итогов заказа';
+$_['text_order_total_mapping_help'] = 'Настройте сопоставление кодов order_total OpenCart, таких как shipping, reward и voucher, с сервисными товарами Odoo. Фильтры заголовка проверяются как подстроки без учета регистра.';
+$_['text_no_results']         = 'Нет данных';
+$_['text_confirm']            = 'Вы уверены?';
+$_['text_home']               = 'Главная';
 
 // Entry
 $_['entry_url']             = 'Odoo URL';
@@ -25,10 +31,22 @@ $_['help_sync_batch_size']       = 'Number of products to sync in each batch (1-
 $_['help_virtual_available_categories'] = 'Для товаров из выбранных категорий при синхронизации остатков будет использоваться Odoo virtual_available вместо qty_available - outgoing_qty.';
 $_['error_sync_batch_size']      = 'Sync batch size must be between 1 and 100!';
 
+// Columns
+$_['column_total_code']       = 'Код total OpenCart';
+$_['column_include_pattern']  = 'Включить по заголовку';
+$_['column_exclude_pattern']  = 'Исключить по заголовку';
+$_['column_odoo_product_id']  = 'ID товара Odoo';
+$_['column_odoo_product_name'] = 'Название товара Odoo';
+$_['column_priority']         = 'Приоритет';
+$_['column_active']           = 'Активно';
+$_['column_action']           = 'Действие';
+
 // Button
 $_['button_save']           = 'Save';
 $_['button_cancel']         = 'Cancel';
 $_['button_test_connection'] = 'Test Connection';
+$_['button_add_mapping']      = 'Добавить сопоставление';
+$_['button_delete']           = 'Удалить';
 
 // Error
 $_['error_permission']      = 'Warning: You do not have permission to modify Odoo connector!';
