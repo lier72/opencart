@@ -140,6 +140,12 @@ class ModelExtensionModuleReviewRequest extends Model {
 		$state = $this->getCustomerState($email);
 		$suppressed_until_sql = $this->getSuppressedUntilSql();
 
+		$this->db->query("UPDATE `" . DB_PREFIX . "review_request_queue`
+			SET `date_replied` = IFNULL(`date_replied`, NOW()),
+				`reply_channel` = IF(`reply_channel` = '', '" . $this->db->escape($channel) . "', `reply_channel`),
+				`date_modified` = NOW()
+			WHERE `review_request_id` = '" . (int)$review_request_id . "'");
+
 		if ($state) {
 			$this->db->query("UPDATE `" . DB_PREFIX . "review_request_customer`
 				SET `customer_id` = '" . (int)$request_info['customer_id'] . "',
@@ -170,6 +176,8 @@ class ModelExtensionModuleReviewRequest extends Model {
 			return;
 		}
 
+		$queue_table = DB_PREFIX . "review_request_queue";
+
 		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "review_request_queue` (
 			`review_request_id` int(11) NOT NULL AUTO_INCREMENT,
 			`order_id` int(11) NOT NULL,
@@ -183,6 +191,8 @@ class ModelExtensionModuleReviewRequest extends Model {
 			`last_error` text,
 			`date_send_after` datetime NOT NULL,
 			`date_sent` datetime DEFAULT NULL,
+			`date_replied` datetime DEFAULT NULL,
+			`reply_channel` varchar(32) NOT NULL DEFAULT '',
 			`date_added` datetime NOT NULL,
 			`date_modified` datetime NOT NULL,
 			PRIMARY KEY (`review_request_id`),
@@ -204,6 +214,14 @@ class ModelExtensionModuleReviewRequest extends Model {
 			PRIMARY KEY (`review_request_customer_id`),
 			UNIQUE KEY `email` (`email`)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'date_replied'")->num_rows) {
+			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `date_replied` datetime DEFAULT NULL AFTER `date_sent`");
+		}
+
+		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'reply_channel'")->num_rows) {
+			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `reply_channel` varchar(32) NOT NULL DEFAULT '' AFTER `date_replied`");
+		}
 
 		$this->schema_checked = true;
 	}

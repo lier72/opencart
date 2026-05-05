@@ -91,9 +91,69 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$data['customer_groups'] = $this->model_customer_customer_group->getCustomerGroups();
 		$data['cron_command'] = 'php admin/review_request_cron.php';
 
+		$statistics_report = $this->model_extension_module_review_request->getStatisticsReport();
+		$reply_channel_report = $this->model_extension_module_review_request->getReplyChannelStatisticsReport();
+
+		$data['statistics_reports'] = array(
+			array(
+				'label' => $this->language->get('text_last_day'),
+				'sent' => $statistics_report['day']['sent'],
+				'replied' => $statistics_report['day']['replied'],
+				'skipped' => $statistics_report['day']['skipped']
+			),
+			array(
+				'label' => $this->language->get('text_last_week'),
+				'sent' => $statistics_report['week']['sent'],
+				'replied' => $statistics_report['week']['replied'],
+				'skipped' => $statistics_report['week']['skipped']
+			),
+			array(
+				'label' => $this->language->get('text_last_month'),
+				'sent' => $statistics_report['month']['sent'],
+				'replied' => $statistics_report['month']['replied'],
+				'skipped' => $statistics_report['month']['skipped']
+			),
+			array(
+				'label' => $this->language->get('text_all_time'),
+				'sent' => $statistics_report['all']['sent'],
+				'replied' => $statistics_report['all']['replied'],
+				'skipped' => $statistics_report['all']['skipped']
+			)
+		);
+
+		$data['statistics_channel_headers'] = array();
+
+		foreach ($reply_channel_report['channels'] as $channel_code) {
+			$data['statistics_channel_headers'][] = array(
+				'code' => $channel_code,
+				'label' => $this->getReplyChannelLabel($channel_code)
+			);
+		}
+
+		$data['statistics_channel_reports'] = array(
+			array(
+				'label' => $this->language->get('text_last_day'),
+				'counts' => $reply_channel_report['periods']['day']
+			),
+			array(
+				'label' => $this->language->get('text_last_week'),
+				'counts' => $reply_channel_report['periods']['week']
+			),
+			array(
+				'label' => $this->language->get('text_last_month'),
+				'counts' => $reply_channel_report['periods']['month']
+			),
+			array(
+				'label' => $this->language->get('text_all_time'),
+				'counts' => $reply_channel_report['periods']['all']
+			)
+		);
+
 		$language_keys = array(
 			'heading_title',
 			'text_edit',
+			'text_settings',
+			'text_statistics',
 			'text_enabled',
 			'text_disabled',
 			'text_general',
@@ -103,6 +163,15 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'text_storefront',
 			'text_cron',
 			'text_extension',
+			'text_last_day',
+			'text_last_week',
+			'text_last_month',
+			'text_all_time',
+			'text_sent',
+			'text_replied',
+			'text_skipped',
+			'text_reply_channels',
+			'text_period',
 			'entry_status',
 			'entry_email_status',
 			'entry_show_on_order_page',
@@ -139,6 +208,8 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'help_widget_code',
 			'help_layout',
 			'help_cron',
+			'help_statistics',
+			'help_statistics_tracking_disabled',
 			'text_product_only',
 			'text_skip_email',
 			'button_save',
@@ -246,6 +317,18 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		}
 
 		return $value;
+	}
+
+	private function getReplyChannelLabel($channel_code) {
+		if ($channel_code == 'google') {
+			return $this->language->get('text_google');
+		}
+
+		if ($channel_code == 'yandex') {
+			return $this->language->get('text_yandex');
+		}
+
+		return ucwords(str_replace(array('-', '_'), ' ', $channel_code));
 	}
 
 	private function sendReviewRequest($request_info) {

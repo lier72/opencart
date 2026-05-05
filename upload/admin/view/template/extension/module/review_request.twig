@@ -69,68 +69,115 @@
           .btn-edit-email .fa {
             margin-right: 4px;
           }
+          .review-request-tab-content {
+            padding-top: 20px;
+          }
+          .review-request-stat-card .panel-body {
+            min-height: 150px;
+          }
+          .review-request-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+          }
+          .review-request-stat-row:first-child {
+            padding-top: 0;
+          }
+          .review-request-stat-row:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+          }
+          .review-request-stat-row span {
+            color: #666;
+            font-size: 11px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+          }
+          .review-request-stat-row strong {
+            color: #333;
+            font-size: 24px;
+            line-height: 1;
+          }
+          .review-request-channel-table th,
+          .review-request-channel-table td {
+            text-align: center;
+            vertical-align: middle !important;
+          }
+          .review-request-channel-table th:first-child,
+          .review-request-channel-table td:first-child {
+            text-align: left;
+            white-space: nowrap;
+          }
         </style>
         <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-review-request" class="form-horizontal">
-          <div class="row">
-            <div class="col-sm-8">
-              <fieldset>
-                <legend>{{ text_general }}</legend>
+          <ul class="nav nav-tabs">
+            <li class="active"><a href="#tab-settings" data-toggle="tab">{{ text_settings }}</a></li>
+            <li><a href="#tab-statistics" data-toggle="tab">{{ text_statistics }}</a></li>
+          </ul>
+          <div class="tab-content review-request-tab-content">
+            <div class="tab-pane active" id="tab-settings">
+              <div class="row">
+                <div class="col-sm-8">
+                  <fieldset>
+                    <legend>{{ text_general }}</legend>
 
-                <div class="form-group">
-                  <label class="col-sm-4 control-label" for="input-status">{{ entry_status }}</label>
-                  <div class="col-sm-8">
-                    <select name="module_review_request_status" id="input-status" class="form-control">
-                      {% if module_review_request_status %}
-                      <option value="1" selected="selected">{{ text_enabled }}</option>
-                      <option value="0">{{ text_disabled }}</option>
-                      {% else %}
-                      <option value="1">{{ text_enabled }}</option>
-                      <option value="0" selected="selected">{{ text_disabled }}</option>
-                      {% endif %}
-                    </select>
-                  </div>
-                </div>
+                    <div class="form-group">
+                      <label class="col-sm-4 control-label" for="input-status">{{ entry_status }}</label>
+                      <div class="col-sm-8">
+                        <select name="module_review_request_status" id="input-status" class="form-control">
+                          {% if module_review_request_status %}
+                          <option value="1" selected="selected">{{ text_enabled }}</option>
+                          <option value="0">{{ text_disabled }}</option>
+                          {% else %}
+                          <option value="1">{{ text_enabled }}</option>
+                          <option value="0" selected="selected">{{ text_disabled }}</option>
+                          {% endif %}
+                        </select>
+                      </div>
+                    </div>
 
-                <div class="form-group">
-                  <label class="col-sm-4 control-label" for="input-email-status">{{ entry_email_status }}</label>
-                  <div class="col-sm-8">
-                    <select name="module_review_request_email_status" id="input-email-status" class="form-control">
-                      {% if module_review_request_email_status %}
-                      <option value="1" selected="selected">{{ text_enabled }}</option>
-                      <option value="0">{{ text_disabled }}</option>
-                      {% else %}
-                      <option value="1">{{ text_enabled }}</option>
-                      <option value="0" selected="selected">{{ text_disabled }}</option>
-                      {% endif %}
-                    </select>
-                  </div>
-                </div>
+                    <div class="form-group">
+                      <label class="col-sm-4 control-label" for="input-email-status">{{ entry_email_status }}</label>
+                      <div class="col-sm-8">
+                        <select name="module_review_request_email_status" id="input-email-status" class="form-control">
+                          {% if module_review_request_email_status %}
+                          <option value="1" selected="selected">{{ text_enabled }}</option>
+                          <option value="0">{{ text_disabled }}</option>
+                          {% else %}
+                          <option value="1">{{ text_enabled }}</option>
+                          <option value="0" selected="selected">{{ text_disabled }}</option>
+                          {% endif %}
+                        </select>
+                      </div>
+                    </div>
 
-                <div class="form-group">
-                  <label class="col-sm-4 control-label" for="input-show-on-order-page">{{ entry_show_on_order_page }}</label>
-                  <div class="col-sm-8">
-                    <select name="module_review_request_show_on_order_page" id="input-show-on-order-page" class="form-control">
-                      {% if module_review_request_show_on_order_page %}
-                      <option value="1" selected="selected">{{ text_enabled }}</option>
-                      <option value="0">{{ text_disabled }}</option>
-                      {% else %}
-                      <option value="1">{{ text_enabled }}</option>
-                      <option value="0" selected="selected">{{ text_disabled }}</option>
-                      {% endif %}
-                    </select>
-                  </div>
-                </div>
+                    <div class="form-group">
+                      <label class="col-sm-4 control-label" for="input-show-on-order-page">{{ entry_show_on_order_page }}</label>
+                      <div class="col-sm-8">
+                        <select name="module_review_request_show_on_order_page" id="input-show-on-order-page" class="form-control">
+                          {% if module_review_request_show_on_order_page %}
+                          <option value="1" selected="selected">{{ text_enabled }}</option>
+                          <option value="0">{{ text_disabled }}</option>
+                          {% else %}
+                          <option value="1">{{ text_enabled }}</option>
+                          <option value="0" selected="selected">{{ text_disabled }}</option>
+                          {% endif %}
+                        </select>
+                      </div>
+                    </div>
 
-                <div class="form-group">
-                  <label class="col-sm-4 control-label" for="input-delay-days">{{ entry_delay_days }}</label>
-                  <div class="col-sm-8">
-                    <input type="text" name="module_review_request_delay_days" value="{{ module_review_request_delay_days }}" placeholder="7" id="input-delay-days" class="form-control" />
-                    <div class="help-block">{{ help_delay_days }}</div>
-                    {% if error_delay_days %}
-                    <div class="text-danger">{{ error_delay_days }}</div>
-                    {% endif %}
-                  </div>
-                </div>
+                    <div class="form-group">
+                      <label class="col-sm-4 control-label" for="input-delay-days">{{ entry_delay_days }}</label>
+                      <div class="col-sm-8">
+                        <input type="text" name="module_review_request_delay_days" value="{{ module_review_request_delay_days }}" placeholder="7" id="input-delay-days" class="form-control" />
+                        <div class="help-block">{{ help_delay_days }}</div>
+                        {% if error_delay_days %}
+                        <div class="text-danger">{{ error_delay_days }}</div>
+                        {% endif %}
+                      </div>
+                    </div>
 
                 <div class="form-group">
                   <label class="col-sm-4 control-label" for="input-order-statuses">{{ entry_order_statuses }}</label>
@@ -266,10 +313,10 @@
                     </div>
                   </div>
                 </div>
-              </fieldset>
+                  </fieldset>
 
-              <fieldset>
-                <legend>{{ text_google }}</legend>
+                  <fieldset>
+                    <legend>{{ text_google }}</legend>
 
                 <div class="form-group">
                   <label class="col-sm-4 control-label" for="input-google-status">{{ entry_google_status }}</label>
@@ -309,10 +356,10 @@
                     <div class="help-block">{{ help_widget_code }}</div>
                   </div>
                 </div>
-              </fieldset>
+                  </fieldset>
 
-              <fieldset>
-                <legend>{{ text_yandex }}</legend>
+                  <fieldset>
+                    <legend>{{ text_yandex }}</legend>
 
                 <div class="form-group">
                   <label class="col-sm-4 control-label" for="input-yandex-status">{{ entry_yandex_status }}</label>
@@ -352,35 +399,95 @@
                     <div class="help-block">{{ help_widget_code }}</div>
                   </div>
                 </div>
-              </fieldset>
+                  </fieldset>
+                </div>
+
+                <div class="col-sm-4">
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h3 class="panel-title"><i class="fa fa-envelope"></i> {{ text_email }}</h3>
+                    </div>
+                    <div class="panel-body">
+                      <p>{{ help_layout }}</p>
+                    </div>
+                  </div>
+
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h3 class="panel-title"><i class="fa fa-desktop"></i> {{ text_storefront }}</h3>
+                    </div>
+                    <div class="panel-body">
+                      <p>{{ help_widget_code }}</p>
+                    </div>
+                  </div>
+
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h3 class="panel-title"><i class="fa fa-clock-o"></i> {{ text_cron }}</h3>
+                    </div>
+                    <div class="panel-body">
+                      <p>{{ help_cron }}</p>
+                      <pre style="white-space: pre-wrap;">{{ cron_command }}</pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-
-            <div class="col-sm-4">
-              <div class="panel panel-default">
-                <div class="panel-heading">
-                  <h3 class="panel-title"><i class="fa fa-envelope"></i> {{ text_email }}</h3>
+            <div class="tab-pane" id="tab-statistics">
+              <div class="alert alert-info"><i class="fa fa-bar-chart"></i> {{ help_statistics }}</div>
+              {% if not module_review_request_track_review_clicks %}
+              <div class="alert alert-warning"><i class="fa fa-exclamation-circle"></i> {{ help_statistics_tracking_disabled }}</div>
+              {% endif %}
+              <div class="row">
+                {% for statistics in statistics_reports %}
+                <div class="col-sm-6 col-md-3">
+                  <div class="panel panel-default review-request-stat-card">
+                    <div class="panel-heading">
+                      <h3 class="panel-title">{{ statistics.label }}</h3>
+                    </div>
+                    <div class="panel-body">
+                      <div class="review-request-stat-row">
+                        <span>{{ text_sent }}</span>
+                        <strong>{{ statistics.sent }}</strong>
+                      </div>
+                      <div class="review-request-stat-row">
+                        <span>{{ text_replied }}</span>
+                        <strong>{{ statistics.replied }}</strong>
+                      </div>
+                      <div class="review-request-stat-row">
+                        <span>{{ text_skipped }}</span>
+                        <strong>{{ statistics.skipped }}</strong>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="panel-body">
-                  <p>{{ help_layout }}</p>
-                </div>
+                {% endfor %}
               </div>
-
               <div class="panel panel-default">
                 <div class="panel-heading">
-                  <h3 class="panel-title"><i class="fa fa-desktop"></i> {{ text_storefront }}</h3>
+                  <h3 class="panel-title">{{ text_reply_channels }}</h3>
                 </div>
-                <div class="panel-body">
-                  <p>{{ help_widget_code }}</p>
-                </div>
-              </div>
-
-              <div class="panel panel-default">
-                <div class="panel-heading">
-                  <h3 class="panel-title"><i class="fa fa-clock-o"></i> {{ text_cron }}</h3>
-                </div>
-                <div class="panel-body">
-                  <p>{{ help_cron }}</p>
-                  <pre style="white-space: pre-wrap;">{{ cron_command }}</pre>
+                <div class="table-responsive">
+                  <table class="table table-bordered table-striped review-request-channel-table">
+                    <thead>
+                      <tr>
+                        <th>{{ text_period }}</th>
+                        {% for channel in statistics_channel_headers %}
+                        <th>{{ channel.label }}</th>
+                        {% endfor %}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for channel_row in statistics_channel_reports %}
+                      <tr>
+                        <td>{{ channel_row.label }}</td>
+                        {% for channel in statistics_channel_headers %}
+                        <td>{{ channel_row.counts[channel.code] }}</td>
+                        {% endfor %}
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

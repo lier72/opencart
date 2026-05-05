@@ -64,6 +64,8 @@ class ModelExtensionModuleReviewRequest extends Model {
 			return;
 		}
 
+		$queue_table = DB_PREFIX . "review_request_queue";
+
 		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "review_request_queue` (
 			`review_request_id` int(11) NOT NULL AUTO_INCREMENT,
 			`order_id` int(11) NOT NULL,
@@ -77,6 +79,8 @@ class ModelExtensionModuleReviewRequest extends Model {
 			`last_error` text,
 			`date_send_after` datetime NOT NULL,
 			`date_sent` datetime DEFAULT NULL,
+			`date_replied` datetime DEFAULT NULL,
+			`reply_channel` varchar(32) NOT NULL DEFAULT '',
 			`date_added` datetime NOT NULL,
 			`date_modified` datetime NOT NULL,
 			PRIMARY KEY (`review_request_id`),
@@ -99,6 +103,14 @@ class ModelExtensionModuleReviewRequest extends Model {
 			UNIQUE KEY `email` (`email`)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
+		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'date_replied'")->num_rows) {
+			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `date_replied` datetime DEFAULT NULL AFTER `date_sent`");
+		}
+
+		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'reply_channel'")->num_rows) {
+			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `reply_channel` varchar(32) NOT NULL DEFAULT '' AFTER `date_replied`");
+		}
+
 		$this->schema_checked = true;
 	}
 
@@ -111,6 +123,55 @@ class ModelExtensionModuleReviewRequest extends Model {
 			LIMIT " . (int)$limit);
 
 		return $query->rows;
+	}
+
+	public function getStatisticsReport() {
+		$this->ensureSchema();
+
+		$report = array();
+		$periods = array(
+			'day' => 'DATE_SUB(NOW(), INTERVAL 1 DAY)',
+			'week' => 'DATE_SUB(NOW(), INTERVAL 7 DAY)',
+			'month' => 'DATE_SUB(NOW(), INTERVAL 1 MONTH)',
+			'all' => ''
+		);
+
+		foreach ($periods as $key => $since_sql) {
+			$report[$key] = $this->getStatisticsTotals($since_sql);
+		}
+
+		return $report;
+	}
+
+	public function getReplyChannelStatisticsReport() {
+		$this->ensureSchema();
+
+		$report = array(
+			'channels' => $this->getTrackedReplyChannels(),
+			'periods' => array()
+		);
+		$periods = array(
+			'day' => 'DATE_SUB(NOW(), INTERVAL 1 DAY)',
+			'week' => 'DATE_SUB(NOW(), INTERVAL 7 DAY)',
+			'month' => 'DATE_SUB(NOW(), INTERVAL 1 MONTH)',
+			'all' => ''
+		);
+		$query = $this->db->query("SELECT DISTINCT `reply_channel`
+			FROM `" . DB_PREFIX . "review_request_queue`
+			WHERE `reply_channel` <> ''
+			ORDER BY `reply_channel` ASC");
+
+		foreach ($query->rows as $row) {
+			if (!in_array($row['reply_channel'], $report['channels'], true)) {
+				$report['channels'][] = $row['reply_channel'];
+			}
+		}
+
+		foreach ($periods as $key => $since_sql) {
+			$report['periods'][$key] = $this->getReplyChannelTotals($since_sql, $report['channels']);
+		}
+
+		return $report;
 	}
 
 	public function markSent($review_request_id) {
@@ -257,6 +318,61 @@ class ModelExtensionModuleReviewRequest extends Model {
 		}
 
 		return "DATE_ADD(NOW(), INTERVAL " . $cooldown_days . " DAY)";
+	}
+
+	private function getStatisticsTotals($since_sql = '') {
+		$date_sent_filter = $since_sql ? " AND `date_sent` >= " . $since_sql : '';
+		$date_replied_filter = $since_sql ? " AND `date_replied` >= " . $since_sql : '';
+
+		$query = $this->db->query("SELECT
+			SUM(CASE
+				WHEN `status` = 'sent'
+					AND `date_sent` IS NOT NULL
+					AND COALESCE(`last_error`, '') NOT LIKE 'Skipped:%'" . $date_sent_filter . "
+				THEN 1 ELSE 0
+			END) AS `sent`,
+			SUM(CASE
+				WHEN `date_replied` IS NOT NULL" . $date_replied_filter . "
+				THEN 1 ELSE 0
+			END) AS `replied`,
+			SUM(CASE
+				WHEN `status` = 'sent'
+					AND `date_sent` IS NOT NULL
+					AND COALESCE(`last_error`, '') LIKE 'Skipped:%'" . $date_sent_filter . "
+				THEN 1 ELSE 0
+			END) AS `skipped`
+			FROM `" . DB_PREFIX . "review_request_queue`");
+
+		return array(
+			'sent' => (int)$query->row['sent'],
+			'replied' => (int)$query->row['replied'],
+			'skipped' => (int)$query->row['skipped']
+		);
+	}
+
+	private function getReplyChannelTotals($since_sql = '', $channels = array()) {
+		$totals = array();
+		$date_replied_filter = $since_sql ? " AND `date_replied` >= " . $since_sql : '';
+
+		foreach ($channels as $channel) {
+			$totals[$channel] = 0;
+		}
+
+		$query = $this->db->query("SELECT `reply_channel`, COUNT(*) AS `total`
+			FROM `" . DB_PREFIX . "review_request_queue`
+			WHERE `date_replied` IS NOT NULL
+				AND `reply_channel` <> ''" . $date_replied_filter . "
+			GROUP BY `reply_channel`");
+
+		foreach ($query->rows as $row) {
+			$totals[$row['reply_channel']] = (int)$row['total'];
+		}
+
+		return $totals;
+	}
+
+	private function getTrackedReplyChannels() {
+		return array('google', 'yandex');
 	}
 
 	private function normalizeEmail($email) {
