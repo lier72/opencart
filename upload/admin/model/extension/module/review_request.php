@@ -34,6 +34,7 @@ class ModelExtensionModuleReviewRequest extends Model {
 			'module_review_request_org_review_cooldown_days' => 180,
 			'module_review_request_org_review_suppressed_mode' => 'product_only',
 			'module_review_request_track_review_clicks' => 1,
+			'module_review_request_review_bonus_points' => 0,
 			'module_review_request_email_subject' => '',
 			'module_review_request_email_body' => '',
 			'module_review_request_google_status' => 0,
@@ -43,10 +44,14 @@ class ModelExtensionModuleReviewRequest extends Model {
 			'module_review_request_yandex_status' => 0,
 			'module_review_request_yandex_reference' => '',
 			'module_review_request_yandex_review_url' => '',
-			'module_review_request_yandex_widget_code' => ''
+			'module_review_request_yandex_widget_code' => '',
+			'module_review_request_schema_version' => $this->getSchemaVersion()
 		);
 
-		$this->model_setting_setting->editSetting('module_review_request', array_merge($defaults, $current_settings));
+		$settings = array_merge($defaults, $current_settings);
+		$settings['module_review_request_schema_version'] = $this->getSchemaVersion();
+
+		$this->model_setting_setting->editSetting('module_review_request', $settings);
 	}
 
 	public function uninstall() {
@@ -59,7 +64,7 @@ class ModelExtensionModuleReviewRequest extends Model {
 		$this->db->query("DROP TABLE IF EXISTS `" . DB_PREFIX . "review_request_queue`");
 	}
 
-	public function ensureSchema() {
+	private function ensureSchema() {
 		if ($this->schema_checked) {
 			return;
 		}
@@ -81,6 +86,9 @@ class ModelExtensionModuleReviewRequest extends Model {
 			`date_sent` datetime DEFAULT NULL,
 			`date_replied` datetime DEFAULT NULL,
 			`reply_channel` varchar(32) NOT NULL DEFAULT '',
+			`review_bonus_awarded_at` datetime DEFAULT NULL,
+			`review_bonus_award_points` int(11) NOT NULL DEFAULT 0,
+			`review_bonus_awarded_by` int(11) NOT NULL DEFAULT 0,
 			`date_added` datetime NOT NULL,
 			`date_modified` datetime NOT NULL,
 			PRIMARY KEY (`review_request_id`),
@@ -111,12 +119,22 @@ class ModelExtensionModuleReviewRequest extends Model {
 			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `reply_channel` varchar(32) NOT NULL DEFAULT '' AFTER `date_replied`");
 		}
 
+		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'review_bonus_awarded_at'")->num_rows) {
+			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `review_bonus_awarded_at` datetime DEFAULT NULL AFTER `reply_channel`");
+		}
+
+		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'review_bonus_award_points'")->num_rows) {
+			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `review_bonus_award_points` int(11) NOT NULL DEFAULT 0 AFTER `review_bonus_awarded_at`");
+		}
+
+		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'review_bonus_awarded_by'")->num_rows) {
+			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `review_bonus_awarded_by` int(11) NOT NULL DEFAULT 0 AFTER `review_bonus_award_points`");
+		}
+
 		$this->schema_checked = true;
 	}
 
 	public function getDueRequests($limit = 50) {
-		$this->ensureSchema();
-
 		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "review_request_queue`
 			WHERE `status` = 'pending' AND `date_send_after` <= NOW()
 			ORDER BY `review_request_id` ASC
@@ -126,8 +144,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function getStatisticsReport() {
-		$this->ensureSchema();
-
 		$report = array();
 		$periods = array(
 			'day' => 'DATE_SUB(NOW(), INTERVAL 1 DAY)',
@@ -144,8 +160,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function getReplyChannelStatisticsReport() {
-		$this->ensureSchema();
-
 		$report = array(
 			'channels' => $this->getTrackedReplyChannels(),
 			'periods' => array()
@@ -174,9 +188,95 @@ class ModelExtensionModuleReviewRequest extends Model {
 		return $report;
 	}
 
-	public function markSent($review_request_id) {
-		$this->ensureSchema();
+	public function getRecentReviewReplies($limit = 100) {
+		$query = $this->db->query("SELECT
+			rr.`review_request_id`,
+			rr.`order_id`,
+			rr.`customer_id`,
+			rr.`email`,
+			rr.`reply_channel`,
+			rr.`date_sent`,
+			rr.`date_replied`,
+			rr.`review_bonus_awarded_at`,
+			rr.`review_bonus_award_points`,
+			o.`firstname`,
+			o.`lastname`
+			FROM `" . DB_PREFIX . "review_request_queue` rr
+			LEFT JOIN `" . DB_PREFIX . "order` o ON (o.`order_id` = rr.`order_id`)
+			WHERE rr.`date_replied` IS NOT NULL
+			ORDER BY rr.`date_replied` DESC
+			LIMIT " . (int)$limit);
 
+		return $query->rows;
+	}
+
+	public function awardReviewBonus($review_request_id, $user_id = 0) {
+		$review_bonus_points = $this->getReviewBonusPoints();
+
+		if ($review_bonus_points <= 0) {
+			return array(
+				'success' => false,
+				'error_code' => 'disabled'
+			);
+		}
+
+		$review_request_info = $this->getReviewRequestForBonus($review_request_id);
+
+		if (!$review_request_info) {
+			return array(
+				'success' => false,
+				'error_code' => 'not_found'
+			);
+		}
+
+		if (!$review_request_info['date_replied']) {
+			return array(
+				'success' => false,
+				'error_code' => 'not_replied'
+			);
+		}
+
+		if ($review_request_info['review_bonus_awarded_at']) {
+			return array(
+				'success' => false,
+				'error_code' => 'already_awarded',
+				'awarded_at' => $review_request_info['review_bonus_awarded_at'],
+				'points' => (int)$review_request_info['review_bonus_award_points']
+			);
+		}
+
+		if ((int)$review_request_info['customer_id'] <= 0) {
+			return array(
+				'success' => false,
+				'error_code' => 'guest'
+			);
+		}
+
+		$this->load->model('customer/customer');
+
+		$description = 'Review bonus for order #' . (int)$review_request_info['order_id'];
+
+		if ($review_request_info['reply_channel']) {
+			$description .= ' via ' . $review_request_info['reply_channel'];
+		}
+
+		$this->model_customer_customer->addReward((int)$review_request_info['customer_id'], $description, $review_bonus_points, 0);
+
+		$this->db->query("UPDATE `" . DB_PREFIX . "review_request_queue`
+			SET `review_bonus_awarded_at` = NOW(),
+				`review_bonus_award_points` = '" . (int)$review_bonus_points . "',
+				`review_bonus_awarded_by` = '" . (int)$user_id . "',
+				`date_modified` = NOW()
+			WHERE `review_request_id` = '" . (int)$review_request_id . "'");
+
+		return array(
+			'success' => true,
+			'points' => $review_bonus_points,
+			'customer_id' => (int)$review_request_info['customer_id']
+		);
+	}
+
+	public function markSent($review_request_id) {
 		$this->db->query("UPDATE `" . DB_PREFIX . "review_request_queue`
 			SET `status` = 'sent',
 				`send_attempts` = `send_attempts` + 1,
@@ -187,8 +287,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function markSkipped($review_request_id, $reason) {
-		$this->ensureSchema();
-
 		$this->db->query("UPDATE `" . DB_PREFIX . "review_request_queue`
 			SET `status` = 'sent',
 				`last_error` = '" . $this->db->escape('Skipped: ' . $reason) . "',
@@ -198,8 +296,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function markRetry($review_request_id, $error) {
-		$this->ensureSchema();
-
 		$query = $this->db->query("SELECT `send_attempts` FROM `" . DB_PREFIX . "review_request_queue` WHERE `review_request_id` = '" . (int)$review_request_id . "'");
 
 		if (!$query->num_rows) {
@@ -227,8 +323,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function canAskOrganizationReview($email) {
-		$this->ensureSchema();
-
 		$email = $this->normalizeEmail($email);
 
 		if (!$email) {
@@ -253,8 +347,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function markOrganizationReviewSent($email, $customer_id, $order_id) {
-		$this->ensureSchema();
-
 		$email = $this->normalizeEmail($email);
 
 		if (!$email) {
@@ -375,6 +467,34 @@ class ModelExtensionModuleReviewRequest extends Model {
 		return array('google', 'yandex');
 	}
 
+	private function getReviewRequestForBonus($review_request_id) {
+		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "review_request_queue`
+			WHERE `review_request_id` = '" . (int)$review_request_id . "'
+			LIMIT 1");
+
+		return $query->num_rows ? $query->row : array();
+	}
+
+	private function getReviewBonusPoints() {
+		$points = $this->config->get('module_review_request_review_bonus_points');
+
+		if ($points === null || $points === '') {
+			$points = 0;
+		}
+
+		$points = (int)$points;
+
+		if ($points < 0) {
+			$points = 0;
+		}
+
+		return $points;
+	}
+
+	public function needsUpgrade() {
+		return (int)$this->config->get('module_review_request_schema_version') < $this->getSchemaVersion();
+	}
+
 	private function normalizeEmail($email) {
 		return strtolower(trim((string)$email));
 	}
@@ -383,5 +503,9 @@ class ModelExtensionModuleReviewRequest extends Model {
 		$customer_group_ids = array_map('intval', (array)$this->config->get('module_review_request_excluded_customer_group_ids'));
 
 		return array_values(array_filter($customer_group_ids));
+	}
+
+	private function getSchemaVersion() {
+		return 2;
 	}
 }

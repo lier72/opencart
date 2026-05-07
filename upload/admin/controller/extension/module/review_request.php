@@ -11,7 +11,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$this->load->model('setting/setting');
 		$this->load->model('localisation/order_status');
 		$this->load->model('customer/customer_group');
-		$this->model_extension_module_review_request->ensureSchema();
+		$this->upgradeModuleIfNeeded();
 
 		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
 			$post_data = $this->request->post;
@@ -43,6 +43,18 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$data['error_warning'] = isset($this->error['warning']) ? $this->error['warning'] : '';
 		$data['error_delay_days'] = isset($this->error['delay_days']) ? $this->error['delay_days'] : '';
 		$data['error_org_cooldown_days'] = isset($this->error['org_cooldown_days']) ? $this->error['org_cooldown_days'] : '';
+		$data['error_review_bonus_points'] = isset($this->error['review_bonus_points']) ? $this->error['review_bonus_points'] : '';
+
+		if (!$data['error_warning'] && !empty($this->session->data['error_warning'])) {
+			$data['error_warning'] = $this->session->data['error_warning'];
+			unset($this->session->data['error_warning']);
+		}
+
+		$data['success'] = !empty($this->session->data['success']) ? $this->session->data['success'] : '';
+
+		if (!empty($this->session->data['success'])) {
+			unset($this->session->data['success']);
+		}
 
 		$data['breadcrumbs'] = array();
 
@@ -73,6 +85,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$data['module_review_request_org_review_cooldown_days'] = $this->getSettingValue('module_review_request_org_review_cooldown_days', 180);
 		$data['module_review_request_org_review_suppressed_mode'] = $this->getSettingValue('module_review_request_org_review_suppressed_mode', 'product_only');
 		$data['module_review_request_track_review_clicks'] = $this->getSettingValue('module_review_request_track_review_clicks', 1);
+		$data['module_review_request_review_bonus_points'] = $this->getSettingValue('module_review_request_review_bonus_points', 0);
 		$data['module_review_request_order_status_ids'] = (array)$this->getSettingValue('module_review_request_order_status_ids', (array)$this->config->get('config_complete_status'));
 		$data['module_review_request_email_subject'] = $this->getSettingValue('module_review_request_email_subject', $this->getDefaultEmailSubject($this->config->get('config_admin_language')));
 		$data['module_review_request_email_body'] = $this->getSettingValue('module_review_request_email_body', $this->getDefaultEmailBody($this->config->get('config_admin_language')));
@@ -93,6 +106,8 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 
 		$statistics_report = $this->model_extension_module_review_request->getStatisticsReport();
 		$reply_channel_report = $this->model_extension_module_review_request->getReplyChannelStatisticsReport();
+		$recent_review_replies = $this->model_extension_module_review_request->getRecentReviewReplies();
+		$review_bonus_points = (int)$data['module_review_request_review_bonus_points'];
 
 		$data['statistics_reports'] = array(
 			array(
@@ -149,6 +164,52 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			)
 		);
 
+		$data['recent_review_replies'] = array();
+
+		foreach ($recent_review_replies as $reply_info) {
+			$reviewer = trim(html_entity_decode($reply_info['firstname'], ENT_QUOTES, 'UTF-8') . ' ' . html_entity_decode($reply_info['lastname'], ENT_QUOTES, 'UTF-8'));
+			$customer_link = '';
+			$award_bonus_link = '';
+			$bonus_awarded = !empty($reply_info['review_bonus_awarded_at']);
+			$can_award_bonus = false;
+			$bonus_status = '';
+
+			if ((int)$reply_info['customer_id'] > 0) {
+				$customer_link = $this->url->link('customer/customer/edit', 'user_token=' . $this->session->data['user_token'] . '&customer_id=' . (int)$reply_info['customer_id'], true);
+			}
+
+			if (!$reviewer) {
+				$reviewer = $reply_info['email'];
+			}
+
+			if ($bonus_awarded) {
+				$bonus_status = sprintf($this->language->get('text_bonus_awarded'), (int)$reply_info['review_bonus_award_points'], date('d.m.Y H:i', strtotime($reply_info['review_bonus_awarded_at'])));
+			} elseif ((int)$reply_info['customer_id'] <= 0) {
+				$bonus_status = $this->language->get('text_bonus_guest');
+			} elseif ($review_bonus_points <= 0) {
+				$bonus_status = $this->language->get('text_bonus_disabled');
+			} else {
+				$can_award_bonus = true;
+				$award_bonus_link = $this->url->link('extension/module/review_request/awardReviewBonus', 'user_token=' . $this->session->data['user_token'] . '&review_request_id=' . (int)$reply_info['review_request_id'], true) . '#tab-statistics';
+			}
+
+			$data['recent_review_replies'][] = array(
+				'review_request_id' => (int)$reply_info['review_request_id'],
+				'order_id' => (int)$reply_info['order_id'],
+				'order_link' => $this->url->link('sale/order/info', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . (int)$reply_info['order_id'], true),
+				'customer_id' => (int)$reply_info['customer_id'],
+				'customer_link' => $customer_link,
+				'reviewer' => $reviewer,
+				'email' => $reply_info['email'],
+				'channel' => $this->getReplyChannelLabel($reply_info['reply_channel']),
+				'date_sent' => $reply_info['date_sent'] ? date('d.m.Y H:i', strtotime($reply_info['date_sent'])) : '',
+				'date_replied' => date('d.m.Y H:i', strtotime($reply_info['date_replied'])),
+				'can_award_bonus' => $can_award_bonus,
+				'award_bonus_link' => $award_bonus_link,
+				'bonus_status' => $bonus_status
+			);
+		}
+
 		$language_keys = array(
 			'heading_title',
 			'text_edit',
@@ -171,6 +232,12 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'text_replied',
 			'text_skipped',
 			'text_reply_channels',
+			'text_review_follow_up',
+			'text_no_review_replies',
+			'text_sent_label',
+			'text_bonus_awarded',
+			'text_bonus_disabled',
+			'text_bonus_guest',
 			'text_period',
 			'entry_status',
 			'entry_email_status',
@@ -182,6 +249,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'entry_org_review_cooldown_days',
 			'entry_org_review_suppressed_mode',
 			'entry_track_review_clicks',
+			'entry_review_bonus_points',
 			'entry_email_subject',
 			'entry_email_body',
 			'entry_google_status',
@@ -192,12 +260,18 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'entry_yandex_reference',
 			'entry_yandex_review_url',
 			'entry_yandex_widget_code',
+			'column_clicked',
+			'column_reviewer',
+			'column_channel',
+			'column_order',
+			'column_actions',
 			'help_delay_days',
 			'help_order_statuses',
 			'help_excluded_customer_groups',
 			'help_org_review_cooldown_days',
 			'help_org_review_suppressed_mode',
 			'help_track_review_clicks',
+			'help_review_bonus_points',
 			'help_email_subject',
 			'help_email_body',
 			'help_email_placeholders',
@@ -210,8 +284,13 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			'help_cron',
 			'help_statistics',
 			'help_statistics_tracking_disabled',
+			'help_review_follow_up',
 			'text_product_only',
 			'text_skip_email',
+			'button_order',
+			'button_customer',
+			'button_award_bonus',
+			'button_reward_points',
 			'button_save',
 			'button_cancel'
 		);
@@ -239,6 +318,31 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$this->model_extension_module_review_request->uninstall();
 	}
 
+	public function awardReviewBonus() {
+		$this->load->language('extension/module/review_request');
+		$this->load->model('extension/module/review_request');
+
+		if (!$this->user->hasPermission('modify', 'extension/module/review_request')) {
+			$this->session->data['error_warning'] = $this->language->get('error_permission');
+			$this->response->redirect($this->url->link('extension/module/review_request', 'user_token=' . $this->session->data['user_token'], true) . '#tab-statistics');
+			return;
+		}
+
+		$this->upgradeModuleIfNeeded();
+
+		$review_request_id = isset($this->request->get['review_request_id']) ? (int)$this->request->get['review_request_id'] : 0;
+		$result = $this->model_extension_module_review_request->awardReviewBonus($review_request_id, (int)$this->user->getId());
+
+		if (!empty($result['success'])) {
+			$this->session->data['success'] = sprintf($this->language->get('text_review_bonus_success'), (int)$result['points']);
+		} else {
+			$error_key = 'error_review_bonus_' . (!empty($result['error_code']) ? $result['error_code'] : 'failed');
+			$this->session->data['error_warning'] = $this->language->get($error_key);
+		}
+
+		$this->response->redirect($this->url->link('extension/module/review_request', 'user_token=' . $this->session->data['user_token'], true) . '#tab-statistics');
+	}
+
 	public function cron() {
 		$this->log->write('Review Request: cron started');
 
@@ -250,7 +354,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		}
 
 		$this->load->model('extension/module/review_request');
-		$this->model_extension_module_review_request->ensureSchema();
+		$this->upgradeModuleIfNeeded();
 
 		$requests = $this->model_extension_module_review_request->getDueRequests();
 		$sent = 0;
@@ -293,6 +397,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 
 		$delay_days = isset($this->request->post['module_review_request_delay_days']) ? $this->request->post['module_review_request_delay_days'] : 0;
 		$org_cooldown_days = isset($this->request->post['module_review_request_org_review_cooldown_days']) ? $this->request->post['module_review_request_org_review_cooldown_days'] : 0;
+		$review_bonus_points = isset($this->request->post['module_review_request_review_bonus_points']) ? $this->request->post['module_review_request_review_bonus_points'] : 0;
 
 		if (!is_numeric($delay_days) || (int)$delay_days < 0) {
 			$this->error['delay_days'] = $this->language->get('error_delay_days');
@@ -300,6 +405,10 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 
 		if (!is_numeric($org_cooldown_days) || (int)$org_cooldown_days < 0) {
 			$this->error['org_cooldown_days'] = $this->language->get('error_org_cooldown_days');
+		}
+
+		if (!is_numeric($review_bonus_points) || (int)$review_bonus_points < 0) {
+			$this->error['review_bonus_points'] = $this->language->get('error_review_bonus_points');
 		}
 
 		return !$this->error;
@@ -389,7 +498,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$data['order_id'] = (int)$order_info['order_id'];
 		$data['order_date'] = $order_date;
 		$data['email_intro'] = $this->buildEmailIntro($language_code, $store_name, $order_info['order_id'], $order_date, !empty($channels));
-		$data['organization_review_section'] = $this->renderOrganizationReviewSection($channels, $language_code, $order_info['order_id'], $store_name);
+		$data['organization_review_section'] = $this->renderOrganizationReviewSection($channels, $language_code, $order_info['order_id'], $store_name, $order_info['customer_id'] ? $this->getConfiguredReviewBonusPoints() : 0);
 		$data['order_link'] = '';
 		$data['google_review_url'] = '';
 		$data['yandex_review_url'] = '';
@@ -402,12 +511,12 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		foreach ($channels as $channel) {
 			if ($channel['code'] == 'google') {
 				$data['google_review_url'] = $channel['url'];
-				$data['google_button'] = $this->renderEmailButton($channel['label'], $channel['url'], $channel['color']);
+				$data['google_button'] = $this->renderEmailButton($channel['label'], $channel['url'], $channel['button_style']);
 			}
 
 			if ($channel['code'] == 'yandex') {
 				$data['yandex_review_url'] = $channel['url'];
-				$data['yandex_button'] = $this->renderEmailButton($channel['label'], $channel['url'], $channel['color']);
+				$data['yandex_button'] = $this->renderEmailButton($channel['label'], $channel['url'], $channel['button_style']);
 			}
 		}
 
@@ -474,15 +583,13 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 				'status' => 'module_review_request_google_status',
 				'reference' => 'module_review_request_google_reference',
 				'url' => 'module_review_request_google_review_url',
-				'label' => $language->get('text_google'),
-				'color' => 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)'
+				'label' => $language->get('text_google')
 			),
 			'yandex' => array(
 				'status' => 'module_review_request_yandex_status',
 				'reference' => 'module_review_request_yandex_reference',
 				'url' => 'module_review_request_yandex_review_url',
-				'label' => $language->get('text_yandex'),
-				'color' => 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)'
+				'label' => $language->get('text_yandex')
 			)
 		);
 
@@ -510,7 +617,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 				'code' => $code,
 				'label' => $config['label'],
 				'url' => $url,
-				'color' => $config['color']
+				'button_style' => $this->getReviewChannelButtonStyle($code)
 			);
 		}
 
@@ -595,7 +702,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$html = '';
 
 		foreach ($channels as $channel) {
-			$html .= $this->renderEmailButton($channel['label'], $channel['url'], $channel['color']);
+			$html .= $this->renderEmailButton($channel['label'], $channel['url'], $channel['button_style']);
 		}
 
 		return $html;
@@ -619,7 +726,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		return '<p style="font-size: 16px; color: #374151; line-height: 1.6;">Thank you for ordering from <strong>' . $store_name . '</strong>. Order <strong>#' . (int)$order_id . '</strong> from <strong>' . htmlspecialchars($order_date, ENT_QUOTES, 'UTF-8') . '</strong> is complete. If you have a moment, we would love to hear what you think about the products from this order.</p>';
 	}
 
-	private function renderOrganizationReviewSection($channels, $language_code, $order_id, $store_name) {
+	private function renderOrganizationReviewSection($channels, $language_code, $order_id, $store_name, $review_bonus_points = 0) {
 		if (!$channels) {
 			return '';
 		}
@@ -635,6 +742,7 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 			$html .= '<div style="background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 6px; padding: 15px; margin: 20px 0;">';
 			$html .= '<p style="margin: 0; color: #155e75; font-size: 14px;"><strong>Подсказка:</strong><br>&#128172; Можно написать всего пару предложений о сервисе, доставке или качестве заказа<br>&#128197; Заказ: <strong>#' . $order_id . '</strong><br>&#127970; Магазин: <strong>' . $store_name . '</strong></p>';
 			$html .= '</div>';
+			$html .= $this->renderReviewBonusNotice($language_code, $review_bonus_points);
 			$html .= '<p style="font-size: 16px; color: #374151; line-height: 1.6;">Выберите удобную площадку:</p>';
 			$html .= '<div style="text-align: center; margin: 30px 0;">' . $this->renderReviewButtons($channels) . '</div>';
 
@@ -648,18 +756,96 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 		$html .= '<div style="background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 6px; padding: 15px; margin: 20px 0;">';
 		$html .= '<p style="margin: 0; color: #155e75; font-size: 14px;"><strong>Tip:</strong><br>&#128172; A few words about service, delivery, or the order experience are enough<br>&#128197; Order: <strong>#' . $order_id . '</strong><br>&#127970; Store: <strong>' . $store_name . '</strong></p>';
 		$html .= '</div>';
+		$html .= $this->renderReviewBonusNotice($language_code, $review_bonus_points);
 		$html .= '<p style="font-size: 16px; color: #374151; line-height: 1.6;">Choose whichever platform is more convenient:</p>';
 		$html .= '<div style="text-align: center; margin: 30px 0;">' . $this->renderReviewButtons($channels) . '</div>';
 
 		return $html;
 	}
 
-	private function renderEmailButton($label, $url, $color) {
+	private function renderReviewBonusNotice($language_code, $review_bonus_points) {
+		$review_bonus_points = (int)$review_bonus_points;
+
+		if ($review_bonus_points <= 0) {
+			return '';
+		}
+
+		if ($this->isRussianLanguage($language_code)) {
+			return '<div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 15px; margin: 20px 0;">'
+				. '<p style="margin: 0; color: #166534; font-size: 14px;"><strong>Бонус за отзыв:</strong><br>После проверки опубликованного отзыва начислим <strong>' . $review_bonus_points . ' бонусных баллов</strong> на ваш аккаунт.</p>'
+				. '</div>';
+		}
+
+		return '<div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 15px; margin: 20px 0;">'
+			. '<p style="margin: 0; color: #166534; font-size: 14px;"><strong>Review bonus:</strong><br>After we verify the published review, we will add <strong>' . $review_bonus_points . ' bonus points</strong> to your customer account.</p>'
+			. '</div>';
+	}
+
+	private function getReviewChannelButtonStyle($code) {
+		if ($code == 'google') {
+			return array(
+				'background' => '#ffffff',
+				'text_color' => '#202124',
+				'border' => '1px solid #dadce0',
+				'box_shadow' => '0 1px 2px rgba(60, 64, 67, 0.18)',
+				'icon_html' => $this->getReviewChannelIconHtml($code),
+				'padding' => '14px 24px',
+				'border_radius' => '8px'
+			);
+		}
+
+		if ($code == 'yandex') {
+			return array(
+				'background' => 'linear-gradient(135deg, #fc3f1d 0%, #e02d0c 100%)',
+				'text_color' => '#ffffff',
+				'border' => '1px solid #d82a0c',
+				'box_shadow' => '0 4px 10px rgba(252, 63, 29, 0.18)',
+				'icon_html' => $this->getReviewChannelIconHtml($code),
+				'padding' => '14px 24px',
+				'border_radius' => '8px'
+			);
+		}
+
+		return array();
+	}
+
+	private function getReviewChannelIconHtml($code) {
+		if ($code == 'google') {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2045c0-.638-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2086 1.125-.8427 2.0782-1.7963 2.7164v2.2582h2.9081c1.7018-1.5664 2.6846-3.8741 2.6846-6.6155z"/><path fill="#34A853" d="M9 18c2.43 0 4.4673-.8064 5.9564-2.1791l-2.9081-2.2582c-.8064.54-1.8368.8591-3.0482.8591-2.3441 0-4.3282-1.5845-5.0364-3.7109H.9573v2.3327C2.4382 15.9836 5.4818 18 9 18z"/><path fill="#FBBC05" d="M3.9636 10.7109C3.7832 10.1709 3.6818 9.5945 3.6818 9s.1014-1.1709.2818-1.7109V4.9573H.9573C.3477 6.1732 0 7.5491 0 9s.3477 2.8268.9573 4.0427l3.0063-2.3318z"/><path fill="#EA4335" d="M9 3.5782c1.3214 0 2.5077.4541 3.4405 1.345l2.5813-2.5814C13.4632.8918 11.43 0 9 0 5.4818 0 2.4382 2.0164.9573 4.9573l3.0063 2.3318C4.6718 5.1627 6.6559 3.5782 9 3.5782z"/></svg>';
+		}
+
+		if ($code == 'yandex') {
+			return '<span style="display:inline-block; width:20px; height:20px; border-radius:5px; background:#ffffff; color:#fc3f1d; font-family:Arial, sans-serif; font-size:14px; font-weight:700; line-height:20px; text-align:center;">Я</span>';
+		}
+
+		return '';
+	}
+
+	private function renderEmailButton($label, $url, $style) {
 		if (!$url) {
 			return '';
 		}
 
-		return '<a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" style="display:inline-block; margin:0 12px 12px 0; padding:14px 28px; background:' . htmlspecialchars($color, ENT_QUOTES, 'UTF-8') . '; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</a>';
+		$button_style = array(
+			'background' => is_array($style) && !empty($style['background']) ? $style['background'] : (string)$style,
+			'text_color' => is_array($style) && !empty($style['text_color']) ? $style['text_color'] : '#ffffff',
+			'border' => is_array($style) && !empty($style['border']) ? $style['border'] : 'none',
+			'box_shadow' => is_array($style) && !empty($style['box_shadow']) ? $style['box_shadow'] : 'none',
+			'icon_html' => is_array($style) && !empty($style['icon_html']) ? $style['icon_html'] : '',
+			'padding' => is_array($style) && !empty($style['padding']) ? $style['padding'] : '14px 28px',
+			'border_radius' => is_array($style) && !empty($style['border_radius']) ? $style['border_radius'] : '6px'
+		);
+
+		$html = '<a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" style="display:inline-block; margin:0 12px 12px 0; padding:' . htmlspecialchars($button_style['padding'], ENT_QUOTES, 'UTF-8') . '; background:' . htmlspecialchars($button_style['background'], ENT_QUOTES, 'UTF-8') . '; color:' . htmlspecialchars($button_style['text_color'], ENT_QUOTES, 'UTF-8') . '; text-decoration:none; border-radius:' . htmlspecialchars($button_style['border_radius'], ENT_QUOTES, 'UTF-8') . '; border:' . htmlspecialchars($button_style['border'], ENT_QUOTES, 'UTF-8') . '; box-shadow:' . htmlspecialchars($button_style['box_shadow'], ENT_QUOTES, 'UTF-8') . '; font-weight:bold; font-size:16px; font-family:Arial, sans-serif; white-space:nowrap;">';
+
+		if ($button_style['icon_html']) {
+			$html .= '<span style="display:inline-block; vertical-align:middle; line-height:0; margin-right:10px;">' . $button_style['icon_html'] . '</span>';
+		}
+
+		$html .= '<span style="display:inline-block; vertical-align:middle;">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</span>';
+		$html .= '</a>';
+
+		return $html;
 	}
 
 	private function renderProductReviewSection($product_review_links, $heading) {
@@ -744,5 +930,27 @@ class ControllerExtensionModuleReviewRequest extends Controller {
 
 	private function isRussianLanguage($language_code) {
 		return strpos((string)$language_code, 'ru') === 0 || (string)$language_code == 'russian';
+	}
+
+	private function getConfiguredReviewBonusPoints() {
+		$points = $this->config->get('module_review_request_review_bonus_points');
+
+		if ($points === null || $points === '') {
+			$points = 0;
+		}
+
+		$points = (int)$points;
+
+		if ($points < 0) {
+			$points = 0;
+		}
+
+		return $points;
+	}
+
+	private function upgradeModuleIfNeeded() {
+		if ($this->model_extension_module_review_request->needsUpgrade()) {
+			$this->model_extension_module_review_request->install();
+		}
 	}
 }

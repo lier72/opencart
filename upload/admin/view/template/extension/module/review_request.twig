@@ -20,6 +20,11 @@
       <button type="button" class="close" data-dismiss="alert">&times;</button>
     </div>
     {% endif %}
+    {% if success %}
+    <div class="alert alert-success"><i class="fa fa-check-circle"></i> {{ success }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
     <div class="panel panel-default">
       <div class="panel-heading">
         <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
@@ -282,6 +287,17 @@
                 </div>
 
                 <div class="form-group">
+                  <label class="col-sm-4 control-label" for="input-review-bonus-points">{{ entry_review_bonus_points }}</label>
+                  <div class="col-sm-8">
+                    <input type="text" name="module_review_request_review_bonus_points" value="{{ module_review_request_review_bonus_points }}" placeholder="0" id="input-review-bonus-points" class="form-control" />
+                    <div class="help-block">{{ help_review_bonus_points }}</div>
+                    {% if error_review_bonus_points %}
+                    <div class="text-danger">{{ error_review_bonus_points }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="form-group">
                   <label class="col-sm-4 control-label" for="input-email-subject">{{ entry_email_subject }}</label>
                   <div class="col-sm-8">
                     <input type="text" name="module_review_request_email_subject" value="{{ module_review_request_email_subject }}" id="input-email-subject" class="form-control" />
@@ -490,6 +506,75 @@
                   </table>
                 </div>
               </div>
+              <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h3 class="panel-title">{{ text_review_follow_up }}</h3>
+                </div>
+                <div class="panel-body">
+                  <p style="margin-bottom: 15px;">{{ help_review_follow_up }}</p>
+                  <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                      <thead>
+                        <tr>
+                          <th>{{ column_clicked }}</th>
+                          <th>{{ column_reviewer }}</th>
+                          <th>{{ column_channel }}</th>
+                          <th>{{ column_order }}</th>
+                          <th class="text-right">{{ column_actions }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% if recent_review_replies %}
+                        {% for review_reply in recent_review_replies %}
+                        <tr>
+                          <td>
+                            <strong>{{ review_reply.date_replied }}</strong>
+                            {% if review_reply.date_sent %}
+                            <br />
+                            <small>{{ text_sent_label }}: {{ review_reply.date_sent }}</small>
+                            {% endif %}
+                          </td>
+                          <td>
+                            {% if review_reply.customer_link %}
+                            <a href="{{ review_reply.customer_link }}" target="_blank"><strong>{{ review_reply.reviewer }}</strong></a>
+                            {% else %}
+                            <strong>{{ review_reply.reviewer }}</strong>
+                            {% endif %}
+                            <br />
+                            <small>{{ review_reply.email }}</small>
+                          </td>
+                          <td>{{ review_reply.channel }}</td>
+                          <td>
+                            <a href="{{ review_reply.order_link }}" target="_blank">#{{ review_reply.order_id }}</a>
+                          </td>
+                          <td class="text-right">
+                            <div class="btn-group btn-group-xs">
+                              <a href="{{ review_reply.order_link }}" target="_blank" class="btn btn-default">{{ button_order }}</a>
+                              {% if review_reply.customer_link %}
+                              <a href="{{ review_reply.customer_link }}" target="_blank" class="btn btn-default">{{ button_customer }}</a>
+                              {% endif %}
+                              {% if review_reply.can_award_bonus %}
+                              <a href="{{ review_reply.award_bonus_link }}" class="btn btn-success">{{ button_award_bonus }}</a>
+                              {% endif %}
+                            </div>
+                            {% if review_reply.bonus_status %}
+                            <div style="margin-top: 8px;">
+                              <small class="text-muted">{{ review_reply.bonus_status }}</small>
+                            </div>
+                            {% endif %}
+                          </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                          <td colspan="5" class="text-center">{{ text_no_review_replies }}</td>
+                        </tr>
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </form>
@@ -527,5 +612,13 @@ function updateEmailPreview(type) {
 $('#input-email-subject').on('input', function() {
   $('#subject-preview-review-request').text($(this).val() || '{{ module_review_request_email_subject|e('js') }}');
 });
+
+if (window.location.hash) {
+  var $tab = $('.nav-tabs a[href="' + window.location.hash + '"]');
+
+  if ($tab.length) {
+    $tab.tab('show');
+  }
+}
 //--></script>
 {{ footer }}

@@ -1,7 +1,5 @@
 <?php
 class ModelExtensionModuleReviewRequest extends Model {
-	private $schema_checked = false;
-
 	public function isEnabled() {
 		return (bool)$this->config->get('module_review_request_status');
 	}
@@ -40,8 +38,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function canAskOrganizationReview($email) {
-		$this->ensureSchema();
-
 		$email = $this->normalizeEmail($email);
 
 		if (!$email) {
@@ -62,8 +58,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function queueOrder($order_info, $order_status_id) {
-		$this->ensureSchema();
-
 		if (!$this->hasEligibleStatus($order_status_id)) {
 			return false;
 		}
@@ -105,8 +99,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function getTrackedOrganizationUrl($review_request_id, $channel) {
-		$this->ensureSchema();
-
 		$request_info = $this->getQueueRequest($review_request_id);
 
 		if (!$request_info) {
@@ -117,8 +109,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 	}
 
 	public function trackOrganizationReviewClick($review_request_id, $channel) {
-		$this->ensureSchema();
-
 		$request_info = $this->getQueueRequest($review_request_id);
 
 		if (!$request_info) {
@@ -169,61 +159,6 @@ class ModelExtensionModuleReviewRequest extends Model {
 		}
 
 		return true;
-	}
-
-	private function ensureSchema() {
-		if ($this->schema_checked) {
-			return;
-		}
-
-		$queue_table = DB_PREFIX . "review_request_queue";
-
-		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "review_request_queue` (
-			`review_request_id` int(11) NOT NULL AUTO_INCREMENT,
-			`order_id` int(11) NOT NULL,
-			`customer_id` int(11) NOT NULL DEFAULT 0,
-			`store_id` int(11) NOT NULL DEFAULT 0,
-			`language_code` varchar(32) NOT NULL DEFAULT '',
-			`email` varchar(96) NOT NULL DEFAULT '',
-			`order_status_id` int(11) NOT NULL DEFAULT 0,
-			`status` enum('pending','sent','failed') NOT NULL DEFAULT 'pending',
-			`send_attempts` int(11) NOT NULL DEFAULT 0,
-			`last_error` text,
-			`date_send_after` datetime NOT NULL,
-			`date_sent` datetime DEFAULT NULL,
-			`date_replied` datetime DEFAULT NULL,
-			`reply_channel` varchar(32) NOT NULL DEFAULT '',
-			`date_added` datetime NOT NULL,
-			`date_modified` datetime NOT NULL,
-			PRIMARY KEY (`review_request_id`),
-			UNIQUE KEY `order_id` (`order_id`),
-			KEY `status_date_send_after` (`status`,`date_send_after`)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "review_request_customer` (
-			`review_request_customer_id` int(11) NOT NULL AUTO_INCREMENT,
-			`email` varchar(96) NOT NULL,
-			`customer_id` int(11) NOT NULL DEFAULT 0,
-			`last_order_id` int(11) NOT NULL DEFAULT 0,
-			`last_org_request_sent_at` datetime DEFAULT NULL,
-			`last_org_click_at` datetime DEFAULT NULL,
-			`last_org_click_channel` varchar(32) NOT NULL DEFAULT '',
-			`org_review_suppressed_until` datetime DEFAULT NULL,
-			`date_added` datetime NOT NULL,
-			`date_modified` datetime NOT NULL,
-			PRIMARY KEY (`review_request_customer_id`),
-			UNIQUE KEY `email` (`email`)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'date_replied'")->num_rows) {
-			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `date_replied` datetime DEFAULT NULL AFTER `date_sent`");
-		}
-
-		if (!$this->db->query("SHOW COLUMNS FROM `" . $queue_table . "` LIKE 'reply_channel'")->num_rows) {
-			$this->db->query("ALTER TABLE `" . $queue_table . "` ADD `reply_channel` varchar(32) NOT NULL DEFAULT '' AFTER `date_replied`");
-		}
-
-		$this->schema_checked = true;
 	}
 
 	private function hasQueuedOrder($order_id) {
