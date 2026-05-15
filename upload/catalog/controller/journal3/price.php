@@ -106,9 +106,9 @@ class ControllerJournal3Price extends Controller {
 				$data['price'] = false;
 			}
 
-			// retail price - Max's addition to show retail price for non-default customer groups
+			// retail price stays per-unit on the product page; do not multiply by selected quantity
 			if ($this->customer->isLogged() && $this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id')) {
-				$data['retail_price'] = $this->currency->format($this->tax->calculate($product_info['retail_price'] + $options_price, $product_info['tax_class_id'], $this->config->get('config_tax')) * $quantity, $this->session->data['currency']);
+				$data['retail_price'] = $this->currency->format($this->tax->calculate($product_info['retail_price'] + $options_price, $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
 			} else {
 				$data['retail_price'] = false;
 			}
