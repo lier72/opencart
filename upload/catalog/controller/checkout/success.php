@@ -60,9 +60,17 @@ class ControllerCheckoutSuccess extends Controller {
 		}
 
 		$gcr_allowed = true;
+		$gcr_customer_id = 0;
 
 		if ($this->customer->isLogged()) {
+			$gcr_customer_id = (int)$this->customer->getId();
 			$gcr_allowed = ((int)$this->customer->getGroupId() === (int)$this->config->get('config_customer_group_id'));
+
+			if ($gcr_allowed) {
+				$this->load->model('account/customer');
+
+				$gcr_allowed = !$this->model_account_customer->hasGcrOptinShown($gcr_customer_id);
+			}
 		}
 
 		if ($order_id && $gcr_merchant_id !== '' && $gcr_allowed) {
@@ -86,6 +94,10 @@ class ControllerCheckoutSuccess extends Controller {
 						'delivery_country' => $delivery_country,
 						'estimated_delivery_date' => date('Y-m-d', strtotime($order_info['date_added'] . ' +' . $estimated_days . ' days'))
 					);
+
+					if ($gcr_customer_id) {
+						$this->model_account_customer->markGcrOptinShown($gcr_customer_id);
+					}
 				}
 			}
 		}

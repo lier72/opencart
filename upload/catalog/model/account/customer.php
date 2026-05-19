@@ -1,5 +1,6 @@
 <?php
 class ModelAccountCustomer extends Model {
+
 	public function addCustomer($data) {
 		if (isset($data['customer_group_id']) && is_array($this->config->get('config_customer_group_display')) && in_array($data['customer_group_id'], $this->config->get('config_customer_group_display'))) {
 			$customer_group_id = $data['customer_group_id'];
@@ -58,6 +59,16 @@ class ModelAccountCustomer extends Model {
 		$query = $this->db->query("SELECT customer_id, firstname, lastname, email FROM `" . DB_PREFIX . "customer` WHERE code = '" . $this->db->escape($code) . "' AND code != ''");
 
 		return $query->row;
+	}
+
+	public function hasGcrOptinShown($customer_id) {
+		$query = $this->db->query("SELECT gcr_optin_shown FROM `" . DB_PREFIX . "customer` WHERE customer_id = '" . (int)$customer_id . "'");
+
+		return !empty($query->row['gcr_optin_shown']);
+	}
+
+	public function markGcrOptinShown($customer_id) {
+		$this->db->query("UPDATE `" . DB_PREFIX . "customer` SET gcr_optin_shown = '1' WHERE customer_id = '" . (int)$customer_id . "'");
 	}
 
 	public function getCustomerByToken($token) {
