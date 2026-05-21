@@ -1,9 +1,5 @@
-/**
- * Custom CSS for retail and dealer price display
- * Max Surdu modifications
- */
+/* Custom CSS for retail and dealer price display — Max Surdu */
 
-/* Price wrapper for flex layout */
 .price-wrapper {
   display: flex;
   justify-content: space-between;
@@ -12,7 +8,6 @@
   gap: 10px;
 }
 
-/* Retail price - normal display on the left */
 .retail-price {
   font-weight: 400;
   font-size: 34px;
@@ -20,7 +15,6 @@
   color: inherit;
 }
 
-/* Small price - dealer price value in blue on right */
 .small-price {
   color: rgb(66, 139, 202) !important;
   font-size: 22px !important;
@@ -28,25 +22,35 @@
   text-align: right;
 }
 
-/* Product grid adjustments */
+/* Grid bottom-stack: name top, price+rating+buttons pinned to bottom */
+.product-grid .product-thumb {
+  display: flex;
+  flex-direction: column;
+}
+.product-grid .product-thumb .description {
+  margin-bottom: 0;
+}
+.product-grid .product-thumb .caption .price {
+  margin-top: auto;
+}
+.product-grid .product-thumb .caption .buttons-wrapper {
+  margin-top: 0;
+}
+
 .product-grid .retail-price {
   font-size: 24px !important;
 }
-
 .product-grid .small-price {
   font-size: 16px !important;
 }
 
-/* Product list adjustments */
 .product-list .retail-price {
   font-size: 28px !important;
 }
-
 .product-list .small-price {
   font-size: 18px !important;
 }
 
-/* Single product page adjustments */
 .product-info .price-group {
   display: flex !important;
   justify-content: flex-start;
@@ -55,7 +59,6 @@
   flex-wrap: wrap;
 }
 
-/* Retail price on single product page inherits product-price styling */
 .product-info .retail-price {
   font-size: inherit;
   font-weight: inherit;
@@ -63,7 +66,6 @@
   line-height: inherit;
 }
 
-/* Dealer price wrapper on single product page */
 .product-info .dealer-price-wrapper,
 .dealer-price-wrapper {
   display: flex;
@@ -72,7 +74,6 @@
   gap: 5px;
 }
 
-/* Dealer label text with tooltip */
 .product-info .dealer-label {
   font-size: 14px !important;
   color: rgb(66, 139, 202) !important;
@@ -85,39 +86,16 @@
   font-size: 28px !important;
 }
 
-/* Mobile responsive adjustments */
 @media (max-width: 768px) {
-  .retail-price {
-    font-size: 22px;
-  }
-
-  .small-price {
-    font-size: 16px;
-  }
-
-  .price-wrapper {
-    gap: 5px;
-  }
-
-  .product-info .small-price {
-    font-size: 20px;
-  }
-
-  .product-info .price-group {
-    gap: 10px;
-  }
+  .retail-price { font-size: 22px; }
+  .small-price { font-size: 16px; }
+  .price-wrapper { gap: 5px; }
+  .product-info .small-price { font-size: 20px; }
+  .product-info .price-group { gap: 10px; }
 }
 
 @media (max-width: 480px) {
-  .retail-price {
-    font-size: 18px;
-  }
-
-  .small-price {
-    font-size: 14px;
-  }
-
-  .product-info .small-price {
-    font-size: 18px;
-  }
+  .retail-price { font-size: 18px; }
+  .small-price { font-size: 14px; }
+  .product-info .small-price { font-size: 18px; }
 }

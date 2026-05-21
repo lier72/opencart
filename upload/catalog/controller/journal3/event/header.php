@@ -14,11 +14,11 @@ class ControllerJournal3EventHeader extends Controller {
 			$this->document->addStyle('catalog/view/theme/journal3/stylesheet/custom.css');
 		}
 
-		// Load retail-dealer price styling
+		// Load retail-dealer price styling after style.min.css (uses addCss so priority sorts after -1 items)
 		if (is_file(DIR_TEMPLATE . 'journal3/stylesheet/retail-dealer.min.css')) {
-			$this->document->addStyle('catalog/view/theme/journal3/stylesheet/retail-dealer.min.css');
+			$this->journal3_document->addCss(file_get_contents(DIR_TEMPLATE . 'journal3/stylesheet/retail-dealer.min.css'), 'retail-dealer.min.css');
 		} else if (is_file(DIR_TEMPLATE . 'journal3/stylesheet/retail-dealer.css')) {
-			$this->document->addStyle('catalog/view/theme/journal3/stylesheet/retail-dealer.css');
+			$this->journal3_document->addCss(file_get_contents(DIR_TEMPLATE . 'journal3/stylesheet/retail-dealer.css'), 'retail-dealer.css');
 		}
 
 		$this->document->addScript('catalog/view/theme/journal3/js/head.js', 'inline');

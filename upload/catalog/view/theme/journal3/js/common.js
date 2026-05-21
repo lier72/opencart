@@ -376,13 +376,17 @@ window['update_popup_height'] = function (iframe) {
 		const docEl = iframeDocument.documentElement;
 		const buttons = iframeDocument.querySelector('.button-group-page');
 
+		// Collapse to 0 before measuring so that viewport-relative heights inside
+		// the iframe (e.g. min-height:100vh on .global-wrapper) resolve to 0px and
+		// cannot inflate scrollHeight, which would otherwise cause a resize-feedback
+		// loop that grows the popup to the full viewport height.
+		iframe.style.height = '0px';
+
 		let height = Math.max(
 			body ? body.scrollHeight : 0,
 			body ? body.offsetHeight : 0,
-			body ? body.clientHeight : 0,
 			docEl ? docEl.scrollHeight : 0,
 			docEl ? docEl.offsetHeight : 0,
-			docEl ? docEl.clientHeight : 0
 		) + 4;
 
 		if (iframeWindow.Journal && iframeWindow.Journal['isQuickviewPopup']) {
