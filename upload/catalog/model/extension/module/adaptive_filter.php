@@ -178,7 +178,7 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
      *
      * @return array
      */
-    private function getStoredPreferences() {
+    public function getStoredPreferences() {
         $user = $this->getUserIdentifier();
 
         // Return empty preferences for bots

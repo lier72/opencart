@@ -3,6 +3,9 @@
     <div class="product-thumb">
       {% if (journal3.getIn(prefix ~ 'NamePosition', _context) == "image") %}
         <div class="name"><a href="{{ product.href }}" title="{{ product.name }}">{{ product.name }}</a></div>
+        {% if product.adaptive_filter_debug_mode and product.personalization_score is defined and product.personalization_score is not null %}
+          <div class="adaptive-filter-score">AF score: {{ product.personalization_score|round(2, 'common') }}</div>
+        {% endif %}
       {% endif %}
       <div class="image-group">
         <div class="image">
@@ -67,6 +70,9 @@
 
         {% if (journal3.getIn(prefix ~ 'NamePosition', _context) == "default") %}
           <div class="name"><a href="{{ product.href }}" title="{{ product.name }}">{{ product.name }}</a></div>
+          {% if product.adaptive_filter_debug_mode and product.personalization_score is defined and product.personalization_score is not null %}
+            <div class="adaptive-filter-score">AF score: {{ product.personalization_score|round(2, 'common') }}</div>
+          {% endif %}
         {% endif %}
 
         {% if product.description and product.description != '..' %}

@@ -22,6 +22,7 @@
       {% for size, count in user_preferences.sizes %}
         <span class="pref-tag pref-size" data-type="size" data-value="{{ size }}">
           {% if size matches '/US\\s*\\(/i' %}{{ shoe_size_icon }}{% else %}{{ apparel_size_icon }}{% endif %} {{ size }}
+          {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
           <button class="remove-pref" aria-label="Remove preference">&times;</button>
         </span>
       {% endfor %}
@@ -32,6 +33,7 @@
         {% set color_name = color_parts[0]|trim %}
         <span class="pref-tag pref-color" data-type="color" data-value="{{ color }}">
           {{ color_icon }} {{ color_name }}
+          {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
           <button class="remove-pref" aria-label="Remove preference">&times;</button>
         </span>
       {% endfor %}
@@ -40,6 +42,7 @@
       {% for gender, count in user_preferences.genders %}
         <span class="pref-tag pref-gender" data-type="gender" data-value="{{ gender }}">
           {% if gender == 'Men' %}♂{% elseif gender == 'Women' %}♀{% else %}⚧{% endif %} {{ gender_labels[gender] ?? gender }}
+          {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
           <button class="remove-pref" aria-label="Remove preference">&times;</button>
         </span>
       {% endfor %}
@@ -48,11 +51,60 @@
       {% for sport, count in user_preferences.sports %}
         <span class="pref-tag pref-sport" data-type="sport" data-value="{{ sport }}">
           {{ sport_icons[sport] ?? default_sport_icon }} {{ sport }}
+          {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
           <button class="remove-pref" aria-label="Remove preference">&times;</button>
         </span>
       {% endfor %}
     {% endif %}
   </div>
+
+  {% if debug_mode %}
+    <details class="adaptive-debug-panel">
+      <summary>AF Debug</summary>
+      <div class="adaptive-debug-grid">
+        {% if raw_preferences.sizes %}
+          <div class="adaptive-debug-row">
+            <span class="adaptive-debug-label">Sizes</span>
+            <div class="adaptive-debug-values">
+              {% for size, count in raw_preferences.sizes %}
+                <span class="adaptive-debug-value">{{ size }}={{ count|round(2, 'common') }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {% if raw_preferences.colors %}
+          <div class="adaptive-debug-row">
+            <span class="adaptive-debug-label">Colors</span>
+            <div class="adaptive-debug-values">
+              {% for color, count in raw_preferences.colors %}
+                <span class="adaptive-debug-value">{{ color }}={{ count|round(2, 'common') }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {% if raw_preferences.genders %}
+          <div class="adaptive-debug-row">
+            <span class="adaptive-debug-label">Genders</span>
+            <div class="adaptive-debug-values">
+              {% for gender, count in raw_preferences.genders %}
+                <span class="adaptive-debug-value">{{ gender }}={{ count|round(2, 'common') }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {% if raw_preferences.sports %}
+          <div class="adaptive-debug-row">
+            <span class="adaptive-debug-label">Sports</span>
+            <div class="adaptive-debug-values">
+              {% for sport, count in raw_preferences.sports %}
+                <span class="adaptive-debug-value">{{ sport }}={{ count|round(2, 'common') }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </details>
+  {% endif %}
 
   <button class="disable-smart-sorting-btn-desktop" id="disable-smart-sorting-desktop">
     {{ text_disable_smart_sorting }}

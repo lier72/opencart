@@ -378,7 +378,9 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         $this->load->language('extension/module/adaptive_filter');
         $this->load->model('extension/module/adaptive_filter');
 
+        $data['debug_mode'] = $this->model_extension_module_adaptive_filter->isDebugMode();
         $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getActivePreferences();
+        $data['raw_preferences'] = $data['debug_mode'] ? $this->model_extension_module_adaptive_filter->getStoredPreferences() : array();
 
         if (!$this->model_extension_module_adaptive_filter->hasPreferences($data['user_preferences'])) {
             return '';
@@ -448,7 +450,9 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         $this->load->language('extension/module/adaptive_filter');
         $this->load->model('extension/module/adaptive_filter');
 
+        $data['debug_mode'] = $this->model_extension_module_adaptive_filter->isDebugMode();
         $data['user_preferences'] = $this->model_extension_module_adaptive_filter->getActivePreferences();
+        $data['raw_preferences'] = $data['debug_mode'] ? $this->model_extension_module_adaptive_filter->getStoredPreferences() : array();
 
         // Only render if user has preferences
         if (!$this->model_extension_module_adaptive_filter->hasPreferences($data['user_preferences'])) {
