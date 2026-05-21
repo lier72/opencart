@@ -281,31 +281,25 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
 
         if ($type === 'manual_add') {
             if (isset($data['size']) && $data['size']) {
-                $preferences['sizes'] = array((string)$data['size'] => $max_preference_value);
+                $preferences['sizes'][(string)$data['size']] = $max_preference_value;
             }
 
             if (isset($data['color']) && $data['color']) {
-                $preferences['colors'] = array((string)$data['color'] => $max_preference_value);
+                $preferences['colors'][(string)$data['color']] = $max_preference_value;
             }
 
             if (isset($data['genders']) && is_array($data['genders'])) {
-                $genders = array();
-
                 foreach ($data['genders'] as $gender) {
                     if ($gender) {
-                        $genders[(string)$gender] = $max_preference_value;
+                        $preferences['genders'][(string)$gender] = $max_preference_value;
                     }
                 }
-
-                if ($genders) {
-                    $preferences['genders'] = $genders;
-                }
             } elseif (isset($data['gender']) && $data['gender']) {
-                $preferences['genders'] = array((string)$data['gender'] => $max_preference_value);
+                $preferences['genders'][(string)$data['gender']] = $max_preference_value;
             }
 
             if (isset($data['sport']) && $data['sport']) {
-                $preferences['sports'] = array((string)$data['sport'] => $max_preference_value);
+                $preferences['sports'][(string)$data['sport']] = $max_preference_value;
             }
 
             $this->savePreferences($preferences);
@@ -2289,10 +2283,13 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
 
             foreach ($color_query->rows as $row) {
                 if (!empty($row['text'])) {
+                    $parsed_color = $this->parseAutocompleteColorValue($row['text']);
+
                     $results[] = array(
                         'type' => 'color',
                         'value' => $row['text'],
-                        'label' => $color_icon . ' ' . $row['text']
+                        'label' => $parsed_color['label'],
+                        'swatch_color' => $parsed_color['swatch_color']
                     );
                 }
             }
@@ -2340,6 +2337,31 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
         $this->cache->set($cache_key, $results, 600);
 
         return $results;
+    }
+
+    /**
+     * Parse color values like "Beige (#F5F5DC)" into a clean label + swatch color.
+     */
+    private function parseAutocompleteColorValue($value) {
+        $value = trim((string)$value);
+        $color_icon = $this->config->get('module_adaptive_filter_color_icon') ?? '🎨';
+
+        if (preg_match('/^(.*?)\s*\((#[0-9A-Fa-f]{3,8})\)\s*$/u', $value, $matches)) {
+            $label = trim($matches[1]);
+            $swatch_color = strtoupper($matches[2]);
+
+            if ($label !== '') {
+                return array(
+                    'label' => $label,
+                    'swatch_color' => $swatch_color,
+                );
+            }
+        }
+
+        return array(
+            'label' => $color_icon . ' ' . $value,
+            'swatch_color' => '',
+        );
     }
 
 }

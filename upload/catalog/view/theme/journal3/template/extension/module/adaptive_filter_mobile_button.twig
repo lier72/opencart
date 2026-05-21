@@ -20,45 +20,73 @@
         <button class="panel-close" id="adaptive-prefs-close">&times;</button>
       </div>
       <div class="panel-body">
-        <p class="modal-subtitle">{{ text_preferences_subtitle }}</p>
-
         <div class="preferences-tags">
           {% if user_preferences.sizes %}
             {% for size, count in user_preferences.sizes %}
-              <span class="pref-tag pref-size" data-type="size" data-value="{{ size }}">
-                {% if size matches '/US\\s*\\(/i' %}{{ shoe_size_icon }}{% else %}{{ apparel_size_icon }}{% endif %} {{ size }}
-                {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
-                <button class="remove-pref" aria-label="Remove preference">&times;</button>
-              </span>
+              <div class="pref-tag-group panel-group">
+                <div class="pref-tag pref-size panel" data-type="size" data-value="{{ size }}">
+                  <div class="pref-tag-surface panel-heading">
+                    <span class="pref-tag-body">
+                      {% if size matches '/US\\s*\\(/i' %}{{ shoe_size_icon }}{% else %}{{ apparel_size_icon }}{% endif %} {{ size }}
+                      {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
+                      <button class="remove-pref" aria-label="Remove preference">&times;</button>
+                    </span>
+                  </div>
+                </div>
+              </div>
             {% endfor %}
           {% endif %}
           {% if user_preferences.colors %}
             {% for color, count in user_preferences.colors %}
               {% set color_parts = color|split('(#') %}
               {% set color_name = color_parts[0]|trim %}
-              <span class="pref-tag pref-color" data-type="color" data-value="{{ color }}">
-                {{ color_icon }} {{ color_name }}
-                {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
-                <button class="remove-pref" aria-label="Remove preference">&times;</button>
-              </span>
+              {% set color_hex = color_parts[1] is defined ? '#' ~ (color_parts[1]|replace({')': ''})|trim) : '' %}
+              <div class="pref-tag-group panel-group">
+                <div class="pref-tag pref-color panel" data-type="color" data-value="{{ color }}">
+                  <div class="pref-tag-surface panel-heading">
+                    <span class="pref-tag-body">
+                      {% if color_hex %}
+                        <span class="pref-color-swatch" style="background-color: {{ color_hex|e('html_attr') }};" aria-hidden="true"></span>
+                      {% else %}
+                        {{ color_icon }}
+                      {% endif %}
+                      {{ color_name }}
+                      {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
+                      <button class="remove-pref" aria-label="Remove preference">&times;</button>
+                    </span>
+                  </div>
+                </div>
+              </div>
             {% endfor %}
           {% endif %}
           {% if user_preferences.genders %}
             {% for gender, count in user_preferences.genders %}
-              <span class="pref-tag pref-gender" data-type="gender" data-value="{{ gender }}">
-                {% if gender == 'Men' %}♂{% elseif gender == 'Women' %}♀{% else %}⚧{% endif %} {{ gender_labels[gender] ?? gender }}
-                {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
-                <button class="remove-pref" aria-label="Remove preference">&times;</button>
-              </span>
+              <div class="pref-tag-group panel-group">
+                <div class="pref-tag pref-gender panel" data-type="gender" data-value="{{ gender }}">
+                  <div class="pref-tag-surface panel-heading">
+                    <span class="pref-tag-body">
+                      {% if gender == 'Men' %}♂{% elseif gender == 'Women' %}♀{% else %}⚧{% endif %} {{ gender_labels[gender] ?? gender }}
+                      {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
+                      <button class="remove-pref" aria-label="Remove preference">&times;</button>
+                    </span>
+                  </div>
+                </div>
+              </div>
             {% endfor %}
           {% endif %}
           {% if user_preferences.sports %}
             {% for sport, count in user_preferences.sports %}
-              <span class="pref-tag pref-sport" data-type="sport" data-value="{{ sport }}">
-                {{ sport_icons[sport] ?? default_sport_icon }} {{ sport }}
-                {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
-                <button class="remove-pref" aria-label="Remove preference">&times;</button>
-              </span>
+              <div class="pref-tag-group panel-group">
+                <div class="pref-tag pref-sport panel" data-type="sport" data-value="{{ sport }}">
+                  <div class="pref-tag-surface panel-heading">
+                    <span class="pref-tag-body">
+                      {{ sport_icons[sport] ?? default_sport_icon }} {{ sport }}
+                      {% if debug_mode %}<span class="pref-debug-count">{{ count|round(2, 'common') }}</span>{% endif %}
+                      <button class="remove-pref" aria-label="Remove preference">&times;</button>
+                    </span>
+                  </div>
+                </div>
+              </div>
             {% endfor %}
           {% endif %}
         </div>
@@ -124,7 +152,7 @@
         </div>
 
         <button class="disable-smart-sorting-btn" id="disable-smart-sorting">
-          {{ text_disable_smart_sorting }}
+          <span class="disable-smart-sorting-btn-label">{{ text_disable_smart_sorting }}</span>
         </button>
       </div>
     </div>

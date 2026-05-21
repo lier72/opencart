@@ -387,7 +387,6 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         }
 
         $data['text_your_preferences'] = $this->language->get('text_your_preferences');
-        $data['text_preferences_subtitle'] = $this->language->get('text_preferences_subtitle');
         $data['text_add_preference'] = $this->language->get('text_add_preference');
         $data['text_disable_smart_sorting'] = $this->language->get('text_disable_smart_sorting');
 
@@ -398,11 +397,11 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
             'Children' => $this->language->get('gender_children')
         );
 
-        // Add configured icons
-        $data['shoe_size_icon'] = $this->config->get('module_adaptive_filter_shoe_size_icon') ?? '👟';
-        $data['apparel_size_icon'] = $this->config->get('module_adaptive_filter_apparel_size_icon') ?? '👕';
-        $data['color_icon'] = $this->config->get('module_adaptive_filter_color_icon') ?? '🎨';
-        $data['default_sport_icon'] = $this->config->get('module_adaptive_filter_sport_icon') ?? '🎾';
+        // Add configured icons (use ?: to treat empty string same as null)
+        $data['shoe_size_icon'] = $this->config->get('module_adaptive_filter_shoe_size_icon') ?: '👟';
+        $data['apparel_size_icon'] = $this->config->get('module_adaptive_filter_apparel_size_icon') ?: '👕';
+        $data['color_icon'] = $this->config->get('module_adaptive_filter_color_icon') ?: '🎨';
+        $data['default_sport_icon'] = $this->config->get('module_adaptive_filter_sport_icon') ?: '🎾';
 
         // Build sport icon map from language file
         $data['sport_icons'] = array();
@@ -460,7 +459,6 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         }
 
         $data['text_your_preferences'] = $this->language->get('text_your_preferences');
-        $data['text_preferences_subtitle'] = $this->language->get('text_preferences_subtitle');
         $data['text_add_preference'] = $this->language->get('text_add_preference');
         $data['text_disable_smart_sorting'] = $this->language->get('text_disable_smart_sorting');
 
@@ -471,11 +469,11 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
             'Children' => $this->language->get('gender_children')
         );
 
-        // Add configured icons
-        $data['shoe_size_icon'] = $this->config->get('module_adaptive_filter_shoe_size_icon') ?? '👟';
-        $data['apparel_size_icon'] = $this->config->get('module_adaptive_filter_apparel_size_icon') ?? '👕';
-        $data['color_icon'] = $this->config->get('module_adaptive_filter_color_icon') ?? '🎨';
-        $data['default_sport_icon'] = $this->config->get('module_adaptive_filter_sport_icon') ?? '🎾';
+        // Add configured icons (use ?: to treat empty string same as null)
+        $data['shoe_size_icon'] = $this->config->get('module_adaptive_filter_shoe_size_icon') ?: '👟';
+        $data['apparel_size_icon'] = $this->config->get('module_adaptive_filter_apparel_size_icon') ?: '👕';
+        $data['color_icon'] = $this->config->get('module_adaptive_filter_color_icon') ?: '🎨';
+        $data['default_sport_icon'] = $this->config->get('module_adaptive_filter_sport_icon') ?: '🎾';
 
         // Build sport icon map from language file
         $data['sport_icons'] = array();
