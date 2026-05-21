@@ -280,14 +280,13 @@ class ControllerProductProduct extends Controller {
 					'thumb' => $this->model_tool_image->resize($result['image'], $this->config->get('theme_' . $this->config->get('config_theme') . '_image_additional_width'), $this->config->get('theme_' . $this->config->get('config_theme') . '_image_additional_height'))
 				);
 			}
-// this is Max's addition to show retail price. Only define reatil_price when user is logged
+// this is Max's addition to show retail price. Only define retail_price when user is logged
 			//echo '$product_id =' . $product_info['product_id'] .'$price =' . $product_info['price'] . '$retail_prce =' . $product_info['retail_price'] . '<br/>';
             if ($this->customer->isLogged() && $this->config->get('config_customer_group_id') != $this->config->get('customer_default_group_id')){
 				$data['retail_price'] = $this->currency->format($this->tax->calculate($product_info['retail_price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
 			} else {
 				$data['retail_price'] = false;
 			}
-			$this->log->write('Page Load Debug: config_customer_group_id=' . $this->config->get('config_customer_group_id') . ', customer_default_group_id=' . $this->config->get('customer_default_group_id') . ', retail_price=' . $product_info['retail_price'] . ', special=' . $product_info['special']);
 			//echo '$data[retail_price] =' . $data['retail_price'] . '<br/>';
 // the end of modifications
             if (($this->config->get('config_customer_price') && $this->customer->isLogged()) || !$this->config->get('config_customer_price')) {
