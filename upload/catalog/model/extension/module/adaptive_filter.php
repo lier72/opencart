@@ -6,6 +6,9 @@
 
 class ModelExtensionModuleAdaptiveFilter extends Model {
 
+    const MAX_PREFERENCE_VALUE = 100;
+    const DISPLAY_PREFERENCE_LIMIT = 3;
+
     // Signal weights per XML spec
     const WEIGHT_PRODUCT_VIEW = 1;
     const WEIGHT_CATEGORY_VIEW = 0.5;
@@ -110,9 +113,72 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
     }
 
     /**
-     * Get current preferences for user
+     * Normalize stored preference counters so downstream logic always gets arrays.
+     *
+     * @param mixed $counters
+     * @return array
      */
-    public function getPreferences() {
+    private function normalizeCounters($counters) {
+        return is_array($counters) ? $counters : array();
+    }
+
+    /**
+     * Sort preference counters from highest to lowest weight.
+     *
+     * @param array $counters
+     * @return array
+     */
+    private function sortCounters($counters) {
+        arsort($counters);
+
+        return $counters;
+    }
+
+    /**
+     * Maximum value any preference counter can reach.
+     *
+     * Reuses the existing admin setting so manual add can set a dimension to the
+     * same ceiling that automatic signals gradually build toward.
+     *
+     * @return int
+     */
+    private function getMaxPreferenceValue() {
+        $configured_value = (int)$this->config->get('module_adaptive_filter_weight_manual');
+
+        return $configured_value > 0 ? $configured_value : self::MAX_PREFERENCE_VALUE;
+    }
+
+    /**
+     * Map singular/plural preference type names to stored keys.
+     *
+     * @param string $type
+     * @return string|null
+     */
+    private function getPreferenceKey($type) {
+        switch ($type) {
+            case 'size':
+            case 'sizes':
+                return 'sizes';
+            case 'color':
+            case 'colors':
+                return 'colors';
+            case 'gender':
+            case 'genders':
+                return 'genders';
+            case 'sport':
+            case 'sports':
+                return 'sports';
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Load full stored preference counters without any display/scoring truncation.
+     *
+     * @return array
+     */
+    private function getStoredPreferences() {
         $user = $this->getUserIdentifier();
 
         // Return empty preferences for bots
@@ -132,28 +198,30 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             ");
         }
 
-        if ($query->num_rows) {
-            // Limit to top 3 per category
-            $sizes = json_decode($query->row['sizes'] ?? '{}', true);
-            $colors = json_decode($query->row['colors'] ?? '{}', true);
-            $genders = json_decode($query->row['genders'] ?? '{}', true);
-            $sports = json_decode($query->row['sports'] ?? '{}', true);
-
-            // Sort by weight (descending) and keep top 3
-            arsort($sizes);
-            arsort($colors);
-            arsort($genders);
-            arsort($sports);
-
-            return array(
-                'sizes' => array_slice($sizes, 0, 3, true),
-                'colors' => array_slice($colors, 0, 3, true),
-                'genders' => array_slice($genders, 0, 3, true),
-                'sports' => array_slice($sports, 0, 3, true)
-            );
+        if (!$query->num_rows) {
+            return $this->getEmptyPreferences();
         }
 
-        return $this->getEmptyPreferences();
+        return array(
+            'sizes' => $this->sortCounters($this->normalizeCounters(json_decode($query->row['sizes'] ?? '{}', true))),
+            'colors' => $this->sortCounters($this->normalizeCounters(json_decode($query->row['colors'] ?? '{}', true))),
+            'genders' => $this->sortCounters($this->normalizeCounters(json_decode($query->row['genders'] ?? '{}', true))),
+            'sports' => $this->sortCounters($this->normalizeCounters(json_decode($query->row['sports'] ?? '{}', true)))
+        );
+    }
+
+    /**
+     * Get current preferences for user
+     */
+    public function getPreferences() {
+        $preferences = $this->getStoredPreferences();
+
+        return array(
+            'sizes' => array_slice($preferences['sizes'], 0, self::DISPLAY_PREFERENCE_LIMIT, true),
+            'colors' => array_slice($preferences['colors'], 0, self::DISPLAY_PREFERENCE_LIMIT, true),
+            'genders' => array_slice($preferences['genders'], 0, self::DISPLAY_PREFERENCE_LIMIT, true),
+            'sports' => array_slice($preferences['sports'], 0, self::DISPLAY_PREFERENCE_LIMIT, true)
+        );
     }
 
     /**
@@ -208,32 +276,67 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
             return false;
         }
 
-        $preferences = $this->getPreferences();
+        $preferences = $this->getStoredPreferences();
+        $max_preference_value = $this->getMaxPreferenceValue();
+
+        if ($type === 'manual_add') {
+            if (isset($data['size']) && $data['size']) {
+                $preferences['sizes'] = array((string)$data['size'] => $max_preference_value);
+            }
+
+            if (isset($data['color']) && $data['color']) {
+                $preferences['colors'] = array((string)$data['color'] => $max_preference_value);
+            }
+
+            if (isset($data['genders']) && is_array($data['genders'])) {
+                $genders = array();
+
+                foreach ($data['genders'] as $gender) {
+                    if ($gender) {
+                        $genders[(string)$gender] = $max_preference_value;
+                    }
+                }
+
+                if ($genders) {
+                    $preferences['genders'] = $genders;
+                }
+            } elseif (isset($data['gender']) && $data['gender']) {
+                $preferences['genders'] = array((string)$data['gender'] => $max_preference_value);
+            }
+
+            if (isset($data['sport']) && $data['sport']) {
+                $preferences['sports'] = array((string)$data['sport'] => $max_preference_value);
+            }
+
+            $this->savePreferences($preferences);
+
+            return true;
+        }
 
         // Only record explicitly selected attributes
         // Do NOT record all available options - only what user explicitly chose
 
         if (isset($data['size']) && $data['size']) {
-            $preferences['sizes'] = $this->incrementCounter($preferences['sizes'], $data['size'], $weight, 5);
+            $preferences['sizes'] = $this->incrementCounter($preferences['sizes'], $data['size'], $weight);
         }
 
         if (isset($data['color']) && $data['color']) {
-            $preferences['colors'] = $this->incrementCounter($preferences['colors'], $data['color'], $weight, 5);
+            $preferences['colors'] = $this->incrementCounter($preferences['colors'], $data['color'], $weight);
         }
 
         // Handle both single gender (legacy) and multiple genders (new)
         if (isset($data['genders']) && is_array($data['genders'])) {
             // New behavior: record all genders separately
             foreach ($data['genders'] as $gender) {
-                $preferences['genders'] = $this->incrementCounter($preferences['genders'], $gender, $weight, 4);
+                $preferences['genders'] = $this->incrementCounter($preferences['genders'], $gender, $weight);
             }
         } elseif (isset($data['gender']) && $data['gender']) {
             // Legacy behavior: single gender
-            $preferences['genders'] = $this->incrementCounter($preferences['genders'], $data['gender'], $weight, 4);
+            $preferences['genders'] = $this->incrementCounter($preferences['genders'], $data['gender'], $weight);
         }
 
         if (isset($data['sport']) && $data['sport']) {
-            $preferences['sports'] = $this->incrementCounter($preferences['sports'], $data['sport'], $weight, 3);
+            $preferences['sports'] = $this->incrementCounter($preferences['sports'], $data['sport'], $weight);
         }
 
         $this->savePreferences($preferences);
@@ -242,24 +345,22 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
     }
 
     /**
-     * Increment counter with max_keys limit
+     * Increment a preference counter and clamp it to the configured maximum value.
      */
-    private function incrementCounter($counters, $key, $weight, $max_keys) {
+    private function incrementCounter($counters, $key, $weight) {
+        $key = trim((string)$key);
+
+        if ($key === '') {
+            return $counters;
+        }
+
         if (!isset($counters[$key])) {
             $counters[$key] = 0;
         }
 
-        $counters[$key] += $weight;
+        $counters[$key] = min($this->getMaxPreferenceValue(), $counters[$key] + (float)$weight);
 
-        // Sort by value descending
-        arsort($counters);
-
-        // Keep only top max_keys
-        if (count($counters) > $max_keys) {
-            $counters = array_slice($counters, 0, $max_keys, true);
-        }
-
-        return $counters;
+        return $this->sortCounters($counters);
     }
 
     /**
@@ -1876,16 +1977,12 @@ class ModelExtensionModuleAdaptiveFilter extends Model {
      * @return bool Success status
      */
     public function removePreference($type, $value) {
-        $user = $this->getUserIdentifier();
-
-        // Get current preferences
-        $preferences = $this->getPreferences();
-
-        // Map type to plural form (size -> sizes, color -> colors, etc.)
-        $type_key = $type . 's';
+        // Get full stored preferences so removal does not discard lower-ranked values.
+        $preferences = $this->getStoredPreferences();
+        $type_key = $this->getPreferenceKey($type);
 
         // Validate type_key exists
-        if (!isset($preferences[$type_key])) {
+        if (!$type_key || !isset($preferences[$type_key])) {
             return false;
         }
 

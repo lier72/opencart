@@ -143,7 +143,7 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
         if (isset($this->request->post['module_adaptive_filter_weight_manual'])) {
             $data['module_adaptive_filter_weight_manual'] = $this->request->post['module_adaptive_filter_weight_manual'];
         } else {
-            $data['module_adaptive_filter_weight_manual'] = $this->config->get('module_adaptive_filter_weight_manual') ?? '10';
+            $data['module_adaptive_filter_weight_manual'] = $this->config->get('module_adaptive_filter_weight_manual') ?? '100';
         }
 
         // Score configuration (for product scoring)

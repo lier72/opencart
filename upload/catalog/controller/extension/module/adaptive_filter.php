@@ -286,10 +286,9 @@ class ControllerExtensionModuleAdaptiveFilter extends Controller {
             $type = $this->request->post['type'];
             $value = $this->request->post['value'];
 
-            // Add preference with configured manual weight
+            // Manual add replaces the touched dimension with the maximum preference value.
             $attributes = array($type => $value);
-            $weight = (int)($this->config->get('module_adaptive_filter_weight_manual') ?? 10);
-            $this->model_extension_module_adaptive_filter->recordSignal('manual_add', $attributes, $weight);
+            $this->model_extension_module_adaptive_filter->recordSignal('manual_add', $attributes);
 
             $json['success'] = true;
             $json['message'] = 'Preference added successfully';

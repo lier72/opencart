@@ -143,11 +143,11 @@
 
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-weight-manual">
-              <span data-toggle="tooltip" title="Weight applied when user manually adds a preference">Manual Preference Weight</span>
+              <span data-toggle="tooltip" title="Maximum value a preference counter can reach. Manual add sets the touched dimension directly to this value.">Maximum Preference Value</span>
             </label>
             <div class="col-sm-10">
-              <input type="number" name="module_adaptive_filter_weight_manual" value="{{ module_adaptive_filter_weight_manual }}" placeholder="10" id="input-weight-manual" class="form-control" min="0" step="1" />
-              <div class="help-block">Weight for manually added preferences. Default: 10 (highest - explicit user choice)</div>
+              <input type="number" name="module_adaptive_filter_weight_manual" value="{{ module_adaptive_filter_weight_manual }}" placeholder="100" id="input-weight-manual" class="form-control" min="1" step="1" />
+              <div class="help-block">Manual add sets the selected dimension to this maximum value. Automatic signals increment toward the same ceiling. Default: 100</div>
             </div>
           </div>
 
