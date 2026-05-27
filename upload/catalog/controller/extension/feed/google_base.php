@@ -148,10 +148,12 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 
 						if ($type === 'shoes' || $type === 'apparel') {
 							$sizes = $this->model_extension_feed_google_base->getProductSizes($product['product_id']);
-							$size = $this->selectGoogleFeedSize($sizes);
-							if ($size !== '') {
+							$unique_sizes = array_values(array_unique(array_filter(array_map('trim', (array)$sizes))));
+							if (!empty($unique_sizes)) {
 								$output .= '  <g:size_system>EU</g:size_system>';
-								$output .= '  <g:size><![CDATA[' . $size . ']]></g:size>';
+								foreach ($unique_sizes as $sz) {
+									$output .= '  <g:size><![CDATA[' . $sz . ']]></g:size>';
+								}
 							}
 						}
 
@@ -192,33 +194,6 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 			if (mb_strpos($lower, $kw) !== false) return 'apparel';
 		}
 		return null;
-	}
-
-	/**
-	 * Google Shopping expects a single size value per item.
-	 * If the product has multiple distinct sizes, omit the size attribute
-	 * instead of sending an invalid multi-value payload for one item.
-	 */
-	private function selectGoogleFeedSize($sizes) {
-		$unique_sizes = array();
-
-		foreach ((array)$sizes as $size) {
-			$size = trim(preg_replace('/\s+/u', ' ', (string)$size));
-
-			if ($size === '') {
-				continue;
-			}
-
-			$unique_sizes[$size] = true;
-		}
-
-		$unique_sizes = array_keys($unique_sizes);
-
-		if (count($unique_sizes) === 1) {
-			return $unique_sizes[0];
-		}
-
-		return '';
 	}
 
 	protected function getPath($parent_id, $current_path = '') {
