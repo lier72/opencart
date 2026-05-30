@@ -5,6 +5,8 @@
 
 /* Main container */
 .size-selector-widget {
+    --size-selector-font-default: var(--j-font_size-default, 14px);
+    --size-selector-font-small: var(--j-font_size-small, 13px);
     margin-bottom: 20px;
 }
 
@@ -13,6 +15,7 @@
     text-align: center;
     padding: 20px;
     color: #999;
+    font-size: var(--size-selector-font-default);
 }
 
 /* Gender selector buttons */
@@ -24,7 +27,8 @@
 .btn-gender {
     padding: 8px 16px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--size-selector-font-default);
+    line-height: 1.4;
 }
 
 .btn-gender:hover {
@@ -127,7 +131,8 @@
 .btn-system {
     padding: 6px 12px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--size-selector-font-small);
+    line-height: 1.4;
     min-width: 50px;
 }
 
@@ -147,7 +152,8 @@
     gap: 5px;
     color: #666;
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--size-selector-font-small);
+    line-height: 1.4;
     padding: 6px 10px;
 }
 
@@ -171,7 +177,7 @@
 }
 
 .size-guide-modal h5 {
-    font-size: 16px;
+    font-size: var(--size-selector-font-default);
     font-weight: 600;
     margin-bottom: 15px;
 } */
@@ -226,6 +232,10 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .size-selector-widget {
+        --size-selector-font-small: 14px;
+    }
+
     /* Stack layout on mobile */
     #size-selector-container .form-group.product-option-radio {
         grid-template-columns: 1fr;
@@ -260,13 +270,13 @@
 
     .btn-size {
         padding: 10px 6px;
-        font-size: 13px;
+        font-size: var(--size-selector-font-small);
         min-height: 45px;
     }
 
     #size-selector-container .radio .option-wrapper {
         padding: 8px 12px;
-        font-size: 13px;
+        font-size: var(--size-selector-font-small);
         min-width: 45px;
     }
 }

@@ -1,5 +1,16 @@
 /* Custom CSS for retail and dealer price display — Max Surdu */
 
+:root {
+  --retail-dealer-retail-price-size: calc(var(--j-font_size-default, 14px) * 2.4286);
+  --retail-dealer-small-price-size: calc(var(--j-font_size-default, 14px) * 1.5714);
+  --retail-dealer-grid-retail-price-size: calc(var(--j-font_size-default, 14px) * 1.7143);
+  --retail-dealer-grid-small-price-size: calc(var(--j-font_size-default, 14px) * 1.1429);
+  --retail-dealer-list-retail-price-size: calc(var(--j-font_size-default, 14px) * 2);
+  --retail-dealer-list-small-price-size: calc(var(--j-font_size-default, 14px) * 1.2857);
+  --retail-dealer-label-size: var(--j-font_size-default, 14px);
+  --retail-dealer-product-info-small-price-size: calc(var(--j-font_size-default, 14px) * 2);
+}
+
 .price-wrapper {
   display: flex;
   justify-content: space-between;
@@ -10,14 +21,14 @@
 
 .retail-price {
   font-weight: 400;
-  font-size: 34px;
+  font-size: var(--retail-dealer-retail-price-size);
   line-height: 1.4;
   color: inherit;
 }
 
 .small-price {
   color: rgb(66, 139, 202) !important;
-  font-size: 22px !important;
+  font-size: var(--retail-dealer-small-price-size) !important;
   font-weight: 600 !important;
   text-align: right;
 }
@@ -38,17 +49,17 @@
 }
 
 .product-grid .retail-price {
-  font-size: 24px !important;
+  font-size: var(--retail-dealer-grid-retail-price-size) !important;
 }
 .product-grid .small-price {
-  font-size: 16px !important;
+  font-size: var(--retail-dealer-grid-small-price-size) !important;
 }
 
 .product-list .retail-price {
-  font-size: 28px !important;
+  font-size: var(--retail-dealer-list-retail-price-size) !important;
 }
 .product-list .small-price {
-  font-size: 18px !important;
+  font-size: var(--retail-dealer-list-small-price-size) !important;
 }
 
 .product-info .price-group {
@@ -75,7 +86,7 @@
 }
 
 .product-info .dealer-label {
-  font-size: 14px !important;
+  font-size: var(--retail-dealer-label-size) !important;
   color: rgb(66, 139, 202) !important;
   cursor: help !important;
   display: inline-block !important;
@@ -83,19 +94,32 @@
 }
 
 .product-info .small-price {
-  font-size: 28px !important;
+  font-size: var(--retail-dealer-product-info-small-price-size) !important;
 }
 
 @media (max-width: 768px) {
-  .retail-price { font-size: 22px; }
-  .small-price { font-size: 16px; }
+  :root {
+    --retail-dealer-retail-price-size: calc(var(--j-font_size-default, 14px) * 1.5714);
+    --retail-dealer-small-price-size: calc(var(--j-font_size-default, 14px) * 1.1429);
+    --retail-dealer-grid-retail-price-size: calc(var(--j-font_size-default, 14px) * 1.5714);
+    --retail-dealer-grid-small-price-size: calc(var(--j-font_size-default, 14px) * 1.1429);
+    --retail-dealer-list-retail-price-size: calc(var(--j-font_size-default, 14px) * 1.5714);
+    --retail-dealer-list-small-price-size: calc(var(--j-font_size-default, 14px) * 1.1429);
+    --retail-dealer-product-info-small-price-size: calc(var(--j-font_size-default, 14px) * 1.4286);
+  }
+
   .price-wrapper { gap: 5px; }
-  .product-info .small-price { font-size: 20px; }
   .product-info .price-group { gap: 10px; }
 }
 
 @media (max-width: 480px) {
-  .retail-price { font-size: 18px; }
-  .small-price { font-size: 14px; }
-  .product-info .small-price { font-size: 18px; }
+  :root {
+    --retail-dealer-retail-price-size: calc(var(--j-font_size-default, 14px) * 1.2857);
+    --retail-dealer-small-price-size: var(--j-font_size-default, 14px);
+    --retail-dealer-grid-retail-price-size: calc(var(--j-font_size-default, 14px) * 1.2857);
+    --retail-dealer-grid-small-price-size: var(--j-font_size-default, 14px);
+    --retail-dealer-list-retail-price-size: calc(var(--j-font_size-default, 14px) * 1.2857);
+    --retail-dealer-list-small-price-size: var(--j-font_size-default, 14px);
+    --retail-dealer-product-info-small-price-size: calc(var(--j-font_size-default, 14px) * 1.2857);
+  }
 }

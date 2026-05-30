@@ -1,5 +1,13 @@
 <script src="{{ merchant_script }}"></script>
 <style>
+:root {
+    --divido-heading-size: calc(var(--j-font_size-default, 14px) * 1.7143);
+    --divido-heading-size-large: calc(var(--j-font_size-default, 14px) * 2.3571);
+    --divido-description-size: var(--j-font_size-small, 13px);
+    --divido-logo-fallback-size: calc(var(--j-font_size-default, 14px) * 1.4286);
+    --divido-button-size: var(--j-font_size-xxs, 11px);
+}
+
 .divido-calculator {
 	padding:10px 20px 20px 20px;
 	text-shadow:none;
@@ -24,12 +32,12 @@
 
 .divido-calculator h1 {
     color: white;
-    font-size: 24px;
+    font-size: var(--divido-heading-size);
 }
 
 @media screen and (min-width: 550px) {
     .divido-calculator h1 {
-        font-size: 33px;
+        font-size: var(--divido-heading-size-large);
     }
 }
 
@@ -138,7 +146,7 @@
 }
 
 .divido-calculator div.description {
-	font-size:13px;
+	font-size: var(--divido-description-size);
 	margin-top:15px;
 	margin-bottom:20px;
 }
@@ -188,7 +196,7 @@
 	width: 140px;
 	height: 42px;
 	display: block;
-	font-size: 20px;
+	font-size: var(--divido-logo-fallback-size);
 	line-height: 1;
 	text-indent: -9999px;
 	background-image:url('//content.divido.com.s3-eu-west-1.amazonaws.com/images/logo-black-140x42.png');
@@ -293,7 +301,7 @@
     border-radius: 4px;
     font-family: Arial;
     color: #ffffff;
-    font-size: 11px;
+    font-size: var(--divido-button-size);
     background: #3E4F8B;
     padding: 3px 7px 5px 7px !important;
     text-decoration: none;
