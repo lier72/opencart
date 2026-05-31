@@ -1,0 +1,314 @@
+/**
+ * Product Family Styling - Journal3 Theme
+ * Keeps variant navigation aligned with the size selector and product options UI.
+ */
+
+.product-family-wrapper {
+    --product-family-accent: rgb(225, 90, 40);
+    --product-family-font-default: var(--j-font_size-default, 14px);
+    --product-family-font-small: var(--j-font_size-small, 13px);
+    margin-bottom: 20px;
+}
+
+#product > .product-family-wrapper + .button-group-page,
+#product > .product-family-wrapper + script + .button-group-page {
+    margin-top: 20px;
+}
+
+.product-family-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.product-family-title {
+    grid-column: 1 / -1;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0 0 8px;
+    color: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.product-family-content {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+
+.product-family-current {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+    color: #666;
+    font-size: var(--product-family-font-small);
+    line-height: 1.4;
+}
+
+.product-family-current-label {
+    color: #333;
+    font-weight: 600;
+    line-height: 34px;
+}
+
+.product-family-current-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.product-family-current-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--product-family-accent);
+    background: #fff;
+}
+
+.current-variant-value {
+    color: #333;
+    font-weight: 600;
+}
+
+.variant-color-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.variant-color-swatch {
+    --product-family-swatch-border: rgba(0, 0, 0, 0.12);
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--product-family-swatch-border);
+    border-radius: 50%;
+    background: var(--product-family-swatch-color);
+    flex: 0 0 14px;
+}
+
+.variant-color-swatch.is-light {
+    --product-family-swatch-border: rgba(0, 0, 0, 0.3);
+}
+
+.product-family-current-chip .variant-color-swatch {
+    box-shadow: 0 0 0 1px rgba(225, 90, 40, 0.18);
+}
+
+.variant-color-label:empty {
+    display: none;
+}
+
+.product-family-variants {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.variant-item {
+    display: flex;
+    min-width: 180px;
+    max-width: 100%;
+}
+
+.variant-link {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 56px;
+    width: 100%;
+    height: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 0.075s ease-out, border-color 0.075s ease-out, box-shadow 0.075s ease-out;
+}
+
+.variant-link:hover {
+    border-color: var(--product-family-accent);
+    background: #f9f9f9;
+    color: inherit;
+    text-decoration: none;
+}
+
+.variant-link:focus {
+    border-color: var(--product-family-accent);
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 0 0 2px rgba(225, 90, 40, 0.18);
+}
+
+.variant-link.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+    cursor: default;
+}
+
+.variant-image {
+    flex: 0 0 auto;
+    width: 48px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border: 1px solid #eee;
+    background: #fff;
+}
+
+.variant-image img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.variant-details {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.variant-attributes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    min-width: 0;
+}
+
+.variant-attribute {
+    display: inline-flex;
+    gap: 4px;
+    min-width: 0;
+    font-size: var(--product-family-font-small);
+    line-height: 1.4;
+}
+
+.variant-attribute-name {
+    color: #666;
+}
+
+.variant-attribute-value {
+    color: #333;
+    font-weight: 600;
+}
+
+.variant-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    align-items: center;
+    color: #666;
+    font-size: var(--product-family-font-small);
+    line-height: 1.4;
+}
+
+.variant-model {
+    white-space: nowrap;
+}
+
+.variant-price {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #333;
+    font-weight: 600;
+}
+
+.variant-price .price-old {
+    color: #999;
+    font-weight: 400;
+    text-decoration: line-through;
+}
+
+.variant-price .price-new {
+    color: rgb(225, 90, 40);
+}
+
+.variant-stock-status {
+    display: block;
+    width: 100%;
+    color: #a94442;
+    font-size: var(--product-family-font-small);
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.product-family-more {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.product-family-variants-extra {
+    display: none;
+}
+
+.product-family-more.is-open .product-family-variants-extra {
+    display: flex;
+}
+
+.btn-product-family-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    align-self: center;
+    padding: 6px 12px;
+}
+
+.btn-product-family-toggle .fa {
+    transition: transform 0.2s ease;
+}
+
+.product-family-toggle-text-less {
+    display: none;
+}
+
+.product-family-more.is-open .btn-product-family-toggle .fa {
+    transform: rotate(180deg);
+}
+
+.product-family-more.is-open .product-family-toggle-text-more {
+    display: none;
+}
+
+.product-family-more.is-open .product-family-toggle-text-less {
+    display: inline;
+}
+
+@media (max-width: 768px) {
+    .product-family-wrapper {
+        --product-family-font-small: 14px;
+    }
+
+    .product-family-variants,
+    .product-family-variants-extra {
+        flex-direction: column;
+    }
+
+    .variant-item {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .variant-link {
+        width: 100%;
+    }
+}
