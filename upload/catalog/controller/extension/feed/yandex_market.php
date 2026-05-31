@@ -240,12 +240,8 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 					$data['param'][] = array('name' => 'Материал', 'value' => $mat);
 				}
 
-				if ($product_type === 'shoes' || $product_type === 'apparel') {
-					$sizes = $this->model_extension_feed_yandex_market->getProductSizes($product['product_id']);
-					if (!empty($sizes)) {
-						$data['param'][] = array('name' => 'Размер', 'value' => implode(', ', $sizes));
-					}
-				}
+				// getProductSizeVariants self-selects by option name — no product_type gate needed.
+				$size_variants = $this->model_extension_feed_yandex_market->getProductSizeVariants($product['product_id']);
 
 				$data['description'] = $product['description'];
 //				$data['manufacturer_warranty'] = 'true';
@@ -256,24 +252,21 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 						$data['picture'] = $picture;
 					}
 				}
-/*
-				// пример структуры массива для вывода параметров
-				$data['param'] = array(
-					array(
-						'name'=>'Wi-Fi',
-						'value'=>'есть'
-					), array(
-						'name'=>'Размер экрана',
-						'unit'=>'дюйм',
-						'value'=>'20'
-					), array(
-						'name'=>'Вес',
-						'unit'=>'кг',
-						'value'=>'4.6'
-					)
-				);
-*/
-				$this->setOffer($data);
+
+				// For shoes/apparel with size options: one offer per size variant.
+				// offer id = "{product_id}:{option_value_id}"; group_id = product_id groups all variants.
+				// For all other products: single offer with id = product_id.
+				if (!empty($size_variants)) {
+					foreach ($size_variants as $variant) {
+						$offer              = $data;
+						$offer['id']        = $product['product_id'] . ':' . $variant['option_value_id'];
+						$offer['group_id']  = $product['product_id'];
+						$offer['param'][]   = array('name' => 'Размер', 'value' => $variant['size_display']);
+						$this->setOffer($offer);
+					}
+				} else {
+					$this->setOffer($data);
+				}
 			}
 
 			$this->categories = array_filter($this->categories, array($this, "filterCategory"));
@@ -838,13 +831,26 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 	private function setOffer($data) {
 		$offer = array();
 
-		$attributes = array('id', 'type', 'available', 'bid', 'cbid', 'param');
+		$attributes = array('id', 'type', 'available', 'bid', 'cbid', 'group_id', 'param');
 		$attributes = array_intersect_key($data, array_flip($attributes));
 
 		foreach ($attributes as $key => $value) {
 			switch ($key)
 			{
 				case 'id':
+					// Preserve string IDs like "42:15" for YCP variant offers
+					if (preg_match('/^\d+/', (string)$value)) {
+						$offer[$key] = $value;
+					}
+					break;
+
+				case 'group_id':
+					$value = (int)$value;
+					if ($value > 0) {
+						$offer[$key] = $value;
+					}
+					break;
+
 				case 'bid':
 				case 'cbid':
 					$value = (int)$value;

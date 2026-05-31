@@ -36,6 +36,53 @@ class ModelExtensionFeedYandexMarket extends Model {
 	}
 
 	/**
+	 * Returns all size option values for a product with their option_value_id and formatted display name.
+	 * Used by the YML feed to generate one offer per size variant with id="{product_id}:{option_value_id}",
+	 * matching the YCP productId encoding convention used in catalog/controller/api/ycp.php.
+	 *
+	 * Returns array of ['option_value_id' => int, 'size_display' => string].
+	 * Returns empty array if the product has no size options.
+	 */
+	public function getProductSizeVariants($product_id) {
+		$lang  = (int)$this->config->get('config_language_id');
+		$names = array(
+			'Размер детской обуви (US)',
+			'Размер женской обуви (US)',
+			'Размер обуви baby',
+			'Размер обуви унисекс (US)',
+			'Размер детской одежды',
+			'Размер одежды',
+		);
+		$in = implode(',', array_map(function($n) { return "'" . $this->db->escape($n) . "'"; }, $names));
+
+		$query = $this->db->query("
+			SELECT DISTINCT ov.option_value_id, ovd.name AS size_value
+			FROM `" . DB_PREFIX . "option` o
+			JOIN `" . DB_PREFIX . "option_description` od
+				ON od.option_id = o.option_id AND od.language_id = '" . $lang . "'
+			JOIN `" . DB_PREFIX . "product_option` po
+				ON po.option_id = o.option_id AND po.product_id = '" . (int)$product_id . "'
+			JOIN `" . DB_PREFIX . "product_option_value` pov
+				ON pov.product_option_id = po.product_option_id
+			JOIN `" . DB_PREFIX . "option_value` ov
+				ON ov.option_value_id = pov.option_value_id
+			JOIN `" . DB_PREFIX . "option_value_description` ovd
+				ON ovd.option_value_id = ov.option_value_id AND ovd.language_id = '" . $lang . "'
+			WHERE od.name IN (" . $in . ")
+			ORDER BY ov.sort_order
+		");
+
+		$variants = array();
+		foreach ($query->rows as $row) {
+			$variants[] = array(
+				'option_value_id' => (int)$row['option_value_id'],
+				'size_display'    => $this->formatSize($row['size_value'])
+			);
+		}
+		return $variants;
+	}
+
+	/**
 	 * Returns all available size option values for a product, pre-formatted to EU labels only.
 	 * "Euro XS [Asia (S)]" → "XS", "34 1/3 us(4,5)" → "34 1/3".
 	 * Call before building param array for shoes/apparel offers.
@@ -76,9 +123,68 @@ class ModelExtensionFeedYandexMarket extends Model {
 		return $sizes;
 	}
 
-	private function formatSize($raw) {
+	/**
+	 * Strips vendor-specific prefixes/suffixes from raw size labels.
+	 * "Euro XS [Asia (S)]" → "XS", "34 1/3 us(4,5)" → "34 1/3".
+	 * Used by both the YML feed and the YCP basket check response.
+	 */
+	public function formatSize($raw) {
 		if (preg_match('/^Euro\s+(\S+)/u', $raw, $m)) return $m[1];
 		if (preg_match('/^(.+?)\s+us\(/ui', $raw, $m)) return trim($m[1]);
 		return $raw;
+	}
+
+	/**
+	 * Resolves the Yandex size characteristic code from an option group name.
+	 *
+	 * The code only needs to be consistent across all variants of the same product —
+	 * Yandex uses it to group alternatives, not as a strict server-side enum.
+	 *
+	 * Resolution order:
+	 *   1. Exact match against known option names (most precise).
+	 *   2. Keyword scan (fallback for option names not in the exact map).
+	 *   3. Default: SIZES_CLOTHES.
+	 *
+	 * Known codes used:
+	 *   SIZES_CLOTHES    — adult apparel (Размер одежды)
+	 *   SIZE_KID_CLOTHES — children's apparel (Размер детской одежды)
+	 *   SIZE_SHOES       — adult footwear (женская, унисекс)
+	 *   SIZE_KID_SHOES   — children's footwear (Размер детской обуви)
+	 *   SIZE_BABY_SHOES  — baby footwear (Размер обуви baby)
+	 *
+	 * Used by both the YML feed and the YCP basket check response.
+	 */
+	public function getSizeCode($option_name) {
+		$exact = [
+			'Размер одежды'             => 'SIZES_CLOTHES',
+			'Размер детской одежды'     => 'SIZE_KID_CLOTHES',
+			'Размер женской обуви (US)' => 'SIZE_SHOES',
+			'Размер обуви унисекс (US)' => 'SIZE_SHOES',
+			'Размер детской обуви (US)' => 'SIZE_KID_SHOES',
+			'Размер обуви baby'         => 'SIZE_BABY_SHOES',
+		];
+
+		if (isset($exact[$option_name])) {
+			return $exact[$option_name];
+		}
+
+		$lower = mb_strtolower((string)$option_name, 'UTF-8');
+
+		$keywords = [
+			'SIZE_BABY_SHOES' => ['baby', 'беби', 'малыш'],
+			'SIZE_KID_SHOES'  => ['детск', 'child', 'kid'],
+			'SIZE_SHOES'      => ['обув', 'ботин', 'кроссов', 'shoe', 'boot', 'sneaker'],
+			'SIZE_KID_CLOTHES'=> ['детск', 'ребен', 'child', 'kid'],
+		];
+
+		foreach ($keywords as $code => $kws) {
+			foreach ($kws as $kw) {
+				if (mb_strpos($lower, $kw) !== false) {
+					return $code;
+				}
+			}
+		}
+
+		return 'SIZES_CLOTHES';
 	}
 }
