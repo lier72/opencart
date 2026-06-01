@@ -94,12 +94,14 @@
             <span class="product-family-current-label">{{ text_current_variant }}:</span>
 
             <div class="product-family-current-values">
-              {% for variant in current_variants %}
-                <span class="product-family-current-chip">
-                  {{ variant.name }}:
-                  {{ family.variant_value(variant, 'current-variant-value') }}
-                </span>
-              {% endfor %}
+              <span class="product-family-current-chip">
+                {% for variant in current_variants %}
+                  <span class="product-family-current-attribute">
+                    <span class="product-family-current-name">{{ variant.name }}:</span>
+                    {{ family.variant_value(variant, 'current-variant-value') }}
+                  </span>
+                {% endfor %}
+              </span>
             </div>
           </div>
         {% endif %}
