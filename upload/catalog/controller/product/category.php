@@ -68,6 +68,13 @@ class ControllerProductCategory extends Controller {
 		}
 
 		$data['breadcrumbs'] = array();
+		$data['disabled_product_notice'] = '';
+
+		if (isset($this->session->data['disabled_product_redirect_notice'])) {
+			$data['disabled_product_notice'] = $this->language->get('text_disabled_product_notice');
+
+			unset($this->session->data['disabled_product_redirect_notice']);
+		}
 
 		$data['breadcrumbs'][] = array(
 			'text' => $this->language->get('text_home'),

@@ -475,6 +475,15 @@ class ControllerProductProduct extends Controller {
 
 			$this->response->setOutput($this->load->view('product/product', $data));
 		} else {
+			$redirect_path = $this->model_catalog_product->getDisabledProductRedirectPath($product_id);
+
+			if ($redirect_path) {
+				$this->session->data['disabled_product_redirect_notice'] = true;
+				$this->response->redirect($this->url->link('product/category', 'path=' . $redirect_path), 301);
+
+				return;
+			}
+
 			$url = '';
 
 			if (isset($this->request->get['path'])) {
