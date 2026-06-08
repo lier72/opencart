@@ -227,8 +227,9 @@ class ModelApiYcp extends Model {
 
             $siblings = [];
             foreach ($option['product_option_value'] as $ov) {
-                if ((int)$ov['option_value_id'] !== (int)$current_option_value_id) {
-                    $siblings[] = (int)$ov['option_value_id'];
+                $ovid = (int)$ov['option_value_id'];
+                if ($ovid !== (int)$current_option_value_id && !in_array($ovid, $siblings)) {
+                    $siblings[] = $ovid;
                 }
             }
             return $siblings;
@@ -368,12 +369,12 @@ class ModelApiYcp extends Model {
             $variations = [];
             if ($option_value_id) {
                 foreach ($this->getSiblingOptionValues($product_id, $option_value_id) as $sib_ovid) {
+                    $sib_qty = $this->optionAvailableQty($product_id, $sib_ovid, $product['quantity']);
+                    if ($sib_qty <= 0) continue;
                     $variations[] = array_merge($base, [
                         'id'              => $product_id . ':' . $sib_ovid,
                         'characteristics' => $this->buildCharacteristics($product_id, $sib_ovid, $attrs),
-                        'warehouses'      => [['id' => 'main', 'available_quantity' =>
-                            $this->optionAvailableQty($product_id, $sib_ovid, $product['quantity'])
-                        ]],
+                        'warehouses'      => [['id' => 'main', 'available_quantity' => $sib_qty]],
                     ]);
                 }
             }

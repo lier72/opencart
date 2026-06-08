@@ -56,7 +56,8 @@ class ModelExtensionFeedYandexMarket extends Model {
 		$in = implode(',', array_map(function($n) { return "'" . $this->db->escape($n) . "'"; }, $names));
 
 		$query = $this->db->query("
-			SELECT DISTINCT ov.option_value_id, ovd.name AS size_value
+			SELECT ov.option_value_id, ovd.name AS size_value,
+			       pov.quantity, pov.subtract
 			FROM `" . DB_PREFIX . "option` o
 			JOIN `" . DB_PREFIX . "option_description` od
 				ON od.option_id = o.option_id AND od.language_id = '" . $lang . "'
@@ -69,6 +70,7 @@ class ModelExtensionFeedYandexMarket extends Model {
 			JOIN `" . DB_PREFIX . "option_value_description` ovd
 				ON ovd.option_value_id = ov.option_value_id AND ovd.language_id = '" . $lang . "'
 			WHERE od.name IN (" . $in . ")
+			GROUP BY ov.option_value_id
 			ORDER BY ov.sort_order
 		");
 
@@ -76,7 +78,9 @@ class ModelExtensionFeedYandexMarket extends Model {
 		foreach ($query->rows as $row) {
 			$variants[] = array(
 				'option_value_id' => (int)$row['option_value_id'],
-				'size_display'    => $this->formatSize($row['size_value'])
+				'size_display'    => $this->formatSize($row['size_value']),
+				'quantity'        => (int)$row['quantity'],
+				'subtract'        => (bool)$row['subtract']
 			);
 		}
 		return $variants;
