@@ -36,14 +36,14 @@ class ModelExtensionFeedGoogleBase extends Model {
 	}
 
 	/**
-	 * Returns all size option values available for a product (shoes and apparel).
-	 * Each value is pre-formatted: EU label stripped from "Euro XS [Asia (S)]" → "XS",
-	 * EU numeric stripped from "34 1/3 us(4,5)" → "34 1/3".
-	 * Call for any product that may have size options before outputting g:size tags.
+	 * Returns size variants for a product (shoes and apparel).
+	 * Each entry has option_value_id (for composite g:id), size_display (pre-formatted EU label),
+	 * quantity and subtract (for per-variant availability in the Google Base feed).
+	 * Call before emitting g:size items in the Google Base feed controller.
 	 */
-	public function getProductSizes($product_id) {
-		$lang    = (int)$this->config->get('config_language_id');
-		$names   = array(
+	public function getProductSizeVariants($product_id) {
+		$lang  = (int)$this->config->get('config_language_id');
+		$names = array(
 			'Размер детской обуви (US)',
 			'Размер женской обуви (US)',
 			'Размер обуви baby',
@@ -54,7 +54,8 @@ class ModelExtensionFeedGoogleBase extends Model {
 		$in = implode(',', array_map(function($n) { return "'" . $this->db->escape($n) . "'"; }, $names));
 
 		$query = $this->db->query("
-			SELECT ovd.name AS size_value
+			SELECT ov.option_value_id, ovd.name AS size_value,
+			       pov.quantity, pov.subtract
 			FROM `" . DB_PREFIX . "option` o
 			JOIN `" . DB_PREFIX . "option_description` od
 				ON od.option_id = o.option_id AND od.language_id = '" . $lang . "'
@@ -70,11 +71,16 @@ class ModelExtensionFeedGoogleBase extends Model {
 			ORDER BY ov.sort_order
 		");
 
-		$sizes = array();
+		$variants = array();
 		foreach ($query->rows as $row) {
-			$sizes[] = $this->formatSize($row['size_value']);
+			$variants[] = array(
+				'option_value_id' => (int)$row['option_value_id'],
+				'size_display'    => $this->formatSize($row['size_value']),
+				'quantity'        => (int)$row['quantity'],
+				'subtract'        => (bool)$row['subtract'],
+			);
 		}
-		return $sizes;
+		return $variants;
 	}
 
 	private function formatSize($raw) {

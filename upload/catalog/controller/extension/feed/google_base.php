@@ -31,133 +31,139 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 					if (!in_array($product['product_id'], $product_data) && $product['description']) {
 						
 						$product_data[] = $product['product_id'];
-						
-						$output .= '<item>';
-						$output .= '<title><![CDATA[' . $product['name'] . ']]></title>';
-						$output .= '<link>' . $this->url->link('product/product', 'product_id=' . $product['product_id']) . '</link>';
-						$output .= '<description><![CDATA[' . strip_tags(html_entity_decode($product['description'], ENT_QUOTES, 'UTF-8')) . ']]></description>';
-						$output .= '<g:brand><![CDATA[' . html_entity_decode($product['manufacturer'], ENT_QUOTES, 'UTF-8') . ']]></g:brand>';
-						$output .= '<g:condition>new</g:condition>';
-						$output .= '<g:id>' . $product['product_id'] . '</g:id>';
 
-						if ($product['image']) {
-							$output .= '  <g:image_link>' . $this->model_tool_image->resize($product['image'], 500, 500) . '</g:image_link>';
-						} else {
-							$output .= '  <g:image_link></g:image_link>';
-						}
-
-						// Additional product images (Google allows up to 10 additional images)
-						$product_images = $this->model_catalog_product->getProductImages($product['product_id']);
-						$image_count = 0;
-						foreach ($product_images as $product_image) {
-							if ($image_count >= 10) {
-								break;
-							}
-							$output .= '  <g:additional_image_link>' . $this->model_tool_image->resize($product_image['image'], 500, 500) . '</g:additional_image_link>';
-							$image_count++;
-						}
-
-						$output .= '  <g:model_number>' . $product['model'] . '</g:model_number>';
-
-						if ($product['model']) {
-							$output .= '  <g:mpn><![CDATA[' . $product['model'] . ']]></g:mpn>' ;
-						} else {
-							$output .= '  <g:identifier_exists>false</g:identifier_exists>';
-						}
-
-						if ($product['upc']) {
-							$output .= '  <g:upc>' . $product['upc'] . '</g:upc>';
-						}
-
-						if ($product['ean']) {
-							$output .= '  <g:ean>' . $product['ean'] . '</g:ean>';
-						}
-
-						$currencies = array(
-							'USD',
-							'EUR',
-							'GBP',
-                            'RUB'
-						);
-
+						// Resolve currency
+						$currencies = array('USD', 'EUR', 'GBP', 'RUB');
 						if (in_array($this->session->data['currency'], $currencies)) {
-							$currency_code = $this->session->data['currency'];
+							$currency_code  = $this->session->data['currency'];
 							$currency_value = $this->currency->getValue($this->session->data['currency']);
 						} else {
-							$currency_code = 'USD';
+							$currency_code  = 'USD';
 							$currency_value = $this->currency->getValue('USD');
 						}
 
-						if ((float)$product['special']) {
-							$output .= '  <g:price>' .  $this->currency->format($this->tax->calculate($product['special'], $product['tax_class_id']), $currency_code, $currency_value, false) . '</g:price>';
-						} else {
-							$output .= '  <g:price>' . $this->currency->format($this->tax->calculate($product['price'], $product['tax_class_id']), $currency_code, $currency_value, false) . '</g:price>';
+						// Detect product type and load size variants before building XML
+						$attrs = $this->model_extension_feed_google_base->getProductAttributes($product['product_id']);
+						$type  = $this->detectProductType($product['name'], $attrs);
+
+						$size_variants = array();
+						if ($type === 'shoes' || $type === 'apparel') {
+							$size_variants = $this->model_extension_feed_google_base->getProductSizeVariants($product['product_id']);
 						}
 
-						$output .= '  <g:google_product_category>' . $google_base_category['google_base_category_id'] . '</g:google_product_category>';
+						// null entry = no size variant → emit one plain item
+						$variant_list = !empty($size_variants) ? $size_variants : array(null);
 
+						// Build image tags once (shared across all variants)
+						$image_tags = '';
+						if ($product['image']) {
+							$image_tags .= '  <g:image_link>' . $this->model_tool_image->resize($product['image'], 500, 500) . '</g:image_link>';
+						} else {
+							$image_tags .= '  <g:image_link></g:image_link>';
+						}
+						$product_images = $this->model_catalog_product->getProductImages($product['product_id']);
+						$image_count = 0;
+						foreach ($product_images as $product_image) {
+							if ($image_count >= 10) break;
+							$image_tags .= '  <g:additional_image_link>' . $this->model_tool_image->resize($product_image['image'], 500, 500) . '</g:additional_image_link>';
+							$image_count++;
+						}
+
+						// Build price tag once
+						if ((float)$product['special']) {
+							$price_tag = '  <g:price>' . $this->currency->format($this->tax->calculate($product['special'], $product['tax_class_id']), $currency_code, $currency_value, false) . '</g:price>';
+						} else {
+							$price_tag = '  <g:price>' . $this->currency->format($this->tax->calculate($product['price'], $product['tax_class_id']), $currency_code, $currency_value, false) . '</g:price>';
+						}
+
+						// Build category breadcrumb tags once
+						$category_tags = '  <g:google_product_category>' . $google_base_category['google_base_category_id'] . '</g:google_product_category>';
 						$categories = $this->model_catalog_product->getCategories($product['product_id']);
-
 						foreach ($categories as $category) {
 							$path = $this->getPath($category['category_id']);
-
 							if ($path) {
 								$string = '';
-
 								foreach (explode('_', $path) as $path_id) {
 									$category_info = $this->model_catalog_category->getCategory($path_id);
-
 									if ($category_info) {
-										if (!$string) {
-											$string = $category_info['name'];
-										} else {
-											$string .= ' &gt; ' . $category_info['name'];
-										}
+										$string = $string ? $string . ' &gt; ' . $category_info['name'] : $category_info['name'];
 									}
 								}
-
-								$output .= '<g:product_type><![CDATA[' . $string . ']]></g:product_type>';
+								$category_tags .= '<g:product_type><![CDATA[' . $string . ']]></g:product_type>';
 							}
 						}
 
-						$output .= '  <g:quantity>' . $product['quantity'] . '</g:quantity>';
-						$output .= '  <g:weight>' . $this->weight->format($product['weight'], $product['weight_class_id']) . '</g:weight>';
-						$output .= '  <g:availability><![CDATA[' . ($product['quantity'] ? 'in stock' : 'out of stock') . ']]></g:availability>';
-
-						// Color, material, size — for shoes and apparel
-						$attrs = $this->model_extension_feed_google_base->getProductAttributes($product['product_id']);
-
+						// Build color and material tags once
+						$attr_tags = '';
 						$color = '';
 						if (!empty($attrs['Цвет'])) {
 							$color = $this->stripColorHex($attrs['Цвет']);
 						}
 						if ($color) {
-							$output .= '  <g:color><![CDATA[' . $color . ']]></g:color>';
+							$attr_tags .= '  <g:color><![CDATA[' . $color . ']]></g:color>';
 						}
-
-						$type = $this->detectProductType($product['name'], $attrs);
-
 						if ($type === 'shoes') {
 							$mat_upper = !empty($attrs['Материал кроссовок']) ? $attrs['Материал кроссовок'] : 'SYNTHETIC LEATHER+TEXTILE';
 							$mat_sole  = !empty($attrs['Материал подошвы'])  ? $attrs['Материал подошвы']  : 'RUBBER';
-							$output .= '  <g:material><![CDATA[' . $mat_upper . ' / ' . $mat_sole . ']]></g:material>';
+							$attr_tags .= '  <g:material><![CDATA[' . $mat_upper . ' / ' . $mat_sole . ']]></g:material>';
 						} elseif ($type === 'apparel') {
 							$mat = !empty($attrs['Материал']) ? $attrs['Материал'] : 'SHELL:POLYESTER100%';
-							$output .= '  <g:material><![CDATA[' . $mat . ']]></g:material>';
+							$attr_tags .= '  <g:material><![CDATA[' . $mat . ']]></g:material>';
 						}
 
-						if ($type === 'shoes' || $type === 'apparel') {
-							$sizes = $this->model_extension_feed_google_base->getProductSizes($product['product_id']);
-							$unique_sizes = array_values(array_unique(array_filter(array_map('trim', (array)$sizes))));
-							if (!empty($unique_sizes)) {
-								$output .= '  <g:size_system>EU</g:size_system>';
-								foreach ($unique_sizes as $sz) {
-									$output .= '  <g:size><![CDATA[' . $sz . ']]></g:size>';
-								}
+						foreach ($variant_list as $variant) {
+							$output .= '<item>';
+							$output .= '<title><![CDATA[' . $product['name'] . ']]></title>';
+							$output .= '<link>' . $this->url->link('product/product', 'product_id=' . $product['product_id']) . '</link>';
+							$output .= '<description><![CDATA[' . strip_tags(html_entity_decode($product['description'], ENT_QUOTES, 'UTF-8')) . ']]></description>';
+							$output .= '<g:brand><![CDATA[' . html_entity_decode($product['manufacturer'], ENT_QUOTES, 'UTF-8') . ']]></g:brand>';
+							$output .= '<g:condition>new</g:condition>';
+
+							if ($variant !== null) {
+								$output .= '<g:id>' . $product['product_id'] . ':' . $variant['option_value_id'] . '</g:id>';
+								$output .= '<g:item_group_id>' . $product['product_id'] . '</g:item_group_id>';
+							} else {
+								$output .= '<g:id>' . $product['product_id'] . '</g:id>';
 							}
-						}
 
-						$output .= '</item>';
+							$output .= $image_tags;
+							$output .= '  <g:model_number>' . $product['model'] . '</g:model_number>';
+
+							if ($product['model']) {
+								$output .= '  <g:mpn><![CDATA[' . $product['model'] . ']]></g:mpn>';
+							} else {
+								$output .= '  <g:identifier_exists>false</g:identifier_exists>';
+							}
+
+							if ($product['upc']) {
+								$output .= '  <g:upc>' . $product['upc'] . '</g:upc>';
+							}
+							if ($product['ean']) {
+								$output .= '  <g:ean>' . $product['ean'] . '</g:ean>';
+							}
+
+							$output .= $price_tag;
+							$output .= $category_tags;
+
+							// Per-variant quantity and availability
+							if ($variant !== null && $variant['subtract']) {
+								$qty = $variant['quantity'];
+							} else {
+								$qty = $product['quantity'];
+							}
+							$output .= '  <g:quantity>' . $qty . '</g:quantity>';
+							$output .= '  <g:weight>' . $this->weight->format($product['weight'], $product['weight_class_id']) . '</g:weight>';
+							$output .= '  <g:availability><![CDATA[' . ($qty ? 'in stock' : 'out of stock') . ']]></g:availability>';
+
+							$output .= $attr_tags;
+
+							if ($variant !== null) {
+								$output .= '  <g:size_system>EU</g:size_system>';
+								$output .= '  <g:size><![CDATA[' . $variant['size_display'] . ']]></g:size>';
+							}
+
+							$output .= '</item>';
+						}
 					}
 				}
 			}
