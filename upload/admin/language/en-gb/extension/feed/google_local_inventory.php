@@ -18,3 +18,7 @@ $_['help_store_code']  = 'Alphanumeric identifier from your Google Business Prof
 
 // Error
 $_['error_permission'] = 'Warning: You do not have permission to modify Google Local Inventory feed!';
+
+// Cache
+$_['entry_cache_ttl'] = 'Cache TTL (hours)';
+$_['help_cache_ttl']  = 'How long to serve the cached feed without rechecking the database. Applies to all product feeds. Default: 1 hour.';

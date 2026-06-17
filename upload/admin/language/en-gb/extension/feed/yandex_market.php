@@ -30,3 +30,7 @@ $_['help_yandex_market']      = 'For more information visit <a target="_blank" h
 
 // Error
 $_['error_permission']   = 'Warning: You do not have permission to modify this module!';
+
+// Cache
+$_['entry_cache_ttl'] = 'Cache TTL (hours)';
+$_['help_cache_ttl']  = 'How long to serve the cached feed without rechecking the database. Applies to all product feeds. Default: 1 hour.';

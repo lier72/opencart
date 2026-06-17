@@ -11,6 +11,7 @@ class ControllerExtensionFeedGoogleLocalInventory extends Controller {
 
 		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
 			$this->model_setting_setting->editSetting('feed_google_local_inventory', $this->request->post);
+			$this->model_setting_setting->editSetting('feed_cache', array('feed_cache_ttl' => max(1, (int)($this->request->post['feed_cache_ttl'] ?? 1))));
 
 			$this->session->data['success'] = $this->language->get('text_success');
 
@@ -56,6 +57,13 @@ class ControllerExtensionFeedGoogleLocalInventory extends Controller {
 		} else {
 			$data['feed_google_local_inventory_store_code'] = $this->config->get('feed_google_local_inventory_store_code');
 		}
+
+		$data['feed_cache_ttl'] = isset($this->request->post['feed_cache_ttl'])
+			? (int)$this->request->post['feed_cache_ttl']
+			: ((int)$this->config->get('feed_cache_ttl') ?: 1);
+
+		$data['entry_cache_ttl'] = $this->language->get('entry_cache_ttl');
+		$data['help_cache_ttl']  = $this->language->get('help_cache_ttl');
 
 		$data['header']      = $this->load->controller('common/header');
 		$data['column_left'] = $this->load->controller('common/column_left');

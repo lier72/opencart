@@ -16,6 +16,7 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 			}
 
 			$this->model_setting_setting->editSetting('feed_yandex_market', $this->request->post);
+			$this->model_setting_setting->editSetting('feed_cache', array('feed_cache_ttl' => max(1, (int)($this->request->post['feed_cache_ttl'] ?? 1))));
 
 			$this->session->data['success'] = $this->language->get('text_success');
 
@@ -84,6 +85,13 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		} else {
 			$data['feed_yandex_market_status'] = $this->config->get('feed_yandex_market_status');
 		}
+
+		$data['feed_cache_ttl'] = isset($this->request->post['feed_cache_ttl'])
+			? (int)$this->request->post['feed_cache_ttl']
+			: ((int)$this->config->get('feed_cache_ttl') ?: 1);
+
+		$data['entry_cache_ttl'] = $this->language->get('entry_cache_ttl');
+		$data['help_cache_ttl']  = $this->language->get('help_cache_ttl');
 
 		$data['data_feed'] = HTTPS_CATALOG . 'index.php?route=extension/feed/yandex_market';
 

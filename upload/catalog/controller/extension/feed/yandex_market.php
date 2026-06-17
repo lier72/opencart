@@ -172,6 +172,13 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 			$vendor_required = false; // true - только товары у которых задан производитель, необходимо для 'vendor.model'
 			$products = $this->model_extension_feed_yandex_market->getProduct($allowed_categories, $out_of_stock_id, $vendor_required);
 
+			// ── Bulk-load attributes and size variants — replaces 2 queries per product ──
+			$product_ids  = array_column($products, 'product_id');
+			$this->load->model('extension/feed/google_base');
+			$attrs_map    = $this->model_extension_feed_google_base->getAttributesMap($product_ids);
+			$variants_map = $this->model_extension_feed_google_base->getSizeVariantsMap($product_ids);
+			// ─────────────────────────────────────────────────────────────────────────────
+
 			foreach ($products as $product) {
 				$data = array();
 
@@ -213,8 +220,8 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 					$data['typePrefix'] = $parsed['typePrefix'];
 				}
 
-				// Load product attributes (color, material, etc.)
-				$attrs = $this->model_extension_feed_yandex_market->getProductAttributes($product['product_id']);
+				// Attributes loaded from bulk map — 0 DB queries here.
+				$attrs = isset($attrs_map[$product['product_id']]) ? $attrs_map[$product['product_id']] : array();
 
 				// Color: prefer Цвет attribute (strip hex), fall back to name-parsed color
 				$color = '';
@@ -240,8 +247,8 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 					$data['param'][] = array('name' => 'Материал', 'value' => $mat);
 				}
 
-				// getProductSizeVariants self-selects by option name — no product_type gate needed.
-				$size_variants = $this->model_extension_feed_yandex_market->getProductSizeVariants($product['product_id']);
+				// Size variants loaded from bulk map — 0 DB queries here.
+				$size_variants = isset($variants_map[$product['product_id']]) ? $variants_map[$product['product_id']] : array();
 
 				$data['description'] = $product['description'];
 //				$data['manufacturer_warranty'] = 'true';
@@ -258,14 +265,18 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 				// For all other products: single offer with id = product_id.
 				if (!empty($size_variants)) {
 					foreach ($size_variants as $variant) {
-						$offer              = $data;
-						$offer['id']        = $product['product_id'] . ':' . $variant['option_value_id'];
-						$offer['group_id']  = $product['product_id'];
-						$offer['param'][]   = array('name' => 'Размер', 'value' => $variant['size_display']);
+						$variant_qty = $variant['subtract'] ? $variant['quantity'] : $product['quantity'];
+						if ($variant_qty <= 0) continue;
+						$offer             = $data;
+						$offer['id']       = $product['product_id'] . '-' . $variant['option_value_id'];
+						$offer['group_id'] = $product['product_id'];
+						$offer['param'][]  = array('name' => 'Размер', 'value' => $variant['size_display']);
 						$this->setOffer($offer);
 					}
 				} else {
-					$this->setOffer($data);
+					if ($data['available']) {
+						$this->setOffer($data);
+					}
 				}
 			}
 
@@ -283,63 +294,63 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 	}
 
 	/**
-	 * Check if cached feed is still valid
-	 *
-	 * @return bool
+	 * Check if cached feed is still valid.
+	 * Skips DB queries entirely when the cache file is less than 1 hour old.
 	 */
 	private function isCacheValid() {
 		if (!file_exists($this->cache_file) || !file_exists($this->cache_hash_file)) {
 			return false;
 		}
-
-		// Get current hash of products
-		$current_hash = $this->getProductsHash();
-		$cached_hash = file_get_contents($this->cache_hash_file);
-
-		return $current_hash === $cached_hash;
+		$ttl = ((int)$this->config->get('feed_cache_ttl') ?: 1) * 3600;
+		if ((time() - filemtime($this->cache_file)) < $ttl) {
+			return true;
+		}
+		return $this->getFeedHash() === file_get_contents($this->cache_hash_file);
 	}
 
 	/**
-	 * Calculate hash of all products that will be in feed
-	 * This hash changes when product names, prices, or other significant parameters change
-	 *
-	 * @return string
+	 * Two-query MD5 hash of product prices/quantities and variant quantities.
+	 * Costs 2 DB queries regardless of catalog size; replaces the old getProductsHash()
+	 * which ran a full product SELECT + PHP iteration on every cache-validity check.
 	 */
-	private function getProductsHash() {
+	private function getFeedHash() {
 		$allowed_categories = $this->config->get('feed_yandex_market_categories');
 		if (!$allowed_categories) return '';
 
-		$this->load->model('extension/feed/yandex_market');
+		$in = implode(',', array_map('intval', explode(',', $allowed_categories)));
 
-		$in_stock_id = $this->config->get('feed_yandex_market_in_stock');
-		$out_of_stock_id = $this->config->get('feed_yandex_market_out_of_stock');
+		$products_hash = $this->db->query("
+			SELECT MD5(GROUP_CONCAT(
+				p.product_id, '-', p.price, '-', p.quantity, '-', UNIX_TIMESTAMP(p.date_modified)
+				ORDER BY p.product_id
+			)) AS h
+			FROM `" . DB_PREFIX . "product` p
+			JOIN `" . DB_PREFIX . "product_to_category` p2c ON p2c.product_id = p.product_id
+			WHERE p2c.category_id IN (" . $in . ")
+			  AND p.status = '1'
+		");
 
-		$products = $this->model_extension_feed_yandex_market->getProduct($allowed_categories, $out_of_stock_id, false);
+		$variants_hash = $this->db->query("
+			SELECT MD5(GROUP_CONCAT(
+				po.product_id, '-', pov.option_value_id, '-', pov.quantity
+				ORDER BY po.product_id, pov.option_value_id
+			)) AS h
+			FROM `" . DB_PREFIX . "product_option_value` pov
+			JOIN `" . DB_PREFIX . "product_option` po
+				ON po.product_option_id = pov.product_option_id
+		");
 
-		// Create hash from product data that affects the feed
-		$hash_data = array();
-		foreach ($products as $product) {
-			$hash_data[] = $product['product_id'] . '|' .
-			               $product['name'] . '|' .
-			               $product['price'] . '|' .
-			               $product['manufacturer'] . '|' .
-			               $product['model'] . '|' .
-			               $product['quantity'] . '|' .
-			               $product['image'] . '|' .
-			               $product['date_modified'];
-		}
-
-		return md5(serialize($hash_data));
+		$h1 = $products_hash->row['h'] ?? '';
+		$h2 = $variants_hash->row['h'] ?? '';
+		return md5($h1 . $h2);
 	}
 
 	/**
-	 * Save generated feed to cache
-	 *
-	 * @param string $content
+	 * Save generated feed to cache files.
 	 */
 	private function saveToCache($content) {
 		file_put_contents($this->cache_file, $content);
-		file_put_contents($this->cache_hash_file, $this->getProductsHash());
+		file_put_contents($this->cache_hash_file, $this->getFeedHash());
 	}
 
 	/**
@@ -364,9 +375,11 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		$name_lower = mb_strtolower($name, 'UTF-8');
 		$words = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY);
 
-		// 1. Check for typePrefix at the beginning
+		// 1. Check for typePrefix anywhere in name using whole-word matching.
+		// Uses Unicode-aware non-letter boundaries so "поло" won't match "полотенце".
 		foreach ($this->type_prefixes as $prefix_key => $prefix_value) {
-			if (mb_strpos($name_lower, $prefix_key) === 0) {
+			$pattern = '/(?<!\p{L})' . preg_quote(mb_strtolower($prefix_key, 'UTF-8'), '/') . '(?!\p{L})/u';
+			if (preg_match($pattern, $name_lower)) {
 				$result['typePrefix'] = $prefix_value;
 				break;
 			}
