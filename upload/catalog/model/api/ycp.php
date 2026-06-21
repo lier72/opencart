@@ -17,7 +17,7 @@
  *
  * Price convention: all prices in whole RUB (integer, rounded).
  *
- * productId encoding: "{product_id}" or "{product_id}:{option_value_id}"
+ * productId encoding: "{product_id}" or "{product_id}-{option_value_id}"
  * Must match the offer id format in the Yandex Market YML feed.
  */
 class ModelApiYcp extends Model {
@@ -26,12 +26,12 @@ class ModelApiYcp extends Model {
 
     /**
      * Parses a YCP offer ID string into product_id and optional option_value_id.
-     * Format: "{product_id}" or "{product_id}:{option_value_id}".
+     * Format: "{product_id}" or "{product_id}-{option_value_id}".
      *
      * Returns ['product_id' => int, 'option_value_id' => int|null].
      */
     private function parseOfferId($id_str) {
-        $parts = explode(':', (string)$id_str, 2);
+        $parts = explode('-', (string)$id_str, 2);
         return [
             'product_id'      => (int)$parts[0],
             'option_value_id' => isset($parts[1]) ? (int)$parts[1] : null
@@ -370,9 +370,8 @@ class ModelApiYcp extends Model {
             if ($option_value_id) {
                 foreach ($this->getSiblingOptionValues($product_id, $option_value_id) as $sib_ovid) {
                     $sib_qty = $this->optionAvailableQty($product_id, $sib_ovid, $product['quantity']);
-                    if ($sib_qty <= 0) continue;
                     $variations[] = array_merge($base, [
-                        'id'              => $product_id . ':' . $sib_ovid,
+                        'id'              => $product_id . '-' . $sib_ovid,
                         'characteristics' => $this->buildCharacteristics($product_id, $sib_ovid, $attrs),
                         'warehouses'      => [['id' => 'main', 'available_quantity' => $sib_qty]],
                     ]);

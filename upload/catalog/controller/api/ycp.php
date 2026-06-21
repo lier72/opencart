@@ -30,6 +30,55 @@ class ControllerApiYcp extends Controller {
     private $rawBody     = null;
     private $ycpEndpoint = '';
 
+    private function getRawBody() {
+        if ($this->rawBody !== null) {
+            return $this->rawBody;
+        }
+
+        if (isset($this->request->server['YCP_RAW_BODY_CACHE'])) {
+            $this->rawBody = (string)$this->request->server['YCP_RAW_BODY_CACHE'];
+            return $this->rawBody;
+        }
+
+        if (isset($_SERVER['YCP_RAW_BODY_CACHE'])) {
+            $this->rawBody = (string)$_SERVER['YCP_RAW_BODY_CACHE'];
+            return $this->rawBody;
+        }
+
+        $this->rawBody = (string)file_get_contents('php://input');
+
+        return $this->rawBody;
+    }
+
+    private function decodeJsonBody($raw_body, &$normalized_body = null) {
+        $normalized_body = $raw_body;
+
+        $data = json_decode($raw_body, true);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $data;
+        }
+
+        if (strpos($raw_body, '&') === false) {
+            return null;
+        }
+
+        $decoded_body = html_entity_decode($raw_body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        if ($decoded_body === $raw_body) {
+            return null;
+        }
+
+        $data = json_decode($decoded_body, true);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $normalized_body = $decoded_body;
+            return $data;
+        }
+
+        return null;
+    }
+
     /**
      * Appends a timestamped line to DIR_LOGS/ycp.log, keeping only the last 100 entries.
      */
@@ -53,9 +102,7 @@ class ControllerApiYcp extends Controller {
     private function logIncoming() {
         $method = isset($this->request->server['REQUEST_METHOD']) ? $this->request->server['REQUEST_METHOD'] : '';
         $uri    = isset($this->request->server['REQUEST_URI'])    ? $this->request->server['REQUEST_URI']    : '';
-        if ($this->rawBody === null) {
-            $this->rawBody = (string)file_get_contents('php://input');
-        }
+        $this->rawBody = $this->getRawBody();
         $payload = $this->rawBody !== ''
             ? $this->rawBody
             : json_encode($this->request->get, JSON_UNESCAPED_UNICODE);
@@ -95,14 +142,15 @@ class ControllerApiYcp extends Controller {
      * Returns the decoded array or sends a 400 error and returns false.
      */
     private function readJson() {
-        if ($this->rawBody === null) {
-            $this->rawBody = (string)file_get_contents('php://input');
-        }
+        $this->rawBody = $this->getRawBody();
         if (empty($this->rawBody)) {
             $this->sendError(400, 'Request body is empty');
             return false;
         }
-        $data = json_decode($this->rawBody, true);
+        $normalized_body = $this->rawBody;
+        $data = $this->decodeJsonBody($this->rawBody, $normalized_body);
+        $this->rawBody = $normalized_body;
+        $_SERVER['YCP_RAW_BODY_CACHE'] = $this->rawBody;
         if ($data === null) {
             $this->sendError(400, 'Request body is not valid JSON');
             return false;
