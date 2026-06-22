@@ -88,8 +88,8 @@ class ControllerApiYcp extends Controller {
             ? file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)
             : [];
         $lines[] = date('Y-m-d H:i:s') . ' ' . $message;
-        if (count($lines) > 100) {
-            $lines = array_slice($lines, -100);
+        if (count($lines) > 500) {
+            $lines = array_slice($lines, -500);
         }
         file_put_contents($file, implode(PHP_EOL, $lines) . PHP_EOL, LOCK_EX);
     }
@@ -340,21 +340,22 @@ class ControllerApiYcp extends Controller {
 
         $this->load->model('api/ycp');
 
-        // Find order by order_number (our OpenCart order_id) if provided
-        if (!empty($order_number)) {
-            $oc_order_id = (int)$order_number;
-        } else {
-            $oc_order_id = $this->model_api_ycp->findOrderBySession($session_id);
-        }
+        // Use session_id as the primary lookup — our comment stores "YCP|{session_id}|".
+        // Yandex's order_number is their own sequential counter, not our OpenCart order_id.
+        $oc_order_id = !empty($session_id)
+            ? $this->model_api_ycp->findOrderBySession($session_id)
+            : 0;
 
         if (!$oc_order_id) {
-            $this->sendError(404, 'Order not found');
+            $this->sendError(404, 'Order not found for session ' . $session_id);
             return;
         }
 
-        // Attach Yandex order_id to the comment for future webhook/status lookups
+        // Attach Yandex order_id to the comment so orderDelivered/orderCancel can find it.
         if (!empty($yandex_order_id)) {
             $this->model_api_ycp->attachYandexOrderId($oc_order_id, $yandex_order_id);
+        } else {
+            $this->log("placed: no order_id in body for OC order #{$oc_order_id} — orderDelivered will use product fallback");
         }
 
         // Advance order status: online payment → Processing, cash on delivery → stays Pending
@@ -482,10 +483,14 @@ class ControllerApiYcp extends Controller {
      * POST /api/v1/order/delivered
      *
      * Called by Yandex when delivery is completed. Updates OpenCart order status to Complete.
-     * Supports partial fulfillment via purchased_items (we record but don't split the order for MVP).
      *
      * Request: query param order_id (Yandex UUID).
-     * Body: {"purchased_items": [{"id": "42:15", "quantity": 2}]}.
+     * Body: {"purchased_items": [{"id": "42-15", "quantity": 2}]}.
+     *
+     * Fallback: if placed() stored the Yandex UUID correctly, findOrderByYandexId finds the order.
+     * If not (placed() was skipped or sent wrong order_number), we search by product IDs from
+     * purchased_items among recent YCP orders that still have no Yandex UUID attached.
+     * If still not found, return 200 to stop the 10-minute retry loop and log for manual fix.
      */
     public function orderDelivered() {
         $this->ycpEndpoint = 'orderDelivered';
@@ -504,8 +509,22 @@ class ControllerApiYcp extends Controller {
         $oc_order_id = $this->model_api_ycp->findOrderByYandexId($yandex_order_id);
 
         if (!$oc_order_id) {
-            $this->sendError(404, 'Order not found');
-            return;
+            // placed() may not have stored the UUID — try fallback by purchased product IDs.
+            $input     = $this->readJson();
+            $purchased = ($input && !empty($input['purchased_items'])) ? $input['purchased_items'] : [];
+
+            $oc_order_id = $this->model_api_ycp->findOrphanYcpOrderByItems($purchased);
+
+            if ($oc_order_id) {
+                $this->model_api_ycp->attachYandexOrderId($oc_order_id, $yandex_order_id);
+                $this->log("orderDelivered: linked Yandex UUID {$yandex_order_id} → OC order #{$oc_order_id} via product fallback");
+            } else {
+                // Truly not found — return 200 to stop the 10-minute retry loop.
+                $items_str = json_encode($purchased, JSON_UNESCAPED_UNICODE);
+                $this->log("WARN orderDelivered: no order for Yandex UUID {$yandex_order_id} items={$items_str} — update order comment manually");
+                $this->sendEmpty();
+                return;
+            }
         }
 
         $complete_status = (int)($this->config->get('ycp_order_status_delivered') ?: 5);
