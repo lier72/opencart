@@ -15,6 +15,8 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 	private $eol = "\n";
 	private $cache_file = '';
 	private $cache_hash_file = '';
+	private $yandex_picture_min_width = 300;
+	private $yandex_picture_min_height = 400;
 
 	// Name parsing dictionaries
 	private $vendors = array('Yonex', 'Li-NING', 'RSL', 'Chao Pai', 'Uniqsport');
@@ -177,6 +179,7 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 			$this->load->model('extension/feed/google_base');
 			$attrs_map    = $this->model_extension_feed_google_base->getAttributesMap($product_ids);
 			$variants_map = $this->model_extension_feed_google_base->getSizeVariantsMap($product_ids);
+			$images_map   = $this->model_extension_feed_google_base->getImagesMap($product_ids);
 			// ─────────────────────────────────────────────────────────────────────────────
 
 			foreach ($products as $product) {
@@ -253,11 +256,10 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 				$data['description'] = $product['description'];
 //				$data['manufacturer_warranty'] = 'true';
 //				$data['barcode'] = $product['sku'];
-				if ($product['image']) {
-					$picture = $this->model_tool_image->resize($product['image'], 100, 100);
-					if ($picture) {
-						$data['picture'] = $picture;
-					}
+				$additional_images = isset($images_map[$product['product_id']]) ? $images_map[$product['product_id']] : array();
+				$pictures = $this->buildOfferPictures($product['image'], $additional_images);
+				if ($pictures) {
+					$data['picture'] = $pictures;
 				}
 
 				// For shoes/apparel with size options: one offer per size variant.
@@ -351,6 +353,86 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 	private function saveToCache($content) {
 		file_put_contents($this->cache_file, $content);
 		file_put_contents($this->cache_hash_file, $this->getFeedHash());
+	}
+
+	private function buildOfferPictures($main_image, $additional_images = array()) {
+		$pictures = array();
+		$seen = array();
+		$images = array();
+
+		if (!empty($main_image)) {
+			$images[] = $main_image;
+		}
+
+		foreach ($additional_images as $image) {
+			$images[] = $image;
+		}
+
+		foreach ($images as $image) {
+			$picture = $this->getOfferPictureUrl($image);
+
+			if ($picture && !isset($seen[$picture])) {
+				$pictures[] = $picture;
+				$seen[$picture] = true;
+			}
+		}
+
+		return $pictures;
+	}
+
+	private function getOfferPictureUrl($image) {
+		if (empty($image)) {
+			return '';
+		}
+
+		$full_path = realpath(DIR_IMAGE . $image);
+		$image_root = realpath(DIR_IMAGE);
+
+		if (!$full_path || !$image_root || !is_file($full_path)) {
+			return '';
+		}
+
+		$full_path = str_replace('\\', '/', $full_path);
+		$image_root = str_replace('\\', '/', $image_root);
+
+		if (strpos($full_path, $image_root) !== 0) {
+			return '';
+		}
+
+		$image_info = @getimagesize($full_path);
+
+		if (!$image_info || empty($image_info['mime'])) {
+			return '';
+		}
+
+		$mime = $image_info['mime'];
+		$supported_mimes = array('image/jpeg', 'image/png', 'image/webp');
+
+		if (!in_array($mime, $supported_mimes)) {
+			return '';
+		}
+
+		if ($image_info[0] >= $this->yandex_picture_min_width && $image_info[1] >= $this->yandex_picture_min_height) {
+			return $this->getOriginalImageUrl($image);
+		}
+
+		if ($mime === 'image/webp') {
+			return $this->getOriginalImageUrl($image);
+		}
+
+		return $this->model_tool_image->resize($image, $this->yandex_picture_min_width, $this->yandex_picture_min_height);
+	}
+
+	private function getOriginalImageUrl($image) {
+		$image = ltrim($image, '/');
+		$segments = array_map('rawurlencode', explode('/', $image));
+		$image = implode('/', $segments);
+
+		if (!empty($this->request->server['HTTPS'])) {
+			return $this->config->get('config_ssl') . 'image/' . $image;
+		}
+
+		return $this->config->get('config_url') . 'image/' . $image;
 	}
 
 	/**
@@ -946,7 +1028,23 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		// поэтому важно соблюдать его в соответствии с порядком описанным в DTD
 		$offer['data'] = array();
 		foreach ($allowed_tags as $key => $value) {
-			$offer['data'][$key] = $this->prepareField($data[$key]);
+			if (is_array($data[$key])) {
+				$offer['data'][$key] = array();
+
+				foreach ($data[$key] as $item) {
+					$item = $this->prepareField($item);
+
+					if ($item !== '') {
+						$offer['data'][$key][] = $item;
+					}
+				}
+
+				if (!$offer['data'][$key]) {
+					unset($offer['data'][$key]);
+				}
+			} else {
+				$offer['data'][$key] = $this->prepareField($data[$key]);
+			}
 		}
 
 		$this->offers[] = $offer;
@@ -1029,7 +1127,13 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 	private function array2Tag($tags) {
 		$retval = '';
 		foreach ($tags as $key => $value) {
-			if ($value !== '' && $value !== null) {
+			if (is_array($value)) {
+				foreach ($value as $item) {
+					if ($item !== '' && $item !== null) {
+						$retval .= '<' . $key . '>' . $item . '</' . $key . '>' . $this->eol;
+					}
+				}
+			} elseif ($value !== '' && $value !== null) {
 				$retval .= '<' . $key . '>' . $value . '</' . $key . '>' . $this->eol;
 			}
 		}
