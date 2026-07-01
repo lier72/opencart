@@ -1,0 +1,18 @@
+@media (max-width: 1024px) {
+  html.mobile footer .module-side_products ul.nav-tabs {
+    flex-wrap: wrap !important;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html.mobile footer .module-side_products ul.nav-tabs > li {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  html.mobile footer .module-side_products .nav-tabs > li > a:not(.item-all-link) {
+    white-space: normal !important;
+    text-align: center;
+    justify-content: center;
+  }
+}
