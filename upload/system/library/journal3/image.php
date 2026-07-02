@@ -296,6 +296,11 @@ class Image extends Base {
 			chmod(DIR_IMAGE . $jpg_filename, 0644);
 		}
 
+		// Also chmod the WebP file — convertWebp() doesn't set permissions, leaving files at 0600
+		if (strpos($image_new, '.webp') !== false && is_file(DIR_IMAGE . $image_new)) {
+			chmod(DIR_IMAGE . $image_new, 0644);
+		}
+
 		return $this->url($image_new);
 	}
 
