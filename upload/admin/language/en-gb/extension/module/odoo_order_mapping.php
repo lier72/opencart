@@ -13,6 +13,9 @@ $_['text_no_results'] = "There are no orders for this view";
 $_['text_confirm'] = "Confirm";
 $_['text_all_status'] = "All statuses";
 $_['text_sync_action'] = "Sync Now";
+$_['tab_newsletter'] = "Newsletter";
+$_['text_newsletter_sync_help'] = "Sync OpenCart newsletter subscribers to an Odoo mailing list.";
+$_['text_newsletter_target'] = "Default target list: NewsRetail_uniqsport.ru (ID 10).";
 
 
 $_['column_order_id'] = "OC Order ID";
@@ -30,8 +33,10 @@ $_['entry_odoo_id'] = "Odoo Order ID";
 $_['entry_oc_status'] = "OpenCart Status";
 $_['entry_odoo_state'] = "Odoo state";
 $_['entry_sync'] = "Sync";
+$_['entry_newslist_id'] = "Odoo Mailing List ID";
 
 $_['button_filter'] = "Filter";
 $_['button_view'] = "View";
 $_['button_sync'] = "Sync All";
 $_['button_stock'] = "Update Stock";
+$_['button_newsletter_sync'] = "Sync Newsletter";

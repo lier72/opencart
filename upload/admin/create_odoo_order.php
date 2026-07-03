@@ -1270,14 +1270,14 @@ class exportOpencartOdooNewslist extends ExportOpenCartOdoo
     }
 
     // NewsRetail_uniqsport.ru = 10 in odoo - production and 5 is Newsletter_uniqsport.ru
-    function syncOpencartOdooNewslist($newslist_id = 5)
+    function syncOpencartOdooNewslist($newslist_id = 10)
     {
         $odoo_newslist = $this->getOdoomaillist($newslist_id);
         $odoo_email = array_map('strtolower', array_column($odoo_newslist, 'email'));
         $odoo_connect = $this->connection;
         $result = $this->db->query("SELECT `name`, `email` FROM ((SELECT concat(`firstname`,' ', `lastname`) as `name`, `email` 
                                           FROM " . DB_PREFIX . "customer WHERE `newsletter` = 1 ) UNION (SELECT '' as `name`, `email` 
-                                          FROM " . DB_PREFIX . "journal2_newsletter)) TEMP");
+                                          FROM " . DB_PREFIX . "journal3_newsletter)) TEMP");
         while ($subscriber = $result->fetch_assoc()) {
             if (!in_array(strtolower($subscriber['email']), $odoo_email)) {
                 if ($odoo_connect['status']) {
@@ -1408,4 +1408,3 @@ unset($oc);
 unset($eo);
 unset($nl);
 //unset($or);
-
