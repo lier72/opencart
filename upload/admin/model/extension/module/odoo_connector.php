@@ -1188,6 +1188,137 @@ class ModelExtensionModuleOdooConnector extends Model {
         return $json;
     }
 
+    public function syncOpenCartOdooNewslist($newslist_id = 10)
+    {
+        $json = array(
+            'success' => false,
+            'message' => '',
+            'created' => 0,
+            'skipped' => 0,
+            'errors' => array()
+        );
+
+        if (!$this->connection || !is_array($this->connection)) {
+            $this->getConfig();
+        }
+
+        if (!$this->connection || !isset($this->connection['status']) || !$this->connection['status']) {
+            $json['error'] = 'Failed to connect to Odoo server. Please check configuration.';
+
+            if (isset($this->connection['error'])) {
+                $json['errors'][] = $this->connection['error'];
+            }
+
+            return $json;
+        }
+
+        $models = $this->connection['client'];
+        $db_name = $this->connection['db'];
+        $uid = $this->connection['userId'];
+        $password = $this->connection['pwd'];
+
+        try {
+            $odoo_newslist = $models->execute_kw(
+                $db_name,
+                $uid,
+                $password,
+                'mail.mass_mailing.contact',
+                'search_read',
+                array(
+                    array(
+                        array('list_ids', 'in', (int)$newslist_id),
+                    ),
+                ),
+                array(
+                    'fields' => array('email'),
+                )
+            );
+
+            if (isset($odoo_newslist['faultCode'])) {
+                $json['errors'][] = $odoo_newslist['faultString'];
+                $json['error'] = $odoo_newslist['faultString'];
+
+                return $json;
+            }
+
+            $odoo_email_lookup = array();
+
+            foreach ((array)$odoo_newslist as $contact) {
+                $email = isset($contact['email']) ? strtolower(trim($contact['email'])) : '';
+
+                if ($email !== '') {
+                    $odoo_email_lookup[$email] = true;
+                }
+            }
+
+            $result = $this->db->query("SELECT MAX(`name`) AS `name`, `email`
+                FROM (
+                    SELECT CONCAT(`firstname`, ' ', `lastname`) AS `name`, `email`
+                    FROM " . DB_PREFIX . "customer
+                    WHERE `newsletter` = 1
+                    UNION ALL
+                    SELECT '' AS `name`, `email`
+                    FROM " . DB_PREFIX . "journal3_newsletter
+                ) TEMP
+                WHERE `email` <> ''
+                GROUP BY `email`");
+
+            foreach ($result->rows as $subscriber) {
+                $email = strtolower(trim($subscriber['email']));
+
+                if ($email === '') {
+                    continue;
+                }
+
+                if (isset($odoo_email_lookup[$email])) {
+                    $json['skipped']++;
+                    continue;
+                }
+
+                $res = $models->execute_kw(
+                    $db_name,
+                    $uid,
+                    $password,
+                    'mail.mass_mailing.contact',
+                    'create',
+                    array(
+                        array(
+                            'create_uid' => 43,
+                            'name' => trim($subscriber['name']),
+                            'email' => $subscriber['email'],
+                            'list_ids' => array(array(4, (int)$newslist_id)),
+                        ),
+                    )
+                );
+
+                if (isset($res['faultCode'])) {
+                    $json['errors'][] = $subscriber['email'] . ': ' . $res['faultString'];
+                    continue;
+                }
+
+                $odoo_email_lookup[$email] = true;
+                $json['created']++;
+            }
+        } catch (Exception $e) {
+            $json['errors'][] = $e->getMessage();
+        }
+
+        $json['message'] = 'Newsletter sync finished. Created ' . $json['created'] .
+            ' contacts and skipped ' . $json['skipped'] .
+            ' existing subscribers for mailing list ' . (int)$newslist_id . '.';
+
+        if ($json['errors']) {
+            $json['error'] = implode("\n", array_slice($json['errors'], 0, 5));
+            $json['message'] .= ' Errors: ' . count($json['errors']) . '.';
+
+            return $json;
+        }
+
+        $json['success'] = true;
+
+        return $json;
+    }
+
     private function update_odoo_order_map($oc_order_id, $odoo_order_map_state,
                                            $odoo_order_state,
                                            $oc_order_map_state, $oc_order_state, $debug){

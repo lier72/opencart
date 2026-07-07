@@ -276,12 +276,15 @@ class Image extends Base {
 		// convert to webp
 		if (in_array(strtolower($extension), ['jpg', 'jpeg', 'png']) && $this->journal3_request->is_webp && $convert_cwebp && $this->journal3->get('performanceCompressImagesWebpStatus')) {
 			$image_cwebp = $image_new . '.webp';
+			$webp_available = is_file(DIR_IMAGE . $image_cwebp) && (filemtime(DIR_IMAGE . $image_cwebp) >= filemtime(DIR_IMAGE . $image_old));
 
-			if (!is_file(DIR_IMAGE . $image_cwebp) || (filemtime(DIR_IMAGE . $image_old) > filemtime(DIR_IMAGE . $image_cwebp))) {
-				$this->convertWebp($image_new, $image_cwebp);
+			if (!$webp_available) {
+				$webp_available = $this->convertWebp($image_new, $image_cwebp);
 			}
 
-			$image_new = $image_cwebp;
+			if ($webp_available && is_file(DIR_IMAGE . $image_cwebp)) {
+				$image_new = $image_cwebp;
+			}
 		}
 
 		// FINAL chmod - absolutely ensure permissions are 0644
@@ -291,6 +294,11 @@ class Image extends Base {
 		// Always chmod the JPG file
 		if (is_file(DIR_IMAGE . $jpg_filename)) {
 			chmod(DIR_IMAGE . $jpg_filename, 0644);
+		}
+
+		// Also chmod the WebP file — convertWebp() doesn't set permissions, leaving files at 0600
+		if (strpos($image_new, '.webp') !== false && is_file(DIR_IMAGE . $image_new)) {
+			chmod(DIR_IMAGE . $image_new, 0644);
 		}
 
 		return $this->url($image_new);
@@ -374,6 +382,90 @@ class Image extends Base {
 		}
 
 		return [$width, $height];
+	}
+
+	private function getIniBytes($value) {
+		$value = trim((string)$value);
+
+		if ($value === '' || $value === '-1') {
+			return -1;
+		}
+
+		$bytes = (float)$value;
+		$unit = strtolower(substr($value, -1));
+
+		switch ($unit) {
+			case 'g':
+				$bytes *= 1024;
+				// no break
+			case 'm':
+				$bytes *= 1024;
+				// no break
+			case 'k':
+				$bytes *= 1024;
+		}
+
+		return (int)round($bytes);
+	}
+
+	private function formatBytes($bytes) {
+		$units = ['B', 'KB', 'MB', 'GB', 'TB'];
+		$bytes = max(0, (float)$bytes);
+		$unit_index = 0;
+
+		while ($bytes >= 1024 && $unit_index < count($units) - 1) {
+			$bytes /= 1024;
+			$unit_index++;
+		}
+
+		$precision = $unit_index === 0 ? 0 : 1;
+
+		return round($bytes, $precision) . $units[$unit_index];
+	}
+
+	private function canConvertWebpWithinMemoryLimit($image, &$reason = null) {
+		$reason = null;
+
+		if (!function_exists('memory_get_usage')) {
+			return true;
+		}
+
+		$memory_limit = $this->getIniBytes(ini_get('memory_limit'));
+
+		if ($memory_limit <= 0) {
+			return true;
+		}
+
+		$image_info = @getimagesize(DIR_IMAGE . $image);
+
+		if (!$image_info || empty($image_info[0]) || empty($image_info[1])) {
+			return true;
+		}
+
+		$width = (int)$image_info[0];
+		$height = (int)$image_info[1];
+		$mime = isset($image_info['mime']) ? $image_info['mime'] : '';
+		$bytes_per_pixel = $mime === 'image/png' ? 10 : 9;
+		$estimated_peak = memory_get_usage(true) + (int)ceil(((float)$width * (float)$height * $bytes_per_pixel)) + (8 * 1024 * 1024);
+
+		if ($estimated_peak > $memory_limit) {
+			$reason = sprintf(
+				'Estimated peak memory %s exceeds PHP memory_limit %s for %s (%dx%d)',
+				$this->formatBytes($estimated_peak),
+				$this->formatBytes($memory_limit),
+				$image,
+				$width,
+				$height
+			);
+
+			return false;
+		}
+
+		return true;
+	}
+
+	private function getNonGdWebpConverters() {
+		return ['cwebp', 'vips', 'imagick', 'gmagick', 'imagemagick', 'graphicsmagick', 'ffmpeg'];
 	}
 
 	/**
@@ -483,27 +575,39 @@ class Image extends Base {
 	 *
 	 * @param $image
 	 * @param $image_cwebp
-	 * @throws \WebPConvert\Convert\Exceptions\ConversionFailedException
 	 */
 	public function convertWebp($image, $image_cwebp) {
 		if (function_exists('clock')) {
 			clock()->event('WEBP:' . $image)->begin();
 		}
 
+		$converted = false;
+		$guard_reason = null;
+		$options = [
+			'encoding'      => 'lossy',
+			'near-lossless' => 100,
+			'quality'       => 85,
+			'method'        => 4,
+		];
+
 		try {
-			WebPConvert::convert(DIR_IMAGE . $image, DIR_IMAGE . $image_cwebp, [
-				'encoding'      => 'lossy',
-				'near-lossless' => 100,
-				'quality'       => 85,
-				'method'        => 4,
-			]);
-		} catch (\Exception $e) {
+			if (!$this->canConvertWebpWithinMemoryLimit($image, $guard_reason)) {
+				$options['converters'] = $this->getNonGdWebpConverters();
+				$this->log->write('WebP Conversion Guard: ' . $guard_reason . '. Excluding GD converter' . ' (' . $image . ' at ' . $this->journal3_request->url . ')');
+			}
+
+			WebPConvert::convert(DIR_IMAGE . $image, DIR_IMAGE . $image_cwebp, $options);
+
+			$converted = is_file(DIR_IMAGE . $image_cwebp);
+		} catch (\Throwable $e) {
 			$this->log->write('WebP Conversion Error: ' . $e->getMessage() . '(' . $image . ' at ' . $this->journal3_request->url . ')');
+		} finally {
+			if (function_exists('clock')) {
+				clock()->event('WEBP:' . $image)->end();
+			}
 		}
 
-		if (function_exists('clock')) {
-			clock()->event('WEBP:' . $image)->end();
-		}
+		return $converted;
 	}
 
 	/**

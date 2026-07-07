@@ -40,6 +40,13 @@
             </div>
           </div>
           <div class="form-group">
+            <label class="col-sm-2 control-label" for="input-cache-ttl">{{ entry_cache_ttl }}</label>
+            <div class="col-sm-10">
+              <input type="number" name="feed_cache_ttl" value="{{ feed_cache_ttl }}" id="input-cache-ttl" class="form-control" min="1" max="168" placeholder="1" />
+              <p class="help-block">{{ help_cache_ttl }}</p>
+            </div>
+          </div>
+          <div class="form-group">
             <label class="col-sm-2 control-label" for="input-yandex_market_shopname"><span data-toggle="tooltip" title="{{ help_shopname }}">{{ entry_shopname }}</span></label>
             <div class="col-sm-10">
               <input type="text" name="feed_yandex_market_shopname" value="{{ feed_yandex_market_shopname }}" placeholder="{{ entry_shopname }}" id="input-yandex_market_shopname" class="form-control" />

@@ -423,6 +423,52 @@ class ModelCatalogProduct extends Model {
 		return $query->rows;
 	}
 
+	public function getDisabledProductRedirectPath($product_id) {
+		$product_query = $this->db->query("SELECT p.product_id FROM " . DB_PREFIX . "product p LEFT JOIN " . DB_PREFIX . "product_to_store p2s ON (p.product_id = p2s.product_id) WHERE p.product_id = '" . (int)$product_id . "' AND p.status = '0' AND p2s.store_id = '" . (int)$this->config->get('config_store_id') . "' LIMIT 1");
+
+		if (!$product_query->num_rows) {
+			return false;
+		}
+
+		$category_query = $this->db->query("SELECT p2c.category_id, c.parent_id, COUNT(cp.path_id) AS depth FROM " . DB_PREFIX . "product_to_category p2c LEFT JOIN " . DB_PREFIX . "category c ON (p2c.category_id = c.category_id) LEFT JOIN " . DB_PREFIX . "category_path cp ON (cp.category_id = p2c.category_id) WHERE p2c.product_id = '" . (int)$product_id . "' GROUP BY p2c.category_id, c.parent_id, c.sort_order ORDER BY depth DESC, c.sort_order ASC, p2c.category_id ASC");
+
+		if (!$category_query->num_rows) {
+			return false;
+		}
+
+		$parent_category_ids = array();
+
+		foreach ($category_query->rows as $category) {
+			$category_id = (int)$category['category_id'];
+
+			if ($this->isActiveCategory($category_id)) {
+				return (string)$category_id;
+			}
+
+			$parent_id = (int)$category['parent_id'];
+
+			if ($parent_id) {
+				$parent_category_ids[] = $parent_id;
+			}
+		}
+
+		$parent_category_ids = array_unique($parent_category_ids);
+
+		foreach ($parent_category_ids as $parent_category_id) {
+			if ($this->isActiveCategory($parent_category_id)) {
+				return (string)$parent_category_id;
+			}
+		}
+
+		return false;
+	}
+
+	private function isActiveCategory($category_id) {
+		$query = $this->db->query("SELECT c.category_id FROM " . DB_PREFIX . "category c LEFT JOIN " . DB_PREFIX . "category_description cd ON (c.category_id = cd.category_id) LEFT JOIN " . DB_PREFIX . "category_to_store c2s ON (c.category_id = c2s.category_id) WHERE c.category_id = '" . (int)$category_id . "' AND cd.language_id = '" . (int)$this->config->get('config_language_id') . "' AND c2s.store_id = '" . (int)$this->config->get('config_store_id') . "' AND c.status = '1' LIMIT 1");
+
+		return (bool)$query->num_rows;
+	}
+
 	public function getTotalProducts($data = array()) {
 		$sql = "SELECT COUNT(DISTINCT p.product_id) AS total";
 

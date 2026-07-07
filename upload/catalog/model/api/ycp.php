@@ -17,7 +17,7 @@
  *
  * Price convention: all prices in whole RUB (integer, rounded).
  *
- * productId encoding: "{product_id}" or "{product_id}:{option_value_id}"
+ * productId encoding: "{product_id}" or "{product_id}-{option_value_id}"
  * Must match the offer id format in the Yandex Market YML feed.
  */
 class ModelApiYcp extends Model {
@@ -26,12 +26,12 @@ class ModelApiYcp extends Model {
 
     /**
      * Parses a YCP offer ID string into product_id and optional option_value_id.
-     * Format: "{product_id}" or "{product_id}:{option_value_id}".
+     * Format: "{product_id}" or "{product_id}-{option_value_id}".
      *
      * Returns ['product_id' => int, 'option_value_id' => int|null].
      */
     private function parseOfferId($id_str) {
-        $parts = explode(':', (string)$id_str, 2);
+        $parts = explode('-', (string)$id_str, 2);
         return [
             'product_id'      => (int)$parts[0],
             'option_value_id' => isset($parts[1]) ? (int)$parts[1] : null
@@ -227,8 +227,9 @@ class ModelApiYcp extends Model {
 
             $siblings = [];
             foreach ($option['product_option_value'] as $ov) {
-                if ((int)$ov['option_value_id'] !== (int)$current_option_value_id) {
-                    $siblings[] = (int)$ov['option_value_id'];
+                $ovid = (int)$ov['option_value_id'];
+                if ($ovid !== (int)$current_option_value_id && !in_array($ovid, $siblings)) {
+                    $siblings[] = $ovid;
                 }
             }
             return $siblings;
@@ -368,12 +369,11 @@ class ModelApiYcp extends Model {
             $variations = [];
             if ($option_value_id) {
                 foreach ($this->getSiblingOptionValues($product_id, $option_value_id) as $sib_ovid) {
+                    $sib_qty = $this->optionAvailableQty($product_id, $sib_ovid, $product['quantity']);
                     $variations[] = array_merge($base, [
-                        'id'              => $product_id . ':' . $sib_ovid,
+                        'id'              => $product_id . '-' . $sib_ovid,
                         'characteristics' => $this->buildCharacteristics($product_id, $sib_ovid, $attrs),
-                        'warehouses'      => [['id' => 'main', 'available_quantity' =>
-                            $this->optionAvailableQty($product_id, $sib_ovid, $product['quantity'])
-                        ]],
+                        'warehouses'      => [['id' => 'main', 'available_quantity' => $sib_qty]],
                     ]);
                 }
             }
@@ -624,6 +624,49 @@ class ModelApiYcp extends Model {
             SET comment = '" . $this->db->escape($new_comment) . "'
             WHERE order_id = '" . (int)$oc_order_id . "'
         ");
+    }
+
+    /**
+     * Fallback order lookup when placed() did not store the Yandex UUID.
+     *
+     * Scope: called from ControllerApiYcp::orderDelivered() when findOrderByYandexId() returns 0.
+     *
+     * Searches for a YCP order (comment matches 'YCP|%|' — session stored, UUID not yet attached)
+     * that contains all the products in $purchased_items and was created within the last 30 days.
+     * Picks the most recently created match. Returns 0 if no confident match is found.
+     *
+     * $purchased_items: array of ['id' => 'product_id[-option_value_id]', 'quantity' => int]
+     */
+    public function findOrphanYcpOrderByItems($purchased_items) {
+        if (empty($purchased_items)) return 0;
+
+        $product_ids = [];
+        foreach ($purchased_items as $item) {
+            if (empty($item['id'])) continue;
+            $parsed = $this->parseOfferId($item['id']);
+            if ($parsed['product_id'] > 0) {
+                $product_ids[] = (int)$parsed['product_id'];
+            }
+        }
+        $product_ids = array_unique(array_filter($product_ids));
+        if (empty($product_ids)) return 0;
+
+        $ids_str = implode(',', $product_ids);
+
+        $q = $this->db->query("
+            SELECT op.order_id, COUNT(DISTINCT op.product_id) AS matched
+            FROM `" . DB_PREFIX . "order_product` op
+            JOIN `" . DB_PREFIX . "order` o ON o.order_id = op.order_id
+            WHERE op.product_id IN (" . $ids_str . ")
+            AND o.comment LIKE 'YCP|%|'
+            AND o.date_added > DATE_SUB(NOW(), INTERVAL 30 DAY)
+            AND o.order_status_id NOT IN (7, 11)
+            GROUP BY op.order_id
+            ORDER BY matched DESC, o.date_added DESC
+            LIMIT 1
+        ");
+
+        return $q->num_rows ? (int)$q->row['order_id'] : 0;
     }
 
     /**

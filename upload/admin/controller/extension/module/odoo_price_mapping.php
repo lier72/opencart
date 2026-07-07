@@ -626,7 +626,7 @@ class ControllerExtensionModuleOdooPriceMapping extends Controller {
 
         try {
             $this->load->model('extension/module/odoo_price_sync');
-            $stats = $this->model_module_odoo_price_sync->processOdooPrices();
+            $stats = $this->model_extension_module_odoo_price_sync->processOdooPrices();
 
             // Format success message
             $json['success'] = true;

@@ -178,6 +178,29 @@ class ControllerExtensionModuleOdooConnector extends Controller {
         $this->response->setOutput(json_encode($json));
     }
 
+    public function syncNewsletterList() {
+        $this->load->language('extension/module/odoo_connector');
+        $this->load->model('extension/module/odoo_connector');
+
+        $json = array('success' => false);
+
+        if (!$this->user->hasPermission('modify', 'extension/module/odoo_connector')) {
+            $json['error'] = $this->language->get('error_permission');
+        } elseif ($this->request->server['REQUEST_METHOD'] != 'POST') {
+            $json['error'] = $this->language->get('error_invalid_request');
+        } else {
+            $newslist_id = isset($this->request->post['newslist_id']) ? (int)$this->request->post['newslist_id'] : 10;
+
+            if ($newslist_id <= 0) {
+                $json['error'] = 'Invalid mailing list ID.';
+            } else {
+                $json = $this->model_extension_module_odoo_connector->syncOpenCartOdooNewslist($newslist_id);
+            }
+        }
+
+        $this->sendJsonResponse($json);
+    }
+
     public function createOdooOrder(){
         if (empty($this->request->get['order_id'])) {
             $this->response->redirect($this->url->link('extension/module/odoo_connector', 'user_token=' . $this->session->data['user_token'], 'SSL'));

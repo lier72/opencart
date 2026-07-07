@@ -20,6 +20,7 @@
             <li role="presentation" class="active"><a href="#tab-orders" aria-controls="tab-orders" role="tab" data-toggle="tab"><i class="fa fa-shopping-cart"></i> Order Mapping</a></li>
             <li role="presentation"><a href="#tab-payments" aria-controls="tab-payments" role="tab" data-toggle="tab"><i class="fa fa-credit-card"></i> Payment Acquirers</a></li>
             <li role="presentation"><a href="#tab-currencies" aria-controls="tab-currencies" role="tab" data-toggle="tab"><i class="fa fa-money"></i> Currencies</a></li>
+            <li role="presentation"><a href="#tab-newsletter" aria-controls="tab-newsletter" role="tab" data-toggle="tab"><i class="fa fa-envelope"></i> {{ tab_newsletter }}</a></li>
         </ul>
 
         <!-- Tab panes -->
@@ -291,6 +292,39 @@
             </div>
             <!-- End Currencies Tab -->
 
+            <!-- Newsletter Tab -->
+            <div role="tabpanel" class="tab-pane" id="tab-newsletter">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="fa fa-envelope"></i> {{ tab_newsletter }}</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"></i> {{ text_newsletter_sync_help }}<br />
+                            <small>{{ text_newsletter_target }}</small>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <div class="form-group">
+                                    <label class="control-label" for="input-newslist-id">{{ entry_newslist_id }}</label>
+                                    <input type="number" min="1" id="input-newslist-id" class="form-control" value="{{ newsletter_list_id }}" />
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="form-group">
+                                    <label class="control-label" style="visibility: hidden;">{{ button_newsletter_sync }}</label>
+                                    <button type="button" class="btn btn-success form-control" id="sync-newsletter-btn">
+                                        <i class="fa fa-refresh"></i> {{ button_newsletter_sync }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="newsletter-sync-status"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Newsletter Tab -->
+
         </div>
         <!-- End Tab Content -->
     </div>
@@ -517,6 +551,41 @@
             },
             error: function(xhr, status, error) {
                 statusSpan.html('<div class="alert alert-danger" style="margin-top: 15px;">Error fetching currencies: ' + error + '</div>');
+            }
+        });
+    });
+
+    $('#sync-newsletter-btn').on('click', function() {
+        var btn = $(this);
+        var statusBox = $('#newsletter-sync-status');
+        var newslistId = $('#input-newslist-id').val() || '{{ newsletter_list_id }}';
+        var syncUrl = '{{ newsletter_sync_url }}'.replace(/&amp;/g, '&');
+
+        $.ajax({
+            url: syncUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                newslist_id: newslistId
+            },
+            beforeSend: function() {
+                btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Syncing...');
+                statusBox.html('');
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fa fa-refresh"></i> {{ button_newsletter_sync }}');
+            },
+            success: function(json) {
+                if (json.success) {
+                    statusBox.html('<div class="alert alert-success">' + (json.message || 'Newsletter sync completed successfully.') + '</div>');
+                } else if (json.error) {
+                    statusBox.html('<div class="alert alert-danger">' + (json.message ? json.message + '<br />' : '') + json.error + '</div>');
+                } else {
+                    statusBox.html('<div class="alert alert-warning">Newsletter sync completed with an unexpected response.</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                statusBox.html('<div class="alert alert-danger">Error syncing newsletter: ' + error + '</div>');
             }
         });
     });

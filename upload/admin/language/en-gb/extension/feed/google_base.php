@@ -23,3 +23,6 @@ $_['entry_status']           = 'Status';
 $_['error_permission']       = 'Warning: You do not have permission to modify Google Base feed!';
 $_['error_upload']           = 'File could not be uploaded!';
 $_['error_filetype']         = 'Invalid file type!';
+// Cache
+$_['entry_cache_ttl'] = 'Cache TTL (hours)';
+$_['help_cache_ttl']  = 'How long to serve the cached feed without rechecking the database. Applies to all product feeds. Default: 1 hour.';

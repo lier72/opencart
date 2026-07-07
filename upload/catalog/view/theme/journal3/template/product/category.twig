@@ -23,6 +23,9 @@
       {% if journal3.get('pageTitlePosition') == 'default' %}
       <h1 class="title page-title {{ journal3.get('title_color_scheme') }}">{{ heading_title }}</h1>
       {% endif %}
+      {% if disabled_product_notice %}
+      <div class="alert alert-info alert-dismissible"><i class="fa fa-info-circle"></i> {{ disabled_product_notice }} <button type="button" class="close" data-dismiss="alert">&times;</button></div>
+      {% endif %}
       {{ content_top }}
       {% if journal3.get('categoryPageDescStatus') %}
       {% if thumb or description %}

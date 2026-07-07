@@ -100,6 +100,8 @@ class ControllerExtensionModuleOdooOrderMapping extends Controller {
         );
 
         $data['sync_url'] = $this->url->link('extension/module/odoo_connector/syncOrderState', 'user_token=' . $this->session->data['user_token'], true);
+        $data['newsletter_sync_url'] = $this->url->link('extension/module/odoo_connector/syncNewsletterList', 'user_token=' . $this->session->data['user_token'], true);
+        $data['newsletter_list_id'] = 10;
 
         // Get Orders
         $filter_data = array(
@@ -140,6 +142,9 @@ class ControllerExtensionModuleOdooOrderMapping extends Controller {
         $data['text_confirm'] = $this->language->get('text_confirm');
         $data['text_all_status'] = $this->language->get('text_all_status');
         $data['text_sync_action'] = $this->language->get('text_sync_action');
+        $data['tab_newsletter'] = $this->language->get('tab_newsletter');
+        $data['text_newsletter_sync_help'] = $this->language->get('text_newsletter_sync_help');
+        $data['text_newsletter_target'] = $this->language->get('text_newsletter_target');
 
         $data['column_order_id'] = $this->language->get('column_order_id');
         $data['column_odoo_id'] = $this->language->get('column_odoo_id');
@@ -156,10 +161,12 @@ class ControllerExtensionModuleOdooOrderMapping extends Controller {
         $data['entry_oc_status'] = $this->language->get('entry_oc_status');
         $data['entry_odoo_state'] = $this->language->get('entry_odoo_state');
         $data['entry_sync'] = $this->language->get('entry_sync');
+        $data['entry_newslist_id'] = $this->language->get('entry_newslist_id');
 
         $data['button_filter'] = $this->language->get('button_filter');
         $data['button_view'] = $this->language->get('button_view');
         $data['button_sync'] = $this->language->get('button_sync');
+        $data['button_newsletter_sync'] = $this->language->get('button_newsletter_sync');
         // Get status options for filter
         $data['order_statuses'] = $this->model_extension_module_odoo_connector->getOrderStatuses();
 

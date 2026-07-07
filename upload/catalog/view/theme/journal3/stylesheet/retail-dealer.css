@@ -70,6 +70,14 @@
   flex-wrap: wrap;
 }
 
+#product > div.product-price-group > div.product-stats {
+  border-left: 0 !important;
+}
+
+#product > div.product-price-group > div.price-wrapper {
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .product-info .retail-price {
   font-size: inherit;
   font-weight: inherit;

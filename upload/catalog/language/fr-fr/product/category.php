@@ -15,3 +15,4 @@ $_['text_rating_desc'] = 'Évaluation (La plus haute)';
 $_['text_model_asc']   = 'Modèle (A - Z)';
 $_['text_model_desc']  = 'Modèle (Z - A)';
 $_['text_limit']       = 'Afficher';
+$_['text_disabled_product_notice'] = 'Le produit que vous recherchez est desactive. Vous pouvez trouver des produits similaires dans cette categorie.';

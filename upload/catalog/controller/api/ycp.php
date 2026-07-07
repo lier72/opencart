@@ -30,6 +30,55 @@ class ControllerApiYcp extends Controller {
     private $rawBody     = null;
     private $ycpEndpoint = '';
 
+    private function getRawBody() {
+        if ($this->rawBody !== null) {
+            return $this->rawBody;
+        }
+
+        if (isset($this->request->server['YCP_RAW_BODY_CACHE'])) {
+            $this->rawBody = (string)$this->request->server['YCP_RAW_BODY_CACHE'];
+            return $this->rawBody;
+        }
+
+        if (isset($_SERVER['YCP_RAW_BODY_CACHE'])) {
+            $this->rawBody = (string)$_SERVER['YCP_RAW_BODY_CACHE'];
+            return $this->rawBody;
+        }
+
+        $this->rawBody = (string)file_get_contents('php://input');
+
+        return $this->rawBody;
+    }
+
+    private function decodeJsonBody($raw_body, &$normalized_body = null) {
+        $normalized_body = $raw_body;
+
+        $data = json_decode($raw_body, true);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $data;
+        }
+
+        if (strpos($raw_body, '&') === false) {
+            return null;
+        }
+
+        $decoded_body = html_entity_decode($raw_body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        if ($decoded_body === $raw_body) {
+            return null;
+        }
+
+        $data = json_decode($decoded_body, true);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $normalized_body = $decoded_body;
+            return $data;
+        }
+
+        return null;
+    }
+
     /**
      * Appends a timestamped line to DIR_LOGS/ycp.log, keeping only the last 100 entries.
      */
@@ -39,8 +88,8 @@ class ControllerApiYcp extends Controller {
             ? file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)
             : [];
         $lines[] = date('Y-m-d H:i:s') . ' ' . $message;
-        if (count($lines) > 100) {
-            $lines = array_slice($lines, -100);
+        if (count($lines) > 500) {
+            $lines = array_slice($lines, -500);
         }
         file_put_contents($file, implode(PHP_EOL, $lines) . PHP_EOL, LOCK_EX);
     }
@@ -53,9 +102,7 @@ class ControllerApiYcp extends Controller {
     private function logIncoming() {
         $method = isset($this->request->server['REQUEST_METHOD']) ? $this->request->server['REQUEST_METHOD'] : '';
         $uri    = isset($this->request->server['REQUEST_URI'])    ? $this->request->server['REQUEST_URI']    : '';
-        if ($this->rawBody === null) {
-            $this->rawBody = (string)file_get_contents('php://input');
-        }
+        $this->rawBody = $this->getRawBody();
         $payload = $this->rawBody !== ''
             ? $this->rawBody
             : json_encode($this->request->get, JSON_UNESCAPED_UNICODE);
@@ -95,14 +142,15 @@ class ControllerApiYcp extends Controller {
      * Returns the decoded array or sends a 400 error and returns false.
      */
     private function readJson() {
-        if ($this->rawBody === null) {
-            $this->rawBody = (string)file_get_contents('php://input');
-        }
+        $this->rawBody = $this->getRawBody();
         if (empty($this->rawBody)) {
             $this->sendError(400, 'Request body is empty');
             return false;
         }
-        $data = json_decode($this->rawBody, true);
+        $normalized_body = $this->rawBody;
+        $data = $this->decodeJsonBody($this->rawBody, $normalized_body);
+        $this->rawBody = $normalized_body;
+        $_SERVER['YCP_RAW_BODY_CACHE'] = $this->rawBody;
         if ($data === null) {
             $this->sendError(400, 'Request body is not valid JSON');
             return false;
@@ -292,21 +340,22 @@ class ControllerApiYcp extends Controller {
 
         $this->load->model('api/ycp');
 
-        // Find order by order_number (our OpenCart order_id) if provided
-        if (!empty($order_number)) {
-            $oc_order_id = (int)$order_number;
-        } else {
-            $oc_order_id = $this->model_api_ycp->findOrderBySession($session_id);
-        }
+        // Use session_id as the primary lookup — our comment stores "YCP|{session_id}|".
+        // Yandex's order_number is their own sequential counter, not our OpenCart order_id.
+        $oc_order_id = !empty($session_id)
+            ? $this->model_api_ycp->findOrderBySession($session_id)
+            : 0;
 
         if (!$oc_order_id) {
-            $this->sendError(404, 'Order not found');
+            $this->sendError(404, 'Order not found for session ' . $session_id);
             return;
         }
 
-        // Attach Yandex order_id to the comment for future webhook/status lookups
+        // Attach Yandex order_id to the comment so orderDelivered/orderCancel can find it.
         if (!empty($yandex_order_id)) {
             $this->model_api_ycp->attachYandexOrderId($oc_order_id, $yandex_order_id);
+        } else {
+            $this->log("placed: no order_id in body for OC order #{$oc_order_id} — orderDelivered will use product fallback");
         }
 
         // Advance order status: online payment → Processing, cash on delivery → stays Pending
@@ -434,10 +483,14 @@ class ControllerApiYcp extends Controller {
      * POST /api/v1/order/delivered
      *
      * Called by Yandex when delivery is completed. Updates OpenCart order status to Complete.
-     * Supports partial fulfillment via purchased_items (we record but don't split the order for MVP).
      *
      * Request: query param order_id (Yandex UUID).
-     * Body: {"purchased_items": [{"id": "42:15", "quantity": 2}]}.
+     * Body: {"purchased_items": [{"id": "42-15", "quantity": 2}]}.
+     *
+     * Fallback: if placed() stored the Yandex UUID correctly, findOrderByYandexId finds the order.
+     * If not (placed() was skipped or sent wrong order_number), we search by product IDs from
+     * purchased_items among recent YCP orders that still have no Yandex UUID attached.
+     * If still not found, return 200 to stop the 10-minute retry loop and log for manual fix.
      */
     public function orderDelivered() {
         $this->ycpEndpoint = 'orderDelivered';
@@ -456,8 +509,22 @@ class ControllerApiYcp extends Controller {
         $oc_order_id = $this->model_api_ycp->findOrderByYandexId($yandex_order_id);
 
         if (!$oc_order_id) {
-            $this->sendError(404, 'Order not found');
-            return;
+            // placed() may not have stored the UUID — try fallback by purchased product IDs.
+            $input     = $this->readJson();
+            $purchased = ($input && !empty($input['purchased_items'])) ? $input['purchased_items'] : [];
+
+            $oc_order_id = $this->model_api_ycp->findOrphanYcpOrderByItems($purchased);
+
+            if ($oc_order_id) {
+                $this->model_api_ycp->attachYandexOrderId($oc_order_id, $yandex_order_id);
+                $this->log("orderDelivered: linked Yandex UUID {$yandex_order_id} → OC order #{$oc_order_id} via product fallback");
+            } else {
+                // Truly not found — return 200 to stop the 10-minute retry loop.
+                $items_str = json_encode($purchased, JSON_UNESCAPED_UNICODE);
+                $this->log("WARN orderDelivered: no order for Yandex UUID {$yandex_order_id} items={$items_str} — update order comment manually");
+                $this->sendEmpty();
+                return;
+            }
         }
 
         $complete_status = (int)($this->config->get('ycp_order_status_delivered') ?: 5);
