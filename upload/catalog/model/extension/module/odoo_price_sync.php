@@ -30,6 +30,7 @@ class ModelExtensionModuleOdooPriceSync extends Model {
     const MAX_PRICE_VALUE = 999999999.99; // Just to find minimum price
 
     private $debug;
+    private $price_sync_log_columns = null;
 
     function __construct($registry)
     {
@@ -47,6 +48,48 @@ class ModelExtensionModuleOdooPriceSync extends Model {
         $result = $this->db->query("SELECT `value` FROM " . DB_PREFIX . "odoo_config  WHERE `key` = 'debug'");
         if ($result->row) return $result->row['value'];
         return False;
+    }
+
+    private function debugLog($message) {
+        if ($this->debug) {
+            $this->log->write($message);
+        }
+    }
+
+    private function getPriceSyncLogColumns() {
+        if ($this->price_sync_log_columns !== null) {
+            return $this->price_sync_log_columns;
+        }
+
+        $this->price_sync_log_columns = array();
+
+        try {
+            $query = $this->db->query("SHOW COLUMNS FROM " . DB_PREFIX . "odoo_price_sync_log");
+
+            foreach ($query->rows as $row) {
+                $this->price_sync_log_columns[$row['Field']] = true;
+            }
+        } catch (Exception $e) {
+            $this->log->write("Error reading price sync log schema: " . $e->getMessage());
+        }
+
+        return $this->price_sync_log_columns;
+    }
+
+    private function isPriceHistoryData($data) {
+        if (!isset($data['product_id'], $data['customer_group_id'], $data['old_price'], $data['new_price'])) {
+            return false;
+        }
+
+        if ((int)$data['product_id'] <= 0 || (int)$data['customer_group_id'] <= 0) {
+            return false;
+        }
+
+        if (!isset($data['status']) || $data['status'] !== self::SYNC_STATUS['synced']) {
+            return false;
+        }
+
+        return abs((float)$data['old_price'] - (float)$data['new_price']) > 0.00001;
     }
 
     /**
@@ -202,16 +245,7 @@ class ModelExtensionModuleOdooPriceSync extends Model {
             // Get current prices for comparison
             $current_prices = $this->getActualProductPrice($product_id, $customer_group_id);
             if ($price == $current_prices['price']) {
-                // Log the synchronization process
-                $this->logPriceSync([
-                    'product_id' => $product_id,
-                    'customer_group_id' => $customer_group_id,
-                    'old_price' => $current_prices ? $current_prices['price'] : null,
-                    'new_price' => $price,
-                    'sync_direction' => self::SYNC_DIRECTION['from_odoo'],
-                    'status' => self::SYNC_STATUS['synced'],
-                    'message' => 'Price has not changed'
-                ]);
+                $this->debugLog("Odoo price sync unchanged: Product ID " . $product_id . ", Customer Group ID " . $customer_group_id . ", Price " . $price);
                 return true;
             }
 
@@ -224,11 +258,11 @@ class ModelExtensionModuleOdooPriceSync extends Model {
 
             if ($customer_group_id == $default_group_id) {
                 // Handle default customer group prices
-                if ($this->debug) $this->log->write("Handle default Product ID: " .$product_id. " Price:" . $default_price . " current Price: " .$current_prices['price'] );
+                $this->debugLog("Handle default Product ID: " .$product_id. " Price:" . $default_price . " current Price: " .$current_prices['price'] );
                 $this->handleDefaultGroupPrice($product_id, $price, $default_price, $current_prices);
             } else {
                 // Handle non-default customer group prices
-                if ($this->debug) $this->log->write("Handle non Default Product ID: " .$product_id. " Price:" . $price . " customer_default_group_id: " .$default_group_id . " customer_group_id: ". $customer_group_id);
+                $this->debugLog("Handle non Default Product ID: " .$product_id. " Price:" . $price . " customer_default_group_id: " .$default_group_id . " customer_group_id: ". $customer_group_id);
                 $this->handleNonDefaultGroupPrice($product_id, $customer_group_id, $price, $current_prices);
             }
 
@@ -248,16 +282,6 @@ class ModelExtensionModuleOdooPriceSync extends Model {
         } catch (Exception $e) {
             $this->db->query("ROLLBACK");
             $this->log->write("Error updating product prices: " . $e->getMessage());
-
-            $this->logPriceSync([
-                'product_id' => $product_id,
-                'customer_group_id' => $customer_group_id,
-                'old_price' => null,
-                'new_price' => null,
-                'sync_direction' => self::SYNC_DIRECTION['from_odoo'],
-                'status' => self::SYNC_STATUS['error'],
-                'message' => $e->getMessage()
-            ]);
 
             return false;
         }
@@ -293,15 +317,7 @@ class ModelExtensionModuleOdooPriceSync extends Model {
 
         // If new price is bigger than default price, log warning and proceed
         if ($price > $default_price) {
-            $this->logPriceSync([
-                'product_id' => $product_id,
-                'customer_group_id' => $customer_group_id,
-                'old_price' => $current_prices['price'],
-                'new_price' => $price,
-                'sync_direction' => self::SYNC_DIRECTION['from_odoo'],
-                'status' => self::SYNC_STATUS['synced'],
-                'message' => 'Warning: Non-default group price ' . $price . ' is higher than default price ' . $default_price
-            ]);
+            $this->debugLog('Warning: Non-default group price ' . $price . ' is higher than default price ' . $default_price . ' for Product ID ' . $product_id . ', Customer Group ID ' . $customer_group_id);
         }
 
         // Handle based on current price type
@@ -363,54 +379,49 @@ class ModelExtensionModuleOdooPriceSync extends Model {
     }
 
     /**
-     * Log price sync event with deduplication
+     * Store compact price history only for completed price changes.
      * @param array $data Log data
      * @return int|bool Log ID on success, false on failure
      */
     public function logPriceSync($data) {
         try {
-            // Get the last log entry for this product/pricelist combination
-            $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "odoo_price_sync_log 
-            WHERE product_id = '" . (int)$data['product_id'] . "' 
-            AND customer_group_id = '" . (int)$data['customer_group_id'] . "' 
-            ORDER BY last_check DESC LIMIT 1");
-
-            if ($query->num_rows) {
-                $last_log = $query->row;
-
-                // Check if this is a repeated message
-                if ($last_log['old_price'] == $data['old_price'] &&
-                    $last_log['new_price'] == $data['new_price'] &&
-                    $last_log['status'] == $data['status'] &&
-                    $last_log['sync_direction'] == $data['sync_direction']) {
-
-                    // Update existing entry
-                    $this->db->query("UPDATE " . DB_PREFIX . "odoo_price_sync_log SET 
-                    last_check = NOW(),
-                    repeat_count = repeat_count + 1,
-                    message = CONCAT('" . $this->db->escape($data['message']) . " (Repeated check #', repeat_count + 1, ')')
-                    WHERE id = '" . (int)$last_log['id'] . "'");
-
-                    return $last_log['id'];
-                }
+            if (!$this->isPriceHistoryData($data)) {
+                $this->debugLog("Odoo price sync diagnostic: " . (isset($data['message']) ? $data['message'] : 'No price history row created'));
+                return false;
             }
 
-            // If not a repeat or no previous entry exists, create new log entry
-            $this->db->query("INSERT INTO " . DB_PREFIX . "odoo_price_sync_log SET 
-            product_id = '" . (int)$data['product_id'] . "',
-            customer_group_id = '" . (int)$data['customer_group_id'] . "',
-            old_price = '" . (float)$data['old_price'] . "',
-            new_price = '" . (float)$data['new_price'] . "',
-            sync_direction = '" . $this->db->escape($data['sync_direction']) . "',
-            status = '" . $this->db->escape($data['status']) . "',
-            message = '" . $this->db->escape($data['message']) . "',
-            first_check = NOW(),
-            last_check = NOW(),
-            repeat_count = 0");
+            $columns = $this->getPriceSyncLogColumns();
+            $fields = array(
+                "product_id = '" . (int)$data['product_id'] . "'",
+                "customer_group_id = '" . (int)$data['customer_group_id'] . "'",
+                "old_price = '" . (float)$data['old_price'] . "'",
+                "new_price = '" . (float)$data['new_price'] . "'",
+                "sync_direction = '" . $this->db->escape($data['sync_direction']) . "'",
+                "status = '" . self::SYNC_STATUS['synced'] . "'",
+                "message = ''"
+            );
+
+            if (isset($columns['created_on'])) {
+                $fields[] = "created_on = NOW()";
+            }
+
+            if (isset($columns['first_check'])) {
+                $fields[] = "first_check = NOW()";
+            }
+
+            if (isset($columns['last_check'])) {
+                $fields[] = "last_check = NOW()";
+            }
+
+            if (isset($columns['repeat_count'])) {
+                $fields[] = "repeat_count = 0";
+            }
+
+            $this->db->query("INSERT INTO " . DB_PREFIX . "odoo_price_sync_log SET " . implode(", ", $fields));
 
             return $this->db->getLastId();
         } catch (Exception $e) {
-            $this->log->write("Error logging price sync: " . $e->getMessage());
+            $this->log->write("Error logging price sync history: " . $e->getMessage());
             return false;
         }
     }

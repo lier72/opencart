@@ -147,15 +147,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-left">{{ history.formatted_message }}</td>
-                                <td class="text-left">
-                                    {% if history.repeat_count > 0 %}
-                                    <span title="First check: {{ history.first_check }}">
-                                    {{ history.last_check }}
-                                </span>
-                                    {% else %}
-                                    {{ history.first_check }}
-                                    {% endif %}
-                                </td>
+                                <td class="text-left">{{ history.created_on }}</td>
                             </tr>
                             {% endfor %}
                             {% else %}
