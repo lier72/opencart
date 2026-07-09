@@ -32,6 +32,7 @@ class Session {
 			}	
 			
 			register_shutdown_function(array($this, 'close'));
+			register_shutdown_function(array($this, 'gc'));
 		} else {
 			trigger_error('Error: Could not load cache adaptor ' . $adaptor . ' session!');
 			exit();
@@ -84,7 +85,25 @@ class Session {
 	/**
 	 * 
  	*/	
-	public function __destroy() {
+	public function destroy() {
+		$this->data = array();
+
 		$this->adaptor->destroy($this->session_id);
+	}
+
+	/**
+	 * 
+ 	*/
+	public function __destroy() {
+		$this->destroy();
+	}
+
+	/**
+	 *
+ 	*/
+	public function gc() {
+		if (method_exists($this->adaptor, 'gc')) {
+			$this->adaptor->gc();
+		}
 	}
 }

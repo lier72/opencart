@@ -19,10 +19,22 @@ class ControllerStartupSession extends Controller {
 			} else {
 				$session_id = '';
 			}
+
+			if ($this->config->get('config_session_expire')) {
+				$session_expire = (int)$this->config->get('config_session_expire');
+			} elseif ($this->config->get('session_expire')) {
+				$session_expire = (int)$this->config->get('session_expire');
+			} else {
+				$session_expire = 86400;
+			}
+
+			$this->config->set('session_expire', $session_expire);
 			
 			$this->session->start($session_id);
 			
-			setcookie($this->config->get('session_name'), $this->session->getId(), ini_get('session.cookie_lifetime'), ini_get('session.cookie_path'), ini_get('session.cookie_domain'));	
+			$cookie_lifetime = time() + $session_expire;
+
+			setcookie($this->config->get('session_name'), $this->session->getId(), $cookie_lifetime, ini_get('session.cookie_path'), ini_get('session.cookie_domain'));	
 		}
 	}
 }

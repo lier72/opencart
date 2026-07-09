@@ -97,6 +97,16 @@ if ($config->get('session_autostart')) {
 	for all sessions!
 	*/
 
+	if ($config->get('config_session_expire')) {
+		$session_expire = (int)$config->get('config_session_expire');
+	} elseif ($config->get('session_expire')) {
+		$session_expire = (int)$config->get('session_expire');
+	} else {
+		$session_expire = 86400;
+	}
+
+	$config->set('session_expire', $session_expire);
+
 	if (isset($_COOKIE[$config->get('session_name')])) {
 		$session_id = $_COOKIE[$config->get('session_name')];
 	} else {
@@ -105,7 +115,9 @@ if ($config->get('session_autostart')) {
 
 	$session->start($session_id);
 
-	setcookie($config->get('session_name'), $session->getId(), ini_get('session.cookie_lifetime'), ini_get('session.cookie_path'), ini_get('session.cookie_domain'));
+	$cookie_lifetime = time() + $session_expire;
+
+	setcookie($config->get('session_name'), $session->getId(), $cookie_lifetime, ini_get('session.cookie_path'), ini_get('session.cookie_domain'));
 }
 
 // Cache
