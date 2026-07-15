@@ -84,7 +84,7 @@ if ($date_filter && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_filter)) {
  * Uses the same logic as yandex_market feed
  */
 class ModelNameParser {
-	private $vendors = array('Yonex', 'Li-NING', 'RSL', 'ChaoPai', 'Uniqsport');
+	private $vendors = array('Yonex', 'Li-NING', 'RSL', 'ChaoPai', 'Uniqsport','Victor');
 	private $genders = array('мужские', 'женские', 'унисекс', 'детские', 'мужская', 'женская');
 	private $sports = array('бадминтон', 'теннис', 'сквош', 'футбол', 'баскетбол', 'волейбол');
 	private $type_prefixes = array(
