@@ -112,16 +112,10 @@ class ModelExtensionModuleProductFamily extends Model {
 						");
 
 						if ($variant_query->num_rows) {
-							// Apply custom configuration (label and regex)
-							$processed = $this->applyAttributeConfig(
+							$variants[] = $this->buildVariantData(
 								$variant_attr_id,
 								$variant_query->row['name'],
 								$variant_query->row['text']
-							);
-
-							$variants[] = array(
-								'name' => $processed['name'],
-								'value' => $processed['value']
 							);
 						}
 					}
@@ -382,6 +376,86 @@ class ModelExtensionModuleProductFamily extends Model {
 	}
 
 	/**
+	 * Build frontend-ready variant data.
+	 *
+	 * @param int $attribute_id
+	 * @param string $name
+	 * @param string $value
+	 * @return array
+	 */
+	private function buildVariantData($attribute_id, $name, $value) {
+		$processed = $this->applyAttributeConfig($attribute_id, $name, $value);
+		$presentation = $this->extractColorPresentation($processed['value']);
+
+		return array(
+			'name' => $processed['name'],
+			'value' => $presentation['value'],
+			'raw_value' => $presentation['raw_value'],
+			'color_hex' => $presentation['color_hex'],
+			'color_is_light' => $presentation['color_is_light']
+		);
+	}
+
+	/**
+	 * Extract a HEX color from a variant value and clean the display label.
+	 *
+	 * @param string $value
+	 * @return array
+	 */
+	private function extractColorPresentation($value) {
+		$result = array(
+			'value' => $value,
+			'raw_value' => $value,
+			'color_hex' => '',
+			'color_is_light' => false
+		);
+
+		if (!is_string($value) || $value === '') {
+			return $result;
+		}
+
+		if (!preg_match('/#(?:[A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})\b/', $value, $matches)) {
+			return $result;
+		}
+
+		$hex = strtoupper($matches[0]);
+		$display = preg_replace('/\s*\(\s*' . preg_quote($hex, '/') . '\s*\)\s*/i', ' ', $value);
+		$display = preg_replace('/\s*' . preg_quote($hex, '/') . '\s*/i', ' ', $display);
+		$display = trim(preg_replace('/\s{2,}/', ' ', $display));
+
+		$result['value'] = $display;
+		$result['color_hex'] = $hex;
+		$result['color_is_light'] = $this->isLightHexColor($hex);
+
+		return $result;
+	}
+
+	/**
+	 * Determine whether a HEX color is light enough to need a darker outline.
+	 *
+	 * @param string $hex
+	 * @return bool
+	 */
+	private function isLightHexColor($hex) {
+		$hex = ltrim($hex, '#');
+
+		if (strlen($hex) === 3) {
+			$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+		}
+
+		if (strlen($hex) !== 6) {
+			return false;
+		}
+
+		$red = hexdec(substr($hex, 0, 2));
+		$green = hexdec(substr($hex, 2, 2));
+		$blue = hexdec(substr($hex, 4, 2));
+		$brightness = (($red * 299) + ($green * 587) + ($blue * 114)) / 1000;
+
+		return $brightness > 200;
+	}
+
+	/**
 	 * Check if images should be shown for current product's categories
 	 *
 	 * @param int $product_id
@@ -442,16 +516,10 @@ class ModelExtensionModuleProductFamily extends Model {
 				");
 
 				if ($variant_query->num_rows) {
-					// Apply custom configuration (label and regex)
-					$processed = $this->applyAttributeConfig(
+					$variants[] = $this->buildVariantData(
 						$variant_attr_id,
 						$variant_query->row['name'],
 						$variant_query->row['text']
-					);
-
-					$variants[] = array(
-						'name' => $processed['name'],
-						'value' => $processed['value']
 					);
 				}
 			}
@@ -544,16 +612,10 @@ class ModelExtensionModuleProductFamily extends Model {
 						");
 
 						if ($variant_query->num_rows) {
-							// Apply custom configuration (label and regex)
-							$processed = $this->applyAttributeConfig(
+							$variants[] = $this->buildVariantData(
 								$variant_attr_id,
 								$variant_query->row['name'],
 								$variant_query->row['text']
-							);
-
-							$variants[] = array(
-								'name' => $processed['name'],
-								'value' => $processed['value']
 							);
 						}
 					}

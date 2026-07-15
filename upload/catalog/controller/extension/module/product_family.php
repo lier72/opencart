@@ -29,7 +29,11 @@ class ControllerExtensionModuleProductFamily extends Controller {
 
 		$data['heading_title'] = $this->language->get('heading_title');
 		$data['text_select'] = $this->language->get('text_select');
+		$data['text_current_variant'] = $this->language->get('text_current_variant');
+		$data['text_show_more'] = $this->language->get('text_show_more');
+		$data['text_show_less'] = $this->language->get('text_show_less');
 		$data['text_out_of_stock'] = $this->language->get('text_out_of_stock');
+		$data['text_sku'] = $this->language->get('text_sku');
 
 		// Get product family
 		$data['products'] = $this->model_extension_module_product_family->getProductFamily($product_id);
