@@ -1,0 +1,23 @@
+<?php
+$_['heading_title']            = 'Odoo Attribute Value Mapping';
+$_['text_odoo_attribute']      = 'Odoo Attribute';
+$_['text_odoo_value_code']     = 'Vendor Code';
+$_['text_opencart_option_value'] = 'OpenCart Option Value';
+$_['text_no_mappings']         = 'No value mappings configured for this attribute yet.';
+$_['text_no_attributes']       = 'No attribute-level mappings found. Configure Odoo Attribute Mapping first.';
+$_['text_success']             = 'Success: Attribute value mapping has been saved!';
+$_['text_success_delete']      = 'Success: Attribute value mapping has been deleted!';
+$_['text_add_mapping']         = 'Add Mapping';
+$_['text_action']              = 'Action';
+$_['column_vendor_code']       = 'Vendor Code';
+$_['column_option_value']      = 'OpenCart Option Value';
+$_['column_action']            = 'Action';
+$_['button_save']              = 'Save';
+$_['button_cancel']            = 'Cancel';
+$_['button_add']               = 'Add';
+$_['button_delete']            = 'Delete';
+$_['error_permission']         = 'Warning: You do not have permission to modify attribute value mappings!';
+$_['error_attribute']          = 'Warning: Please select a valid attribute!';
+$_['error_code']               = 'Warning: Vendor code cannot be empty!';
+$_['error_option_value']       = 'Warning: Please select an option value!';
+$_['error_duplicate']          = 'Warning: A mapping for this attribute + vendor code already exists!';

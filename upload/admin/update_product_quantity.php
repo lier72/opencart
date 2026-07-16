@@ -93,6 +93,79 @@ class OpencartOdooStockModel {
             PRIMARY KEY (`id`)
           ) DEFAULT CHARSET=utf8");
 
+        $this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "odoo_attribute_value_mapping` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `odoo_attribute_id` int(11) NOT NULL,
+            `odoo_value_code` varchar(64) NOT NULL,
+            `opencart_option_value_id` int(11) NOT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `unique_mapping` (`odoo_attribute_id`, `odoo_value_code`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+    }
+
+    /**
+     * Resolve an Odoo variant code to its OpenCart product_option_value row.
+     *
+     * Checks ocus_odoo_attribute_value_mapping by vendor code first (attribute-agnostic,
+     * since odoo_attribute_id is unavailable in this context). Falls back to LIKE matching
+     * against option_value_description.name when no explicit mapping exists.
+     *
+     * Returns an assoc row with keys [product_option_value_id, product_id, model, name, quantity]
+     * or null when nothing is found.
+     *
+     * @param string $model       OpenCart product model (e.g. "AATP001-3")
+     * @param string $option_code Odoo option value code (e.g. "260" or "9,5")
+     * @return array|null
+     */
+    private function resolveProductVariant($model, $option_code) {
+        $escaped_model  = $this->db->real_escape_string($model);
+        $escaped_option = $this->db->real_escape_string($option_code);
+
+        // Explicit value mapping table takes priority
+        $map_result = $this->db->query(
+            "SELECT opencart_option_value_id
+             FROM " . DB_PREFIX . "odoo_attribute_value_mapping
+             WHERE odoo_value_code = '" . $escaped_option . "'
+             LIMIT 1"
+        );
+        if ($map_result && ($map_row = mysqli_fetch_assoc($map_result))) {
+            $option_value_id = (int)$map_row['opencart_option_value_id'];
+            $exact_result = $this->db->query(
+                "SELECT DISTINCT pov.product_option_value_id, pov.product_id, p.model,
+                    pd.name, podv.name AS option_value_name, pov.quantity
+                 FROM " . DB_PREFIX . "product_option_value AS pov
+                 LEFT JOIN " . DB_PREFIX . "option_value_description AS podv
+                     ON podv.option_value_id = pov.option_value_id
+                 LEFT JOIN " . DB_PREFIX . "product AS p ON p.product_id = pov.product_id
+                 LEFT JOIN " . DB_PREFIX . "product_description AS pd ON p.product_id = pd.product_id
+                 WHERE p.model = '" . $escaped_model . "'
+                 AND pov.option_value_id = " . $option_value_id
+            );
+            if ($exact_result) {
+                $row = mysqli_fetch_assoc($exact_result);
+                if ($row && isset($row['product_id'])) {
+                    return $row;
+                }
+            }
+        }
+
+        // LIKE fallback — original behaviour
+        $like_result = $this->db->query(
+            "SELECT DISTINCT pov.product_option_value_id, pov.product_id, p.model,
+                pd.name, podv.name, pov.quantity
+             FROM " . DB_PREFIX . "product_option_value AS pov
+             LEFT JOIN " . DB_PREFIX . "option_value_description AS podv
+                 ON podv.option_value_id = pov.option_value_id
+             LEFT JOIN " . DB_PREFIX . "product AS p ON p.product_id = pov.product_id
+             LEFT JOIN " . DB_PREFIX . "product_description AS pd ON p.product_id = pd.product_id
+             WHERE p.model = '" . $escaped_model . "'
+             AND podv.name LIKE '%" . $escaped_option . "%'"
+        ) or die("Error resolving product variant: " . mysqli_error($this->db));
+        if ($like_result) {
+            $row = mysqli_fetch_assoc($like_result);
+            return ($row && isset($row['product_id'])) ? $row : null;
+        }
+        return null;
     }
 
     function CreateProductMappingTable($params){
@@ -107,42 +180,31 @@ class OpencartOdooStockModel {
             if ($this->debug) { echo "The product exists "; print_r($ocprodid);echo "\n"; }
             if (!$ocprodid || !$ocprodid['opencart_product_id']) {
 
-                // All odoo products with options have "_" int their "defailt_code" field,
+                // All odoo products with options have "_" in their "default_code" field,
                 // so we check OpenCart products for the options if we find the "_" in "default_code" field
                 if (strpos($item['default_code'], "_")) { // if product has variants
                     $parse = $this->parseOdooDefaultCode($item['default_code']);
                     if ($this->debug) { print_r($parse); }
-                    $model = $parse[0];
+                    $model  = $parse[0];
                     $option = $parse[1];
-                    $sql = "SELECT DISTINCT pov.product_option_value_id, pov.product_id, p.model, pd.name, podv.name,
-                        pov.quantity FROM " . DB_PREFIX . "product_option_value
-                        AS pov LEFT JOIN " . DB_PREFIX . "option_value_description AS podv
-                        ON podv.option_value_id = pov.option_value_id LEFT JOIN " . DB_PREFIX . "product AS p
-                        ON p.product_id=pov.product_id LEFT JOIN " . DB_PREFIX . "product_description AS pd
-                        ON p.product_id = pd.product_id WHERE p.model = '$model' AND podv.name LIKE '%$option%'";
-                    $result = $this->db->query($sql) or die("Error in Selecting product variant" . mysqli_error($this->db));
+                    // Use explicit value mapping table first, LIKE fallback inside helper
+                    $prodid = $this->resolveProductVariant($model, $option);
                 } else { // If the product has NO variants
-                    $sql = "SELECT p.product_id, p.model, p.quantity, pd.name FROM " . DB_PREFIX . "product AS p LEFT JOIN "
+                    $sql    = "SELECT p.product_id, p.model, p.quantity, pd.name FROM " . DB_PREFIX . "product AS p LEFT JOIN "
                         . DB_PREFIX . "product_description AS pd ON p.product_id = pd.product_id WHERE model = '"
                         . (string)$item['default_code'] . "'";
-                    $result = $this->db->query($sql) or die("Error in Selecting product" . mysqli_error($this->db));;
+                    $result = $this->db->query($sql) or die("Error in Selecting product" . mysqli_error($this->db));
+                    $prodid = $result ? mysqli_fetch_assoc($result) : null;
                 }
-                if ($result) {
-                    $prodid = mysqli_fetch_assoc($result);
 
-                    if ($this->debug) {
-                        print_r($sql);
-                        echo "\n";
-                        echo "Result : ";
-                        print_r($result);
-                        echo "\n";
-                        echo "Product id: ";
-                        print_r($prodid);
-                        echo "\n";
-                        print_r($item['product_tmpl_id'][0]);
-                    }
+                if ($this->debug) {
+                    echo "Product id: ";
+                    print_r($prodid);
+                    echo "\n";
+                    print_r($item['product_tmpl_id'][0]);
+                }
 
-                    if (isset($prodid['product_id'])) { // This means that we have found Opencart product based on model/option
+                if (isset($prodid['product_id'])) { // This means that we have found Opencart product based on model/option
                         if (!isset($prodid['product_option_value_id'])) $prodid['product_option_value_id'] = -1;
                         $sql = "INSERT INTO " . DB_PREFIX . "odoo_product_variant_map SET odoo_product_id = " . $item['id'] .
                             ", opencart_product_id = " . $prodid['product_id'] .
@@ -164,7 +226,6 @@ class OpencartOdooStockModel {
                         $newproducts [$nn]["model"] = $item['default_code'];
                         $nn++;
                     }
-                }
             }
         }
         echo "There are ". ($nn) ." products not found in OpenCart.\n";

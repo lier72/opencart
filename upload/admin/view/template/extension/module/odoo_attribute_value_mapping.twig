@@ -1,0 +1,147 @@
+{{ header }}{{ column_left }}
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="pull-right">
+                <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+            </div>
+            <h1>{{ heading_title }}</h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        {% if error_warning %}
+        <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        {% endif %}
+        {% if success %}
+        <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        {% endif %}
+
+        <div class="alert alert-info">
+            <i class="fa fa-info-circle"></i>
+            <strong>How this works:</strong> When syncing products from Odoo, option values are normally matched
+            using LIKE on their name (e.g. code <code>9,5</code> matches option value <em>"US (9,5)"</em>).
+            Use this page to add <strong>explicit overrides</strong> for vendor codes that don't match —
+            for example, a vendor whose <code>260</code> (mm) should map to <em>"US 8"</em> in your store,
+            not <em>"US 8.5"</em> as the default chart suggests. Explicit mappings always win over LIKE fallback.
+        </div>
+
+        {% if attribute_sections %}
+            {% for section in attribute_sections %}
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <i class="fa fa-arrows-h"></i>
+                        {% if section.attribute_name %}
+                            <strong>{{ section.attribute_name }}</strong>
+                            <small class="text-muted">(Odoo ID: {{ section.odoo_attribute_id }})</small>
+                        {% else %}
+                            Odoo Attribute #{{ section.odoo_attribute_id }}
+                        {% endif %}
+                        &nbsp;&rarr;&nbsp;
+                        <strong>{{ section.option_name ? section.option_name : 'OpenCart Option #' ~ section.opencart_option_id }}</strong>
+                        <small class="text-muted">(option_id: {{ section.opencart_option_id }})</small>
+                    </h3>
+                </div>
+                <div class="panel-body">
+
+                    {# Current mappings table #}
+                    <table class="table table-bordered table-hover table-striped" style="margin-bottom:10px;">
+                        <thead>
+                            <tr>
+                                <th style="width:200px;">{{ column_vendor_code }}</th>
+                                <th>{{ column_option_value }}</th>
+                                <th style="width:80px;" class="text-center">{{ column_action }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if section.mappings %}
+                                {% for mapping in section.mappings %}
+                                <tr>
+                                    <td><code>{{ mapping.odoo_value_code }}</code></td>
+                                    <td>{{ mapping.option_value_name }} <small class="text-muted">(ID: {{ mapping.opencart_option_value_id }})</small></td>
+                                    <td class="text-center">
+                                        <a href="{{ delete_url }}&id={{ mapping.id }}"
+                                           onclick="return confirm('Delete this mapping?');"
+                                           class="btn btn-danger btn-xs" title="{{ button_delete }}">
+                                            <i class="fa fa-trash-o"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted"><em>{{ text_no_mappings }}</em></td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+
+                    {# Add new mapping form for this attribute #}
+                    <form action="{{ action }}" method="post" class="form-inline" style="margin-top:6px;">
+                        <input type="hidden" name="odoo_attribute_id" value="{{ section.odoo_attribute_id }}">
+                        <div class="input-group" style="margin-right:6px;">
+                            <span class="input-group-addon"><i class="fa fa-tag"></i></span>
+                            <input type="text" name="odoo_value_code" class="form-control"
+                                   placeholder="{{ text_odoo_value_code }}" style="width:120px;" required>
+                        </div>
+                        <span style="margin:0 6px; line-height:34px;">&rarr;</span>
+                        <select name="opencart_option_value_id" class="form-control" style="margin-right:6px;" required>
+                            <option value="">-- select --</option>
+                            {% for ov in section.option_values %}
+                            <option value="{{ ov.option_value_id }}">{{ ov.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-plus"></i> {{ button_add }}
+                        </button>
+                    </form>
+
+                    {# Quick import from size chart #}
+                    {% set mm_charts = [] %}
+                    {% for chart in size_charts %}
+                        {% if chart.has_mm %}
+                            {% set mm_charts = mm_charts|merge([chart]) %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if mm_charts %}
+                    <hr style="margin:10px 0;">
+                    <form action="{{ import_url }}" method="post" class="form-inline">
+                        <input type="hidden" name="odoo_attribute_id"  value="{{ section.odoo_attribute_id }}">
+                        <input type="hidden" name="opencart_option_id" value="{{ section.opencart_option_id }}">
+                        <i class="fa fa-download text-muted"></i>
+                        <strong style="margin-right:6px;">Quick import from size chart:</strong>
+                        <select name="table_id" class="form-control" style="margin-right:6px;" required>
+                            <option value="">-- choose chart --</option>
+                            {% for chart in mm_charts %}
+                            <option value="{{ chart.table_id }}">{{ chart.table_name }} ({{ chart.gender_type }})</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-success btn-sm"
+                                onclick="return confirm('This will overwrite existing mm mappings for this attribute. Continue?');">
+                            <i class="fa fa-magic"></i> Import mm sizes
+                        </button>
+                    </form>
+                    {% endif %}
+
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-warning">
+                <i class="fa fa-warning"></i> {{ text_no_attributes }}
+                <a href="{{ cancel }}">Configure Odoo Attribute Mapping first.</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{{ footer }}

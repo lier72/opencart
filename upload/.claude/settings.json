@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/max/Sites/opencart/upload ls-files .htaccess)",
+      "Bash(git -C /Users/max/Sites/opencart/upload check-ignore .htaccess)",
+      "Bash(grep -r \"get_all_opencart_prices\" /Volumes/Seagate/Source/odoo/ --include=\"*.py\" -n 2>/dev/null)",
+      "Read(//Volumes/Seagate/Source/odoo/**)",
+      "Bash(find /Volumes/Seagate/Source/odoo/ -name \"*.py\" | xargs grep -l \"opencart\" 2>/dev/null | head -20)",
+      "Read(//Volumes/Seagate/Source/odoo/custom/product_pricelist_opencart_sync/models/**)",
+      "Bash(python3 -c ' *)",
+      "mcp__excel__get_workbook_metadata",
+      "mcp__excel__read_data_from_excel"
+    ]
+  }
+}

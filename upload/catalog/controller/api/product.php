@@ -127,6 +127,7 @@ class ControllerApiProduct extends Controller {
                         }
 
                         if (isset($data['name'])) {
+                            $update_data['name'] = $data['name'];
                             foreach ($update_data['product_description'] as $language_id => &$desc) {
                                 $desc['name'] = $data['name'];
                             }
@@ -224,7 +225,7 @@ class ControllerApiProduct extends Controller {
             $this->error['model'] = $this->language->get('error_model');
         }
 
-        if (isset($data['barcode']) && !preg_match('/^[0-9]{8,13}$/', $data['barcode'])) {
+        if (!empty($data['barcode']) && !preg_match('/^[0-9]{8,13}$/', $data['barcode'])) {
             $this->error['barcode'] = $this->language->get('error_barcode');
         }
 
@@ -999,7 +1000,7 @@ class ControllerApiProduct extends Controller {
      * @return mixed
      */
     public function getProduct($product_id) {
-        $query = $this->db->query("SELECT DISTINCT *, (SELECT keyword FROM " . DB_PREFIX . "seo_url WHERE query = 'product_id=" . (int)$product_id . "' AND store_id = '0' AND language_id = '" . (int)$this->config->get('config_language_id') . "' LIMIT 1) AS keyword FROM " . DB_PREFIX . "product p LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) WHERE p.product_id = '" . (int)$product_id . "' AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "'");
+        $query = $this->db->query("SELECT DISTINCT *, (SELECT keyword FROM " . DB_PREFIX . "seo_url WHERE query = 'product_id=" . (int)$product_id . "' AND store_id = '0' AND language_id = '" . (int)$this->config->get('config_language_id') . "' LIMIT 1) AS keyword FROM " . DB_PREFIX . "product p LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id AND pd.language_id = '" . (int)$this->config->get('config_language_id') . "') WHERE p.product_id = '" . (int)$product_id . "'");
         return $query->row;
     }
 
@@ -1429,18 +1430,34 @@ class ControllerApiProduct extends Controller {
 
             $variant_code = $variant_data['option_value_code'];
 
-            // Find the corresponding product_option_value_id by LIKE matching the code (same as prepareProductOptions)
-            // Use parentheses pattern to prevent partial matches (e.g., "9" matching "9,5")
-            $pov_query = $this->db->query("SELECT pov.product_option_value_id, pov.option_value_id, ovd.name
-                FROM " . DB_PREFIX . "product_option_value pov
-                LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id)
-                WHERE pov.product_id = '" . (int)$product_id . "'
-                AND pov.product_option_id = '" . (int)$product_option_id . "'
-                AND (ovd.name LIKE '%(" . $this->db->escape($variant_code) . ")%' OR ovd.name LIKE '%[" . $this->db->escape($variant_code) . "]%')
-                AND ovd.language_id = '" . (int)$this->default_language_id . "'
-                LIMIT 1");
+            // Resolve option_value_id via explicit mapping table first, then LIKE fallback
+            $odoo_attr_id = isset($data['options']['odoo_attribute_id']) ? (int)$data['options']['odoo_attribute_id'] : 0;
+            $resolved     = $this->resolveOptionValue($odoo_attr_id, $variant_code, $option_query->row['option_id']);
 
-            if ($pov_query->num_rows) {
+            if ($resolved !== null) {
+                // Exact lookup by resolved option_value_id — no LIKE needed
+                $pov_query = $this->db->query("SELECT pov.product_option_value_id, ovd.name
+                    FROM " . DB_PREFIX . "product_option_value pov
+                    LEFT JOIN " . DB_PREFIX . "option_value_description ovd
+                        ON (pov.option_value_id = ovd.option_value_id
+                        AND ovd.language_id = '" . (int)$this->default_language_id . "')
+                    WHERE pov.product_id = '" . (int)$product_id . "'
+                    AND pov.product_option_id = '" . (int)$product_option_id . "'
+                    AND pov.option_value_id = '" . (int)$resolved['option_value_id'] . "'
+                    LIMIT 1");
+            } else {
+                // LIKE fallback: parentheses/bracket pattern prevents partial matches (e.g. "9" vs "9,5")
+                $pov_query = $this->db->query("SELECT pov.product_option_value_id, ovd.name
+                    FROM " . DB_PREFIX . "product_option_value pov
+                    LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (pov.option_value_id = ovd.option_value_id)
+                    WHERE pov.product_id = '" . (int)$product_id . "'
+                    AND pov.product_option_id = '" . (int)$product_option_id . "'
+                    AND (ovd.name LIKE '%(" . $this->db->escape($variant_code) . ")%' OR ovd.name LIKE '%[" . $this->db->escape($variant_code) . "]%')
+                    AND ovd.language_id = '" . (int)$this->default_language_id . "'
+                    LIMIT 1");
+            }
+
+            if ($pov_query && $pov_query->num_rows) {
                 $product_option_value_id = $pov_query->row['product_option_value_id'];
                 $matched_option_name = $pov_query->row['name'];
 
@@ -1559,37 +1576,27 @@ class ControllerApiProduct extends Controller {
 
                 $variant_code = $value_data['option_value_code'];
 
-                // Search for matching option value using LIKE with parentheses for precise matching
-                // This prevents "9" from matching "9,5" by looking for "(9)" pattern
-                // For clothing sizes without numbers, falls back to regular LIKE matching
-                $query = $this->db->query("SELECT ov.option_value_id, ovd.name
-                    FROM " . DB_PREFIX . "option_value ov
-                    LEFT JOIN " . DB_PREFIX . "option_value_description ovd ON (ov.option_value_id = ovd.option_value_id)
-                    WHERE ov.option_id = '" . (int)$option_id . "'
-                    AND (ovd.name LIKE '%(" . $this->db->escape($variant_code) . ")%' OR ovd.name LIKE '%[" . $this->db->escape($variant_code) . "]%')
-                    AND ovd.language_id = '" . (int)$this->default_language_id . "'
-                    LIMIT 1");
+                // Resolve via explicit value mapping table first, then LIKE fallback
+                $resolved = $this->resolveOptionValue($odoo_attribute_id, $variant_code, $option_id);
 
-                if ($query->num_rows) {
-                    $option_value_id = $query->row['option_value_id'];
-
+                if ($resolved !== null) {
                     $option_values[] = array(
-                        'option_value_id' => $option_value_id,
-                        'quantity' => 0,  // Will be updated by quantity sync
-                        'subtract' => 1,
-                        'price' => 0.00,
-                        'price_prefix' => '+',
-                        'points' => 0,
-                        'points_prefix' => '+',
-                        'weight' => 0.00000000,
-                        'weight_prefix' => '+'
+                        'option_value_id' => $resolved['option_value_id'],
+                        'quantity'        => 0,
+                        'subtract'        => 1,
+                        'price'           => 0.00,
+                        'price_prefix'    => '+',
+                        'points'          => 0,
+                        'points_prefix'   => '+',
+                        'weight'          => 0.00000000,
+                        'weight_prefix'   => '+'
                     );
 
                     $this->log->write(sprintf(
                         "API Product Options - Matched option value: Odoo '%s' -> OC '%s' (option_value_id: %d)",
                         $variant_code,
-                        $query->row['name'],
-                        $option_value_id
+                        $resolved['name'],
+                        $resolved['option_value_id']
                     ));
                 } else {
                     $this->log->write(sprintf(
@@ -1613,6 +1620,70 @@ class ControllerApiProduct extends Controller {
         }
 
         return $product_options;
+    }
+
+    /**
+     * Resolve an Odoo attribute value code to an OpenCart option_value_id.
+     *
+     * Checks ocus_odoo_attribute_value_mapping first (explicit vendor overrides), then
+     * falls back to LIKE matching against option_value_description.name.
+     * Returns ['option_value_id' => int, 'name' => string] or null when not found.
+     *
+     * Call this instead of a bare LIKE query whenever resolving option values during
+     * product creation (prepareProductOptions) or variant mapping (createVariantMappings).
+     *
+     * @param int    $odoo_attribute_id
+     * @param string $variant_code       e.g. "260" or "9,5"
+     * @param int    $option_id          OpenCart option_id (used for LIKE fallback scope)
+     * @return array|null
+     */
+    private function resolveOptionValue($odoo_attribute_id, $variant_code, $option_id) {
+        // Explicit mapping table takes priority
+        $mapping_query = $this->db->query("
+            SELECT opencart_option_value_id
+            FROM " . DB_PREFIX . "odoo_attribute_value_mapping
+            WHERE odoo_attribute_id = '" . (int)$odoo_attribute_id . "'
+            AND odoo_value_code     = '" . $this->db->escape($variant_code) . "'
+            LIMIT 1
+        ");
+
+        if ($mapping_query->num_rows) {
+            $option_value_id = (int)$mapping_query->row['opencart_option_value_id'];
+            $name_query = $this->db->query("
+                SELECT name FROM " . DB_PREFIX . "option_value_description
+                WHERE option_value_id = '" . $option_value_id . "'
+                AND language_id = '" . (int)$this->default_language_id . "'
+                LIMIT 1
+            ");
+            $name = $name_query->num_rows ? $name_query->row['name'] : 'ID:' . $option_value_id;
+            $this->log->write(sprintf(
+                "API Product Options - Value mapping hit: '%s' -> option_value_id %d ('%s')",
+                $variant_code, $option_value_id, $name
+            ));
+            return array('option_value_id' => $option_value_id, 'name' => $name);
+        }
+
+        // LIKE fallback — matches patterns like "(9,5)" or "[9.5]" in option value names
+        $query = $this->db->query("
+            SELECT ov.option_value_id, ovd.name
+            FROM " . DB_PREFIX . "option_value ov
+            LEFT JOIN " . DB_PREFIX . "option_value_description ovd
+                ON (ov.option_value_id = ovd.option_value_id)
+            WHERE ov.option_id = '" . (int)$option_id . "'
+            AND (ovd.name LIKE '%(" . $this->db->escape($variant_code) . ")%'
+              OR ovd.name LIKE '%[" . $this->db->escape($variant_code) . "]%')
+            AND ovd.language_id = '" . (int)$this->default_language_id . "'
+            LIMIT 1
+        ");
+
+        if ($query->num_rows) {
+            return array(
+                'option_value_id' => (int)$query->row['option_value_id'],
+                'name'            => $query->row['name'],
+            );
+        }
+
+        return null;
     }
 
     private function getProductMapping($odoo_product_id = null, $opencart_product_id = null) {

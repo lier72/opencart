@@ -42,10 +42,8 @@ class ModelExtensionModuleOdooAttributeMapping extends Model {
             // Get all product attributes from Odoo
             $attributes = $models->execute_kw($db_name, $uid, $password,
                 'product.attribute', 'search_read',
-                array(
-                    array(), // domain (empty = all)
-                    array('fields' => array('id', 'name', 'display_name'))
-                )
+                array(array()),                                         // args: empty domain
+                array('fields' => array('id', 'name', 'display_name')) // kwargs: separate argument
             );
 
             if (isset($attributes['faultCode'])) {

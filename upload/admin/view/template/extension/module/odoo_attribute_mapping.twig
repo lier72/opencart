@@ -57,7 +57,7 @@
                                     {% for attribute in odoo_attributes %}
                                     <tr>
                                         <td class="text-left">
-                                            <strong>{{ attribute.display_name }}</strong><br>
+                                            <strong>{{ attribute.display_name ? attribute.display_name : attribute.name }}</strong><br>
                                             <small class="text-muted">Odoo ID: {{ attribute.id }}</small>
                                         </td>
                                         <td class="text-left">

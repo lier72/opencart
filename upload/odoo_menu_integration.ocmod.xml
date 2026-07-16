@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <modification>
     <name>Odoo Integration Menu</name>
-    <version>2.0</version>
+    <version>2.2</version>
     <author>Max Surdu</author>
     <link>http://uniqsport.ru</link>
     <code>odoo_integration_menu</code>
@@ -47,6 +47,22 @@ if ($this->user->hasPermission('access', 'extension/module/odoo_order_mapping'))
 	);
 }
 
+if ($this->user->hasPermission('access', 'extension/module/odoo_attribute_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_attribute_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_attribute_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
+if ($this->user->hasPermission('access', 'extension/module/odoo_attribute_value_mapping')) {
+	$odoo[] = array(
+		'name'	   => $this->language->get('text_odoo_attribute_value_mapping'),
+		'href'     => $this->url->link('extension/module/odoo_attribute_value_mapping', 'user_token=' . $this->session->data['user_token'], true),
+		'children' => array()
+	);
+}
+
 if ($odoo) {
 	$data['menus'][] = array(
 		'id'       => 'menu-odoo',
@@ -66,11 +82,13 @@ if ($odoo) {
         <operation>
             <search><![CDATA[$_['text_reports']]]></search>
             <add position="before"><![CDATA[// Odoo Integration
-$_['text_odoo']                  = 'Odoo Integration';
-$_['text_odoo_settings']         = 'Settings';
-$_['text_odoo_product_mapping']  = 'Product Mapping';
-$_['text_odoo_price_mapping']    = 'Price Mapping';
-$_['text_odoo_order_mapping']    = 'Order Mapping';
+$_['text_odoo']                          = 'Odoo Integration';
+$_['text_odoo_settings']                 = 'Settings';
+$_['text_odoo_product_mapping']          = 'Product Mapping';
+$_['text_odoo_price_mapping']            = 'Price Mapping';
+$_['text_odoo_order_mapping']            = 'Order Mapping';
+$_['text_odoo_attribute_mapping']        = 'Attribute Mapping';
+$_['text_odoo_attribute_value_mapping']  = 'Size Code Mapping';
 ]]></add>
         </operation>
     </file>
@@ -80,11 +98,13 @@ $_['text_odoo_order_mapping']    = 'Order Mapping';
         <operation>
             <search><![CDATA[$_['text_reports']]]></search>
             <add position="before"><![CDATA[// Odoo Integration
-$_['text_odoo']                  = 'Интеграция Odoo';
-$_['text_odoo_settings']         = 'Настройки';
-$_['text_odoo_product_mapping']  = 'Сопоставление товаров';
-$_['text_odoo_price_mapping']    = 'Сопоставление цен';
-$_['text_odoo_order_mapping']    = 'Сопоставление заказов';
+$_['text_odoo']                          = 'Интеграция Odoo';
+$_['text_odoo_settings']                 = 'Настройки';
+$_['text_odoo_product_mapping']          = 'Сопоставление товаров';
+$_['text_odoo_price_mapping']            = 'Сопоставление цен';
+$_['text_odoo_order_mapping']            = 'Сопоставление заказов';
+$_['text_odoo_attribute_mapping']        = 'Сопоставление атрибутов';
+$_['text_odoo_attribute_value_mapping']  = 'Сопоставление размеров';
 ]]></add>
         </operation>
     </file>
