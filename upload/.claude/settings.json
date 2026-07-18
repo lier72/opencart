@@ -9,7 +9,8 @@
       "Read(//Volumes/Seagate/Source/odoo/custom/product_pricelist_opencart_sync/models/**)",
       "Bash(python3 -c ' *)",
       "mcp__excel__get_workbook_metadata",
-      "mcp__excel__read_data_from_excel"
+      "mcp__excel__read_data_from_excel",
+      "Bash(curl -s \"https://uniqsport.ru/index.php?route=extension/feed/yandex_market\")"
     ]
   }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <modification>
     <name>Odoo Integration Menu</name>
-    <version>2.2</version>
+    <version>2.3</version>
     <author>Max Surdu</author>
     <link>http://uniqsport.ru</link>
     <code>odoo_integration_menu</code>
@@ -106,6 +106,85 @@ $_['text_odoo_order_mapping']            = 'Сопоставление зака�
 $_['text_odoo_attribute_mapping']        = 'Сопоставление атрибутов';
 $_['text_odoo_attribute_value_mapping']  = 'Сопоставление размеров';
 ]]></add>
+        </operation>
+    </file>
+
+    <!-- Add button to order list template (Twig) -->
+    <file path="admin/view/template/sale/order_list.twig">
+        <operation>
+            <search><![CDATA[<div class="btn-group"> <a href="{{ order.view }}" data-toggle="tooltip" title="{{ button_view }}" class="btn btn-primary"><i class="fa fa-eye"></i></a>]]></search>
+            <add position="before"><![CDATA[{% if order.in_odoo %}<button type="button" data-toggle="tooltip" title="Уже создан в Odoo (ID: {{ order.odoo_order_id }})" class="btn btn-success disabled" style="opacity: 0.5; cursor: not-allowed;"><i class="fa fa-check-circle"></i></button> {% else %}<button type="button" onclick="createOdooOrder('{{ order.order_id }}');" data-toggle="tooltip" title="{{ button_create_odoo }}" class="btn btn-success"><i class="fa fa-cloud-upload"></i></button> {% endif %}]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[{{ footer }}]]></search>
+            <add position="before"><![CDATA[<script type="text/javascript"><!--
+function createOdooOrder(order_id) {
+    console.log('Creating Odoo order for Order ID: ' + order_id);
+
+    if (!confirm('{{ text_confirm_odoo }}')) {
+        return;
+    }
+
+    var $button = $('button[onclick="createOdooOrder(\'' + order_id + '\')"]');
+    var originalHtml = $button.html();
+
+    $.ajax({
+        url: 'index.php?route=extension/module/odoo_connector/createOdooOrder&user_token={{ user_token }}&order_id=' + order_id,
+        type: 'POST',
+        dataType: 'json',
+        beforeSend: function() {
+            $button.prop('disabled', true);
+            $button.html('<i class="fa fa-spinner fa-spin"></i>');
+        },
+        complete: function() {
+            $button.prop('disabled', false);
+            $button.html(originalHtml);
+        },
+        success: function(json) {
+            $('.alert-dismissible').remove();
+
+            if (json['error']) {
+                $('#content > .container-fluid').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json['error'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+            }
+
+            if (json['success']) {
+                $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + json['success'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+
+                // Optionally reload the page to refresh order status
+                // location.reload();
+            }
+        },
+        error: function(xhr, ajaxOptions, thrownError) {
+            alert('Error: ' + thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+        }
+    });
+}
+//--></script>
+]]></add>
+        </operation>
+    </file>
+
+    <!-- Add button text to controller -->
+    <file path="admin/controller/sale/order.php">
+        <operation>
+            <search><![CDATA[$results = $this->model_sale_order->getOrders($filter_data);]]></search>
+            <add position="after"><![CDATA[
+
+		// Check which orders exist in Odoo for button state
+		$odoo_order_ids = array();
+		if (!empty($results)) {
+			$order_ids = array_column($results, 'order_id');
+			$odoo_query = $this->db->query("SELECT opencart_order_id, odoo_order_id FROM " . DB_PREFIX . "odoo_order_map WHERE opencart_order_id IN (" . implode(',', array_map('intval', $order_ids)) . ")");
+			foreach ($odoo_query->rows as $row) {
+				$odoo_order_ids[$row['opencart_order_id']] = $row['odoo_order_id'];
+			}
+		}]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA['shipping_code' => $result['shipping_code'],]]></search>
+            <add position="after"><![CDATA[
+				'in_odoo'       => isset($odoo_order_ids[$result['order_id']]),
+				'odoo_order_id' => isset($odoo_order_ids[$result['order_id']]) ? $odoo_order_ids[$result['order_id']] : null,]]></add>
         </operation>
     </file>
 </modification>
