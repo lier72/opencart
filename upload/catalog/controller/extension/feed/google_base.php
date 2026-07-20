@@ -189,25 +189,18 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 		if (!file_exists($this->cache_file) || !file_exists($this->cache_hash_file)) {
 			return false;
 		}
-		// Skip the hash DB queries while cache is within the configured TTL.
-		$ttl = ((int)$this->config->get('feed_cache_ttl') ?: 1) * 3600;
-		if ((time() - filemtime($this->cache_file)) < $ttl) {
-			return true;
-		}
 		return $this->getFeedHash() === file_get_contents($this->cache_hash_file);
 	}
 
 	/**
 	 * Lightweight hash of all feed-relevant product fields.
-	 * Costs 2 DB queries regardless of catalog size; triggers regeneration when
-	 * price, quantity, or any product modification date changes.
+	 * Uses SUM(CRC32()) per row — no GROUP_CONCAT length limit, scales to any catalog size.
 	 */
 	private function getFeedHash() {
 		$products_hash = $this->db->query("
-			SELECT MD5(GROUP_CONCAT(
+			SELECT SUM(CRC32(CONCAT(
 				p.product_id, '-', p.price, '-', p.quantity, '-', UNIX_TIMESTAMP(p.date_modified)
-				ORDER BY p.product_id
-			)) AS h
+			))) AS h
 			FROM `" . DB_PREFIX . "product` p
 			JOIN `" . DB_PREFIX . "product_to_category` p2c ON p2c.product_id = p.product_id
 			JOIN `" . DB_PREFIX . "google_base_category_to_category` gbc
@@ -216,17 +209,16 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 		");
 
 		$variants_hash = $this->db->query("
-			SELECT MD5(GROUP_CONCAT(
+			SELECT SUM(CRC32(CONCAT(
 				po.product_id, '-', pov.option_value_id, '-', pov.quantity
-				ORDER BY po.product_id, pov.option_value_id
-			)) AS h
+			))) AS h
 			FROM `" . DB_PREFIX . "product_option_value` pov
 			JOIN `" . DB_PREFIX . "product_option` po
 				ON po.product_option_id = pov.product_option_id
 		");
 
-		$h1 = $products_hash->row['h'] ?? '';
-		$h2 = $variants_hash->row['h'] ?? '';
+		$h1 = $products_hash->row['h'] ?? '0';
+		$h2 = $variants_hash->row['h'] ?? '0';
 
 		return md5($h1 . $h2);
 	}
