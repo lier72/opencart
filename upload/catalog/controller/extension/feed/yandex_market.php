@@ -297,15 +297,13 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 
 	/**
 	 * Check if cached feed is still valid.
-	 * Skips DB queries entirely when the cache file is less than 1 hour old.
+	 * Runs 2 lightweight DB queries to compare a hash of current product data
+	 * against the hash stored at the last generation. Returns false (rebuild)
+	 * the moment any price, quantity, or variant stock changes.
 	 */
 	private function isCacheValid() {
 		if (!file_exists($this->cache_file) || !file_exists($this->cache_hash_file)) {
 			return false;
-		}
-		$ttl = ((int)$this->config->get('feed_cache_ttl') ?: 1) * 3600;
-		if ((time() - filemtime($this->cache_file)) < $ttl) {
-			return true;
 		}
 		return $this->getFeedHash() === file_get_contents($this->cache_hash_file);
 	}
@@ -322,10 +320,9 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		$in = implode(',', array_map('intval', explode(',', $allowed_categories)));
 
 		$products_hash = $this->db->query("
-			SELECT MD5(GROUP_CONCAT(
+			SELECT SUM(CRC32(CONCAT(
 				p.product_id, '-', p.price, '-', p.quantity, '-', UNIX_TIMESTAMP(p.date_modified)
-				ORDER BY p.product_id
-			)) AS h
+			))) AS h
 			FROM `" . DB_PREFIX . "product` p
 			JOIN `" . DB_PREFIX . "product_to_category` p2c ON p2c.product_id = p.product_id
 			WHERE p2c.category_id IN (" . $in . ")
@@ -333,17 +330,16 @@ class ControllerExtensionFeedYandexMarket extends Controller {
 		");
 
 		$variants_hash = $this->db->query("
-			SELECT MD5(GROUP_CONCAT(
+			SELECT SUM(CRC32(CONCAT(
 				po.product_id, '-', pov.option_value_id, '-', pov.quantity
-				ORDER BY po.product_id, pov.option_value_id
-			)) AS h
+			))) AS h
 			FROM `" . DB_PREFIX . "product_option_value` pov
 			JOIN `" . DB_PREFIX . "product_option` po
 				ON po.product_option_id = pov.product_option_id
 		");
 
-		$h1 = $products_hash->row['h'] ?? '';
-		$h2 = $variants_hash->row['h'] ?? '';
+		$h1 = $products_hash->row['h'] ?? '0';
+		$h2 = $variants_hash->row['h'] ?? '0';
 		return md5($h1 . $h2);
 	}
 
