@@ -98,6 +98,7 @@ class ModelExtensionFeedGoogleBase extends Model {
 			       COALESCE(m.name, '') AS manufacturer,
 			       p.model, p.image, p.upc, p.ean, p.price,
 			       p.tax_class_id, p.quantity, p.weight, p.weight_class_id,
+			       p.stock_status_id, p.date_available,
 			       feed.google_base_category_id,
 			       (SELECT ps.price
 			        FROM `" . DB_PREFIX . "product_special` ps
@@ -122,8 +123,8 @@ class ModelExtensionFeedGoogleBase extends Model {
 				GROUP BY p2c.product_id
 			) feed ON feed.product_id = p.product_id
 			WHERE p.status = '1'
-			  AND p.quantity > 0
-			  AND p.date_available <= NOW()
+			  AND (p.quantity > 0 OR p.stock_status_id IN (6, 8))
+			  AND (p.date_available <= NOW() OR p.stock_status_id IN (6, 8))
 			  AND pd.description != ''
 			ORDER BY p.product_id ASC
 		");

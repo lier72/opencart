@@ -68,6 +68,13 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 
 			$variant_list = !empty($size_variants) ? $size_variants : array(null);
 
+			// Preorder/backorder mapping — only applies when the item has no real stock;
+			// products with quantity > 0 ship immediately regardless of this label.
+			$stock_status_labels = array(6 => 'preorder', 8 => 'backorder');
+			$stock_status_id     = (int)$product['stock_status_id'];
+			$is_preorder_product = isset($stock_status_labels[$stock_status_id]);
+			$availability_date   = $is_preorder_product ? $this->getAvailabilityDate($product['date_available']) : '';
+
 			// Image tags — built once, shared across all variants of this product
 			$image_tags = '';
 			if ($product['image']) {
@@ -116,6 +123,10 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 				$attr_tags .= '<g:material><![CDATA[' . $mat . ']]></g:material>';
 			}
 
+			// Base description — built once per product, then color/size are appended
+			// per variant below so Google doesn't see identical descriptions across variants.
+			$desc_base = strip_tags(html_entity_decode($product['description'], ENT_QUOTES, 'UTF-8'));
+
 			foreach ($variant_list as $variant) {
 				// Resolve quantity before writing the entry so we can skip out-of-stock.
 				if ($variant !== null && $variant['subtract']) {
@@ -123,13 +134,20 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 				} else {
 					$qty = (int)$product['quantity'];
 				}
-				if ($qty <= 0) continue;
+				if ($qty <= 0 && !$is_preorder_product) continue;
 
 				$output .= '<entry>';
 				$output .= '<title><![CDATA[' . $product['name'] . ']]></title>';
 				$output .= '<link rel="alternate" type="text/html" href="' . $this->url->link('product/product', 'product_id=' . $pid) . '"/>';
-				$desc = strip_tags(html_entity_decode($product['description'], ENT_QUOTES, 'UTF-8'));
-				$desc = mb_substr($desc, 0, 1000, 'UTF-8');
+				$desc_suffix = '';
+				if ($color) {
+					$desc_suffix .= ' Цвет: ' . $color . '.';
+				}
+				if ($variant !== null && !empty($variant['size_display'])) {
+					$desc_suffix .= ' Размер: ' . $variant['size_display'] . '.';
+				}
+				$max_base_len = 1000 - mb_strlen($desc_suffix, 'UTF-8');
+				$desc = mb_substr($desc_base, 0, max($max_base_len, 0), 'UTF-8') . $desc_suffix;
 				$output .= '<summary><![CDATA[' . $desc . ']]></summary>';
 				$output .= '<g:brand><![CDATA[' . html_entity_decode($product['manufacturer'], ENT_QUOTES, 'UTF-8') . ']]></g:brand>';
 				$output .= '<g:condition>new</g:condition>';
@@ -162,7 +180,15 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 
 				$output .= '<g:quantity>' . $qty . '</g:quantity>';
 				$output .= '<g:weight>' . $this->formatWeight($product['weight'], $product['weight_class_id']) . '</g:weight>';
-				$output .= '<g:availability>' . ($qty > 0 ? 'in_stock' : 'out_of_stock') . '</g:availability>';
+
+				// quantity > 0 always wins: an item physically in stock ships immediately
+				// regardless of its admin-set stock_status label (coming soon / on order).
+				if ($qty > 0) {
+					$output .= '<g:availability>in_stock</g:availability>';
+				} else {
+					$output .= '<g:availability>' . $stock_status_labels[$stock_status_id] . '</g:availability>';
+					$output .= '<g:availability_date>' . $availability_date . '</g:availability_date>';
+				}
 
 				$output .= $attr_tags;
 
@@ -199,7 +225,7 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 	private function getFeedHash() {
 		$products_hash = $this->db->query("
 			SELECT SUM(CRC32(CONCAT(
-				p.product_id, '-', p.price, '-', p.quantity, '-', UNIX_TIMESTAMP(p.date_modified)
+				p.product_id, '-', p.price, '-', p.quantity, '-', p.stock_status_id, '-', UNIX_TIMESTAMP(p.date_modified)
 			))) AS h
 			FROM `" . DB_PREFIX . "product` p
 			JOIN `" . DB_PREFIX . "product_to_category` p2c ON p2c.product_id = p.product_id
@@ -220,6 +246,11 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 		$h1 = $products_hash->row['h'] ?? '0';
 		$h2 = $variants_hash->row['h'] ?? '0';
 
+		// Note: g:availability_date for preorder/backorder items (see getAvailabilityDate())
+		// is computed relative to "now" at generation time and is baked into this cache, so
+		// it drifts slightly stale the longer the cache lives — acceptable since it's capped
+		// 3 months to 1 year out and only becomes wrong if the cache survives untouched for
+		// that long without any product's price/quantity/stock_status/date_modified changing.
 		return md5($h1 . $h2);
 	}
 
@@ -250,6 +281,31 @@ class ControllerExtensionFeedGoogleBase extends Controller {
 	 */
 	private function stripColorHex($color) {
 		return trim(preg_replace('/\s*\(#[0-9A-Fa-f]+\)/u', '', $color));
+	}
+
+	/**
+	 * Returns the ISO 8601 date (YYYY-MM-DD) to use for g:availability_date on
+	 * preorder/backorder items. product.date_available is unreliable here — it's
+	 * routinely a stale past date left over from when the product was created,
+	 * never the real restock date — so we fall back to "today + 3 months", which
+	 * matches this store's actual lead time for made-to-order/coming-soon stock.
+	 * If date_available genuinely is a future date, it's used instead, capped at
+	 * Google's 1-year-out maximum.
+	 * Use only when g:availability is preorder or backorder.
+	 */
+	private function getAvailabilityDate($date_available) {
+		$now      = time();
+		$max      = strtotime('+1 year', $now);
+		$fallback = strtotime('+3 months', $now);
+
+		$ts = ($date_available && $date_available !== '0000-00-00') ? strtotime($date_available) : false;
+		$date = ($ts && $ts > $now) ? $ts : $fallback;
+
+		if ($date > $max) {
+			$date = $max;
+		}
+
+		return date('Y-m-d', $date);
 	}
 
 	/**
