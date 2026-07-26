@@ -13,4 +13,5 @@ $_['error_barcode'] = 'Wrong Barcode';
 $_['error_zero_price'] = 'The product has 0 price!';
 $_['error_seo_url_length'] = 'SEO Url exceeds allowed length';
 $_['error_seo_url_exists'] = 'Such SEO Url already exists';
-$_['error_category_format'] = 'The data for category must be CSV values';
+$_['error_category_format'] = 'Categories must be an array of IDs or comma-separated IDs';
+$_['error_category_not_found'] = 'OpenCart category ID %s does not exist';

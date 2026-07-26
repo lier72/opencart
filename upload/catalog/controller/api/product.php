@@ -157,8 +157,10 @@ class ControllerApiProduct extends Controller {
                             $update_data['oc_seo_url'] = $data['oc_seo_url'];
                         }
 
-                        if (isset($data['oc_seo_url'])) {
-                            $update_data['oc_category_ids'] = $data['oc_category_ids'];
+                        if (array_key_exists('oc_category_ids', $data)) {
+                            $update_data['oc_category_ids'] = $this->normalizeCategoryIds(
+                                $data['oc_category_ids']
+                            );
                         }
 
                         if (isset($data['price'])) {
@@ -187,6 +189,78 @@ class ControllerApiProduct extends Controller {
             } else {
                 $json['error'] = $this->error;
             }
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    /**
+     * Return the complete category catalogue for the configured store/language.
+     *
+     * Odoo uses this read-only endpoint to mirror OpenCart category IDs, names,
+     * paths, status, and parent relations.
+     */
+    public function categories() {
+        $this->load->language('api/product');
+        $json = array();
+
+        if (!isset($this->session->data['api_id'])) {
+            $json['error'] = $this->language->get('error_permission');
+        } else {
+            $store_id = (int)$this->config->get('config_store_id');
+            $language_id = (int)$this->config->get('config_language_id');
+
+            $language_query = $this->db->query(
+                "SELECT language_id, code FROM " . DB_PREFIX . "language " .
+                "WHERE language_id = '" . $language_id . "' LIMIT 1"
+            );
+            $language_code = $language_query->num_rows
+                ? $language_query->row['code']
+                : '';
+
+            $sql = "SELECT c.category_id, c.parent_id, cd.name, " .
+                "c.status, c.sort_order, " .
+                "(SELECT GROUP_CONCAT(path_cd.name ORDER BY cp.level " .
+                "SEPARATOR ' > ') " .
+                "FROM " . DB_PREFIX . "category_path cp " .
+                "INNER JOIN " . DB_PREFIX . "category_description path_cd " .
+                "ON (path_cd.category_id = cp.path_id " .
+                "AND path_cd.language_id = '" . $language_id . "') " .
+                "WHERE cp.category_id = c.category_id) AS path " .
+                "FROM " . DB_PREFIX . "category c " .
+                "INNER JOIN " . DB_PREFIX . "category_description cd " .
+                "ON (cd.category_id = c.category_id " .
+                "AND cd.language_id = '" . $language_id . "') " .
+                "INNER JOIN " . DB_PREFIX . "category_to_store c2s " .
+                "ON (c2s.category_id = c.category_id " .
+                "AND c2s.store_id = '" . $store_id . "') " .
+                "ORDER BY c.parent_id, c.sort_order, LCASE(cd.name), " .
+                "c.category_id";
+
+            $query = $this->db->query($sql);
+            $categories = array();
+
+            foreach ($query->rows as $row) {
+                $categories[] = array(
+                    'category_id' => (int)$row['category_id'],
+                    'parent_id' => (int)$row['parent_id'],
+                    'name' => $row['name'],
+                    'path' => $row['path'] ? $row['path'] : $row['name'],
+                    'status' => (bool)$row['status'],
+                    'sort_order' => (int)$row['sort_order']
+                );
+            }
+
+            $json = array(
+                'success' => true,
+                'store_id' => $store_id,
+                'language' => array(
+                    'language_id' => $language_id,
+                    'code' => $language_code
+                ),
+                'categories' => $categories
+            );
         }
 
         $this->response->addHeader('Content-Type: application/json');
@@ -250,20 +324,20 @@ class ControllerApiProduct extends Controller {
         }
 
         // Add category validation
-        if (isset($data['oc_category_ids'])) {
-            if (!is_string($data['oc_category_ids'])) {
+        if (array_key_exists('oc_category_ids', $data)) {
+            $category_ids = $this->normalizeCategoryIds(
+                $data['oc_category_ids']
+            );
+            if ($category_ids === null) {
                 $this->error['category'] = $this->language->get('error_category_format');
             } else {
-                // Validate each category ID exists
-                $category_ids = array_filter(explode(',', $data['oc_category_ids']));
                 foreach ($category_ids as $category_id) {
-                    $query = $this->db->query("SELECT category_id FROM " . DB_PREFIX .
-                        "category WHERE category_id = '" . (int)$category_id . "'");
-                    if (!$query->num_rows) {
-                        $this->log->write("Warning: Category ID " . $category_id . " not found in OpenCart");
-                        // Remove invalid category from the list
-                        $data['oc_category_ids'] = implode(',',
-                            array_diff($category_ids, array($category_id)));
+                    if (!$this->validateCategory($category_id)) {
+                        $this->error['category'] = sprintf(
+                            $this->language->get('error_category_not_found'),
+                            $category_id
+                        );
+                        break;
                     }
                 }
             }
@@ -296,7 +370,8 @@ class ControllerApiProduct extends Controller {
      *      - `oc_website_meta_description` (string, optional): SEO meta description
      *      - `oc_website_meta_keyword` (string, optional): SEO keywords
      *      - `oc_seo_url` (string, optional): SEO-friendly URL slug
-     *      - `oc_category_ids` (string, optional): Category IDs (comma-separated)
+     *      - `oc_category_ids` (array|string, optional): Category IDs. Arrays
+     *        are canonical; comma-separated values remain supported.
      *      - `product_length` (float, optional): Product length in cm
      *      - `product_width` (float, optional): Product width in cm
      *      - `product_height` (float, optional): Product height in cm
@@ -332,7 +407,7 @@ class ControllerApiProduct extends Controller {
      *         "oc_website_meta_description": "Comfortable cotton t-shirt",
      *         "oc_website_meta_keyword": "t-shirt, cotton, casual",
      *         "oc_seo_url": "abc-tshirt",
-     *         "oc_category_ids": "12,34",
+     *         "oc_category_ids": [12, 34],
      *         "product_length": 0.0,
      *         "product_width": 0.0,
      *         "product_height": 0.0,
@@ -569,6 +644,25 @@ class ControllerApiProduct extends Controller {
                 $this->error['default_code'] = $this->language->get('error_model');
             }
         }
+
+        if (array_key_exists('oc_category_ids', $data)) {
+            $category_ids = $this->normalizeCategoryIds(
+                $data['oc_category_ids']
+            );
+            if ($category_ids === null) {
+                $this->error['category'] = $this->language->get('error_category_format');
+            } else {
+                foreach ($category_ids as $category_id) {
+                    if (!$this->validateCategory($category_id)) {
+                        $this->error['category'] = sprintf(
+                            $this->language->get('error_category_not_found'),
+                            $category_id
+                        );
+                        break;
+                    }
+                }
+            }
+        }
         $this->log->write('API Product Create ValidateCreate $input_json: ' . serialize($this->error), true);
 
         return !$this->error;
@@ -617,15 +711,24 @@ class ControllerApiProduct extends Controller {
         }
 
         // Handle categories if provided
-        if (isset($data['oc_category_ids']) && !empty($data['oc_category_ids'])) {
-            $categories = array_filter(explode(',', $data['oc_category_ids']));
+        if (array_key_exists('oc_category_ids', $data)) {
+            $categories = $this->normalizeCategoryIds(
+                $data['oc_category_ids']
+            );
+            if ($categories === null) {
+                throw new Exception(
+                    $this->language->get('error_category_format')
+                );
+            }
             $product_data['product_category'] = array();
             foreach ($categories as $category_id) {
-                if ($this->validateCategory($category_id)) {
-                    $product_data['product_category'][] = $category_id;
-                } else {
-                    $this->log->write("Warning: Category ID " . $category_id . " not found, skipping");
+                if (!$this->validateCategory($category_id)) {
+                    throw new Exception(sprintf(
+                        $this->language->get('error_category_not_found'),
+                        $category_id
+                    ));
                 }
+                $product_data['product_category'][] = $category_id;
             }
         }
 
@@ -747,20 +850,39 @@ class ControllerApiProduct extends Controller {
             }
 
             // Handle category updates if provided
-            if (isset($data['oc_category_ids'])) {
+            if (array_key_exists('oc_category_ids', $data)) {
+                $categories = $this->normalizeCategoryIds(
+                    $data['oc_category_ids']
+                );
+                if ($categories === null) {
+                    throw new Exception(
+                        $this->language->get('error_category_format')
+                    );
+                }
+                foreach ($categories as $category_id) {
+                    if (!$this->validateCategory($category_id)) {
+                        throw new Exception(sprintf(
+                            $this->language->get('error_category_not_found'),
+                            $category_id
+                        ));
+                    }
+                }
+
                 // Delete existing category assignments
                 $this->db->query("DELETE FROM " . DB_PREFIX . "product_to_category 
                 WHERE product_id = '" . (int)$product_id . "'");
 
                 // Insert new category assignments
-                if (!empty($data['oc_category_ids'])) {
-                    $categories = array_filter(explode(',', $data['oc_category_ids']));
+                if (!empty($categories)) {
                     foreach ($categories as $category_id) {
                         $this->db->query("INSERT INTO " . DB_PREFIX . "product_to_category 
                         SET product_id = '" . (int)$product_id . "', 
                             category_id = '" . (int)$category_id . "'");
                     }
-                    $this->log->write("API Product Edit - Updated categories to: " . $data['oc_category_ids']);
+                    $this->log->write(
+                        "API Product Edit - Updated categories to: " .
+                        implode(',', $categories)
+                    );
                 }
             }
 
@@ -1008,6 +1130,44 @@ class ControllerApiProduct extends Controller {
         $query = $this->db->query("SELECT category_id FROM " . DB_PREFIX .
             "category WHERE category_id = '" . (int)$category_id . "'");
         return $query->num_rows > 0;
+    }
+
+    /**
+     * Normalize both the legacy CSV format and the canonical JSON array.
+     *
+     * @param mixed $value
+     * @return array|null Null means invalid input.
+     */
+    private function normalizeCategoryIds($value) {
+        if ($value === null || $value === '') {
+            return array();
+        }
+
+        if (is_string($value)) {
+            $values = explode(',', $value);
+        } elseif (is_array($value)) {
+            $values = $value;
+        } else {
+            return null;
+        }
+
+        $category_ids = array();
+        foreach ($values as $value) {
+            if (is_int($value)) {
+                $category_id = $value;
+            } elseif (is_string($value) && ctype_digit(trim($value))) {
+                $category_id = (int)trim($value);
+            } else {
+                return null;
+            }
+
+            if ($category_id <= 0) {
+                return null;
+            }
+            $category_ids[$category_id] = $category_id;
+        }
+
+        return array_values($category_ids);
     }
 
 
