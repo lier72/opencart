@@ -43,7 +43,7 @@ class ControllerApiProduct extends Controller {
      * - `data` (JSON, required): The JSON input containing product details to update.
      *      - `default_code` (string, optional): Updates the product's model.
      *      - `barcode` (string, optional): Updates the product's EAN (barcode).
-     *      - `name` (string, optional): Updates the product's name across all languages.
+     *      - `name` (string, optional): Updates the product's name in the configured language.
      *      - `oc_description` (string, optional): Updates the OpenCart product description.
      *      - `website_meta_title` (string, optional): Updates the website meta title.
      *      - `website_meta_description` (string, optional): Updates the website meta description.
@@ -108,69 +108,21 @@ class ControllerApiProduct extends Controller {
 
                 if ($product_info) {
                     try {
-                        // Prepare update data. We need this to have product description in every language available
-                        $update_data = array(
-                            'product_description' => $this->getProductDescriptions($product_id),
-                            'ean' => $product_info['ean'],
-                        );
+                        // Keep the API field names intact. editProduct() applies
+                        // language-specific values only to config_language_id.
+                        $update_data = $input_json['data'];
 
-                        $data = $input_json['data'];
-
-                        // Update fields
-                        if (isset($data['default_code'])) {
-                            $update_data['model'] = $data['default_code'];
-                            $this->log->write("API Product Edit - Updating model to: " . $data['default_code']);
-                        }
-
-                        if (isset($data['barcode'])) {
-                            $update_data['ean'] = $data['barcode'];
-                        }
-
-                        if (isset($data['name'])) {
-                            $update_data['name'] = $data['name'];
-                            foreach ($update_data['product_description'] as $language_id => &$desc) {
-                                $desc['name'] = $data['name'];
-                            }
-                        }
-
-                        if (isset($data['oc_description'])) {
-                            $update_data['oc_description'] = $data['oc_description'];
-                        }
-
-                        if (isset($data['oc_website_meta_title'])) {
-                            $update_data['oc_website_meta_title'] = $data['oc_website_meta_title'];
-                        }
-
-                        if (isset($data['oc_website_meta_description'])) {
-                            $update_data['oc_website_meta_description'] = $data['oc_website_meta_description'];
-                        }
-
-                        if (isset($data['oc_website_meta_keyword'])) {
-                            $update_data['oc_website_meta_keyword'] = $data['oc_website_meta_keyword'];
-                        }
-
-                        if (isset($data['oc_tag'])) {
-                            $update_data['oc_tag'] = $data['oc_tag'];
-                        }
-
-                        if (isset($data['oc_seo_url'])) {
-                            $update_data['oc_seo_url'] = $data['oc_seo_url'];
-                        }
-
-                        if (array_key_exists('oc_category_ids', $data)) {
+                        if (array_key_exists('oc_category_ids', $update_data)) {
                             $update_data['oc_category_ids'] = $this->normalizeCategoryIds(
-                                $data['oc_category_ids']
+                                $update_data['oc_category_ids']
                             );
                         }
 
-                        if (isset($data['price'])) {
-                            $update_data['price'] = $data['price'];
-                        }
-
                         // Update product using rewritten here model
-                        $this->editProduct($product_id, $update_data);
+                        $edit_result = $this->editProduct($product_id, $update_data);
 
                         $json['success'] = $this->language->get('text_success');
+                        $json['language_id'] = $edit_result['language_id'];
 
                     } catch (Exception $e) {
                         $this->log->write("API Product Edit - Error: " . $e->getMessage());
@@ -491,9 +443,6 @@ class ControllerApiProduct extends Controller {
         $this->adminProduct = new ModelCatalogProductAdmin($this->registry);
         $this->adminManufacturer = new ModelCatalogManufacturerAdmin($this->registry);
 
-        // Get default language
-        $this->default_language_id = $this->config->get('config_language_id');
-
         $json = array();
 
         if (!isset($this->session->data['api_id'])) {
@@ -513,6 +462,8 @@ class ControllerApiProduct extends Controller {
 
             if ($this->validateCreate($input_json)) {
                 try {
+                    $this->default_language_id = $this->getConfiguredLanguageId();
+
                     // Check existing product by model/default_code
                     $existing_product = $this->checkExistingProduct($input_json['data']['default_code']);
 
@@ -533,6 +484,7 @@ class ControllerApiProduct extends Controller {
                             $this->log->write("API Product Create - Successfully created product ID: " . $product_id);
                             $json['success'] = $this->language->get('text_success');
                             $json['product_id'] = $product_id;
+                            $json['language_id'] = $this->default_language_id;
 
                             // Create variant mappings if we have Odoo product information
                             if (isset($input_json['data']['odoo_product_id'])) {
@@ -732,7 +684,7 @@ class ControllerApiProduct extends Controller {
             }
         }
 
-        // Product description for all languages
+        // Product description for the configured storefront language
         $product_data['product_description'] = array();
         $product_data['product_description'][$this->default_language_id] = array(
             'name' => $data['name'],
@@ -771,6 +723,35 @@ class ControllerApiProduct extends Controller {
      *
      */
 
+    /**
+     * Return the active language configured for the current storefront.
+     *
+     * Product descriptions, category names, and SEO URLs must all use this
+     * language until the API gains an explicit multilingual payload.
+     *
+     * @return int
+     * @throws Exception
+     */
+    protected function getConfiguredLanguageId() {
+        $language_id = (int)$this->config->get('config_language_id');
+
+        if ($language_id <= 0) {
+            throw new Exception('OpenCart default language is not configured');
+        }
+
+        $query = $this->db->query(
+            "SELECT language_id FROM " . DB_PREFIX . "language " .
+            "WHERE language_id = '" . $language_id . "' " .
+            "AND status = '1' LIMIT 1"
+        );
+
+        if (!$query->num_rows) {
+            throw new Exception('OpenCart default language is not active');
+        }
+
+        return (int)$query->row['language_id'];
+    }
+
     protected function checkExistingProduct($model) {
         $query = $this->db->query("SELECT product_id FROM " . DB_PREFIX . "product WHERE model = '" .
             $this->db->escape($model) . "'");
@@ -793,10 +774,11 @@ class ControllerApiProduct extends Controller {
             // 1. Get existing product data
             $existing_product = $this->getProduct($product_id);
             if (!$existing_product) {
-
-                $this->log->write("API Product Edit - Updating model to: " . $data['default_code']);
+                $this->log->write("API Product Edit - Product not found: " . $product_id);
                 throw new Exception('Product not found');
             }
+
+            $language_id = $this->getConfiguredLanguageId();
 
             // 2. Update main product table for sync fields
             $main_update_fields = array();
@@ -824,29 +806,26 @@ class ControllerApiProduct extends Controller {
                 $this->log->write("API Product Edit - Updated main product fields: " . implode(', ', $main_update_fields));
             }
 
-            // Handle SEO URL update if provided
-            if (isset($data['oc_seo_url']) && !empty($data['oc_seo_url'])) {
-                // Get Russian language ID
-                $language_query = $this->db->query("SELECT language_id FROM " . DB_PREFIX .
-                    "language WHERE code = 'ru-ru' AND status = '1'");
-
-                if (!$language_query->num_rows) {
-                    throw new Exception('Russian language not found or not active');
-                }
-                $ru_language_id = $language_query->row['language_id'];
-
-                // Delete existing SEO URLs for all stores and languages
+            // Replace only the configured language's SEO URL. Other language
+            // and store URLs must remain untouched.
+            if (array_key_exists('oc_seo_url', $data)) {
                 $this->db->query("DELETE FROM " . DB_PREFIX . "seo_url
-                WHERE query = 'product_id=" . (int)$product_id . "'");
+                WHERE query = 'product_id=" . (int)$product_id . "'
+                AND store_id = '0'
+                AND language_id = '" . (int)$language_id . "'");
 
-                // Insert new SEO URL for default store (0) and Russian language
-                $this->db->query("INSERT INTO " . DB_PREFIX . "seo_url
-                SET store_id = '0',
-                    language_id = '" . (int)$ru_language_id . "',
-                    query = 'product_id=" . (int)$product_id . "',
-                    keyword = '" . $this->db->escape($data['oc_seo_url']) . "'");
+                if (trim((string)$data['oc_seo_url']) !== '') {
+                    $this->db->query("INSERT INTO " . DB_PREFIX . "seo_url
+                    SET store_id = '0',
+                        language_id = '" . (int)$language_id . "',
+                        query = 'product_id=" . (int)$product_id . "',
+                        keyword = '" . $this->db->escape($data['oc_seo_url']) . "'");
+                }
 
-                $this->log->write("API Product Edit - Updated SEO URL to: " . $data['oc_seo_url']);
+                $this->log->write(
+                    "API Product Edit - Updated language " . $language_id .
+                    " SEO URL to: " . $data['oc_seo_url']
+                );
             }
 
             // Handle category updates if provided
@@ -886,16 +865,7 @@ class ControllerApiProduct extends Controller {
                 }
             }
 
-            // Get Russian language ID
-            $language_query = $this->db->query("SELECT language_id FROM " . DB_PREFIX .
-                "language WHERE code = 'ru-ru' AND status = '1'");
-
-            if (!$language_query->num_rows) {
-                throw new Exception('Russian language not found or not active');
-            }
-            $ru_language_id = $language_query->row['language_id'];
-
-            // 3. Update product description table for Russian language
+            // 3. Update the product description for config_language_id only.
             $description_update_fields = array();
 
             if (isset($data['name'])) {
@@ -927,10 +897,11 @@ class ControllerApiProduct extends Controller {
             }
 
             if (!empty($description_update_fields)) {
-                // Check if description exists for Russian language
+                // Preserve every other language and update only the configured
+                // language row.
                 $check_sql = "SELECT COUNT(*) as total FROM " . DB_PREFIX .
                     "product_description WHERE product_id = '" . (int)$product_id .
-                    "' AND language_id = '" . (int)$ru_language_id . "'";
+                    "' AND language_id = '" . (int)$language_id . "'";
                 $exists = $this->db->query($check_sql)->row['total'];
 
                 if ($exists) {
@@ -938,24 +909,41 @@ class ControllerApiProduct extends Controller {
                     $sql = "UPDATE " . DB_PREFIX . "product_description SET " .
                         implode(', ', $description_update_fields) .
                         " WHERE product_id = '" . (int)$product_id .
-                        "' AND language_id = '" . (int)$ru_language_id . "'";
+                        "' AND language_id = '" . (int)$language_id . "'";
                 } else {
-                    // Insert new description
-                    $fields = array_map(function($field) {
-                        return explode(' = ', $field)[0];
-                    }, $description_update_fields);
+                    // OpenCart requires a name for a valid description row.
+                    if (!isset($data['name']) || trim((string)$data['name']) === '') {
+                        throw new Exception(
+                            'Product name is required when creating the default language description'
+                        );
+                    }
 
-                    $values = array_map(function($field) {
-                        return explode(' = ', $field)[1];
-                    }, $description_update_fields);
+                    $name = $data['name'];
+                    $description = isset($data['oc_description'])
+                        ? $data['oc_description'] : '';
+                    $tag = isset($data['oc_tag']) ? $data['oc_tag'] : '';
+                    $meta_title = isset($data['oc_website_meta_title'])
+                        ? $data['oc_website_meta_title'] : $name;
+                    $meta_description = isset($data['oc_website_meta_description'])
+                        ? $data['oc_website_meta_description'] : '';
+                    $meta_keyword = isset($data['oc_website_meta_keyword'])
+                        ? $data['oc_website_meta_keyword'] : '';
 
-                    $sql = "INSERT INTO " . DB_PREFIX . "product_description 
-                        (product_id, language_id, " . implode(', ', $fields) . ") 
-                        VALUES (" . (int)$product_id . ", " . (int)$ru_language_id . ", " . implode(', ', $values) . ")";
+                    $sql = "INSERT INTO " . DB_PREFIX . "product_description SET " .
+                        "product_id = '" . (int)$product_id . "', " .
+                        "language_id = '" . (int)$language_id . "', " .
+                        "name = '" . $this->db->escape($name) . "', " .
+                        "description = '" . $this->db->escape($description) . "', " .
+                        "tag = '" . $this->db->escape($tag) . "', " .
+                        "meta_title = '" . $this->db->escape($meta_title) . "', " .
+                        "meta_description = '" . $this->db->escape($meta_description) . "', " .
+                        "meta_keyword = '" . $this->db->escape($meta_keyword) . "'";
                 }
 
                 $this->db->query($sql);
-                $this->log->write("API Product Edit - Updated product description: {" .
+                $this->log->write(
+                    "API Product Edit - Updated language " . $language_id .
+                    " product description: {" .
                     implode('}, ', $description_update_fields) . "};");
             }
 
@@ -973,7 +961,8 @@ class ControllerApiProduct extends Controller {
             return array(
                 'success' => true,
                 'message' => 'Product updated successfully',
-                'product_id' => $product_id
+                'product_id' => $product_id,
+                'language_id' => $language_id
             );
 
         } catch (Exception $e) {

@@ -186,8 +186,11 @@ class ModelExtensionModuleOdooProductMapping extends Model {
             'oc_description' => $this->cleanHtml($product['description']),
 //            'oc_tag' => array(6,0, $tags), /the tima has not come to make it m2m field
             'oc_tag' => $product['tag'],
-            'oc_website_meta_title' => $product['meta_title'],
-            'oc_website_meta_description' => $product['meta_description'],
+            // oc_website_meta_title / oc_website_meta_description are generated and owned by
+            // Odoo's SEO module (opencart_product_seo) - never push OpenCart's copy back in,
+            // or it overwrites Odoo's generated value and locks it to 'manual' origin.
+            // 'oc_website_meta_title' => $product['meta_title'],
+            // 'oc_website_meta_description' => $product['meta_description'],
             'oc_website_meta_keyword' => $product['meta_keyword'],
 
             // New fields
