@@ -1350,6 +1350,38 @@ class ControllerApiProduct extends Controller {
                     }
                 }
 
+                // Optional: carry the current Odoo-generated meta title/description
+                // along with the price sync, so they stay in lockstep without a
+                // separate full product sync. Simple single UPDATE, only when
+                // provided - no extra requests, no per-price-entry overhead.
+                if (isset($input_json['meta_title']) || isset($input_json['meta_description'])) {
+                    $meta_update_fields = array();
+
+                    if (isset($input_json['meta_title'])) {
+                        $meta_update_fields[] = "meta_title = '" .
+                            $this->db->escape($input_json['meta_title']) . "'";
+                    }
+
+                    if (isset($input_json['meta_description'])) {
+                        $meta_update_fields[] = "meta_description = '" .
+                            $this->db->escape($input_json['meta_description']) . "'";
+                    }
+
+                    if (!empty($meta_update_fields)) {
+                        $language_id = $this->getConfiguredLanguageId();
+                        $this->db->query(
+                            "UPDATE " . DB_PREFIX . "product_description SET " .
+                            implode(', ', $meta_update_fields) .
+                            " WHERE product_id = '" . (int)$product_id .
+                            "' AND language_id = '" . (int)$language_id . "'"
+                        );
+                        if ($this->debug) $this->log->write(
+                            "API Product Price Sync - Updated meta fields for language " .
+                            $language_id . ": {" . implode('}, ', $meta_update_fields) . "};"
+                        );
+                    }
+                }
+
                 $updates_count = count($results['updated']);
                 $skipped_count = count($results['skipped']);
                 $failed_count = count($results['failed']);
