@@ -685,8 +685,7 @@ class ControllerApiProduct extends Controller {
         }
 
         // Product description for the configured storefront language
-        $product_data['product_description'] = array();
-        $product_data['product_description'][$this->default_language_id] = array(
+        $default_description = array(
             'name' => $data['name'],
             'description' => isset($data['oc_description']) ? $data['oc_description'] : '',
             'tag' => isset($data['oc_tag']) ? $data['oc_tag'] : '',
@@ -694,6 +693,22 @@ class ControllerApiProduct extends Controller {
             'meta_description' => isset($data['oc_website_meta_description']) ? $data['oc_website_meta_description'] : '',
             'meta_keyword' => isset($data['oc_website_meta_keyword']) ? $data['oc_website_meta_keyword'] : '',
         );
+
+        $product_data['product_description'] = array();
+        $product_data['product_description'][$this->default_language_id] = $default_description;
+
+        // Odoo only manages a single language. Seed every other active
+        // storefront language with the same content rather than leaving the
+        // row missing entirely - the admin edit form requires every
+        // configured language to have a name/meta title before it will save,
+        // and a missing row otherwise renders as a blank required field.
+        foreach ($this->getActiveLanguageIds() as $other_language_id) {
+            if ($other_language_id === $this->default_language_id) {
+                continue;
+            }
+
+            $product_data['product_description'][$other_language_id] = $default_description;
+        }
 
         // Store assignment
         $product_data['product_store'] = array(0);
@@ -750,6 +765,29 @@ class ControllerApiProduct extends Controller {
         }
 
         return (int)$query->row['language_id'];
+    }
+
+    /**
+     * Active storefront language IDs, including the configured default language.
+     *
+     * Odoo only manages a single language's content. This is used to seed the
+     * other active languages with the default language's content as a starting
+     * point, since the admin edit form requires every configured language to
+     * have a name/meta title before it will save.
+     *
+     * @return int[]
+     */
+    protected function getActiveLanguageIds() {
+        $query = $this->db->query(
+            "SELECT language_id FROM " . DB_PREFIX . "language WHERE status = '1'"
+        );
+
+        $language_ids = array();
+        foreach ($query->rows as $row) {
+            $language_ids[] = (int)$row['language_id'];
+        }
+
+        return $language_ids;
     }
 
     protected function checkExistingProduct($model) {
@@ -945,6 +983,68 @@ class ControllerApiProduct extends Controller {
                     "API Product Edit - Updated language " . $language_id .
                     " product description: {" .
                     implode('}, ', $description_update_fields) . "};");
+            }
+
+            // 3b. Backfill any other active language that has no translated name yet,
+            // using the same values just written for the configured language. Odoo
+            // only manages a single language, and a product left blank in a second
+            // language fails the admin edit form's "every language needs a name"
+            // validation. Languages that already have their own content (a real
+            // translation) are left untouched.
+            if (isset($data['name'])) {
+                $name = $data['name'];
+                $description = isset($data['oc_description']) ? $data['oc_description'] : '';
+                $tag = isset($data['oc_tag']) ? $data['oc_tag'] : '';
+                $meta_title = isset($data['oc_website_meta_title']) ? $data['oc_website_meta_title'] : $name;
+                $meta_description = isset($data['oc_website_meta_description']) ? $data['oc_website_meta_description'] : '';
+                $meta_keyword = isset($data['oc_website_meta_keyword']) ? $data['oc_website_meta_keyword'] : '';
+
+                foreach ($this->getActiveLanguageIds() as $other_language_id) {
+                    if ($other_language_id === $language_id) {
+                        continue;
+                    }
+
+                    $existing = $this->db->query(
+                        "SELECT name FROM " . DB_PREFIX . "product_description " .
+                        "WHERE product_id = '" . (int)$product_id . "' " .
+                        "AND language_id = '" . (int)$other_language_id . "'"
+                    );
+
+                    if ($existing->num_rows && trim((string)$existing->row['name']) !== '') {
+                        continue;
+                    }
+
+                    if ($existing->num_rows) {
+                        $this->db->query(
+                            "UPDATE " . DB_PREFIX . "product_description SET " .
+                            "name = '" . $this->db->escape($name) . "', " .
+                            "description = '" . $this->db->escape($description) . "', " .
+                            "tag = '" . $this->db->escape($tag) . "', " .
+                            "meta_title = '" . $this->db->escape($meta_title) . "', " .
+                            "meta_description = '" . $this->db->escape($meta_description) . "', " .
+                            "meta_keyword = '" . $this->db->escape($meta_keyword) . "' " .
+                            "WHERE product_id = '" . (int)$product_id . "' " .
+                            "AND language_id = '" . (int)$other_language_id . "'"
+                        );
+                    } else {
+                        $this->db->query(
+                            "INSERT INTO " . DB_PREFIX . "product_description SET " .
+                            "product_id = '" . (int)$product_id . "', " .
+                            "language_id = '" . (int)$other_language_id . "', " .
+                            "name = '" . $this->db->escape($name) . "', " .
+                            "description = '" . $this->db->escape($description) . "', " .
+                            "tag = '" . $this->db->escape($tag) . "', " .
+                            "meta_title = '" . $this->db->escape($meta_title) . "', " .
+                            "meta_description = '" . $this->db->escape($meta_description) . "', " .
+                            "meta_keyword = '" . $this->db->escape($meta_keyword) . "'"
+                        );
+                    }
+
+                    $this->log->write(
+                        "API Product Edit - Backfilled untranslated language " .
+                        $other_language_id . " from default language content"
+                    );
+                }
             }
 
             // 4. Update sync status in mapping table

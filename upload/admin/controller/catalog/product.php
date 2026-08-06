@@ -131,8 +131,24 @@ class ControllerCatalogProduct extends Controller {
                 $this->response->redirect($this->url->link('catalog/product', 'user_token=' . $this->session->data['user_token'] . $url, true));
             } catch (Exception $e){
                 $this->log->write("Error saving product: " . $e->getMessage());
+
+                if ($is_ajax_request) {
+                    $json = array('error' => $e->getMessage());
+                    $this->response->addHeader('Content-Type: application/json');
+                    $this->response->setOutput(json_encode($json));
+                    return;
+                }
+
                 throw $e;
                 }
+        } elseif (($this->request->server['REQUEST_METHOD'] == 'POST') && $is_ajax_request) {
+            // Validation failed on an AJAX save (e.g. duplicate SEO keyword). Report it as
+            // JSON instead of falling through to getForm(), which renders the full HTML edit
+            // page and breaks the caller's JSON.parse() with a leading '<' syntax error.
+            $json = array('error' => $this->error['warning']);
+            $this->response->addHeader('Content-Type: application/json');
+            $this->response->setOutput(json_encode($json));
+            return;
         }
 
 		$this->getForm();
