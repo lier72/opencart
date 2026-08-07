@@ -34,17 +34,6 @@
 {% for link in links %}
 <link href="{{ link.href }}" rel="{{ link.rel }}" />
 {% endfor %}
-{% if journal3_sentry_dsn_loader %}
-{% if journal3.js_defer %}
-<script src="{{ journal3_sentry_dsn_loader }}" crossorigin="anonymous" defer></script>
-{% else %}
-<script src="{{ journal3_sentry_dsn_loader }}" crossorigin="anonymous"></script>
-{% endif %}
-{% endif %}
-<script>window['Journal'] = {{ journal3_js }};</script>
-{% for script in journal3_inline_scripts %}
-<script>{{ script.href ?: script }}</script>
-{% endfor %}
 {% for style in styles %}
 {% if style.href %}
 <link href="{{ style.href }}" type="text/css" rel="{{ style.rel }}" media="{{ style.media }}" />
@@ -60,6 +49,17 @@
 {% if journal3.get('customCSS') %}
 <style>{{ journal3.get('customCSS') }}</style>
 {% endif %}
+{% if journal3_sentry_dsn_loader %}
+{% if journal3.js_defer %}
+<script src="{{ journal3_sentry_dsn_loader }}" crossorigin="anonymous" defer></script>
+{% else %}
+<script src="{{ journal3_sentry_dsn_loader }}" crossorigin="anonymous"></script>
+{% endif %}
+{% endif %}
+<script>window['Journal'] = {{ journal3_js }};</script>
+{% for script in journal3_inline_scripts %}
+<script>{{ script.href ?: script }}</script>
+{% endfor %}
 {% for script in scripts %}
 {% if journal3.js_defer %}
 <script src="{{ script.href ?: script }}" defer></script>

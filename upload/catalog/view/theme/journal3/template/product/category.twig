@@ -41,6 +41,8 @@
       {% endif %}
       {% if journal3.get('subcategoriesStatus') %}
       {% if categories %}
+      {% set subcategory_image_width = journal3.get('image_dimensions_subcategory.width') %}
+      {% set subcategory_image_height = journal3.get('image_dimensions_subcategory.height') %}
       <div class="refine-categories refine-{{ journal3.get('subcategoriesDisplay') }}">
       {% if journal3.get('refineTitle') %}
       <h3 class="refine-title title">{{ journal3.get('refineTitleText') }}</h3>
@@ -53,7 +55,7 @@
             <div class="refine-item swiper-slide">
               <a href="{{ category.href }}">
                 {% if journal3.get('subcategoriesDisplay') != 'links' %}
-                <img src="{{ category.image }}" {% if category.image2x %}srcset="{{ category.image }} 1x, {{ category.image2x }} 2x"{% endif %} alt="{{ category.alt }}" width="{{ journal3.get('image_dimensions_subcategory.width') }}" height="{{ journal3.get('image_dimensions_subcategory.height') }}"/>
+                <img src="{{ category.image }}" {% if category.image2x %}srcset="{{ category.image }} 1x, {{ category.image2x }} 2x"{% endif %} alt="{{ category.alt }}" width="{{ subcategory_image_width }}" height="{{ subcategory_image_height }}" style="width: {{ subcategory_image_width }}px; height: auto; aspect-ratio: {{ subcategory_image_width }} / {{ subcategory_image_height }};"/>
                 {% endif %}
                 <span class="refine-name">{{ category.name }}</span>
               </a>
@@ -75,7 +77,7 @@
             <div class="refine-item">
               <a href="{{ category.href }}">
                 {% if journal3.get('subcategoriesDisplay') != 'links' %}
-                  <img src="{{ category.image }}" {% if category.image2x %}srcset="{{ category.image }} 1x, {{ category.image2x }} 2x"{% endif %} alt="{{ category.alt }}" width="{{ journal3.get('image_dimensions_subcategory.width') }}" height="{{ journal3.get('image_dimensions_subcategory.height') }}"/>
+                  <img src="{{ category.image }}" {% if category.image2x %}srcset="{{ category.image }} 1x, {{ category.image2x }} 2x"{% endif %} alt="{{ category.alt }}" width="{{ subcategory_image_width }}" height="{{ subcategory_image_height }}" style="width: {{ subcategory_image_width }}px; height: auto; aspect-ratio: {{ subcategory_image_width }} / {{ subcategory_image_height }};"/>
                 {% endif %}
                 <span class="refine-name">{{ category.name }}</span>
               </a>
@@ -89,7 +91,7 @@
           <div class="refine-item">
             <a href="{{ category.href }}">
               {% if journal3.get('subcategoriesDisplay') != 'links' %}
-                <img src="{{ category.image }}" {% if category.image2x %}srcset="{{ category.image }} 1x, {{ category.image2x }} 2x"{% endif %} alt="{{ category.alt }}" width="{{ journal3.get('image_dimensions_subcategory.width') }}" height="{{ journal3.get('image_dimensions_subcategory.height') }}"/>
+                <img src="{{ category.image }}" {% if category.image2x %}srcset="{{ category.image }} 1x, {{ category.image2x }} 2x"{% endif %} alt="{{ category.alt }}" width="{{ subcategory_image_width }}" height="{{ subcategory_image_height }}" style="width: {{ subcategory_image_width }}px; height: auto; aspect-ratio: {{ subcategory_image_width }} / {{ subcategory_image_height }};"/>
               {% endif %}
               <span class="refine-name">{{ category.name }}</span>
             </a>
