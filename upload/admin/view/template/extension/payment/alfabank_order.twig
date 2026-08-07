@@ -1,151 +1,212 @@
 {% if gateway_order %}
+    <h3>
+        Order # {{ order_id }}
+        [<span id="alfabank-selected-reference">{{ gateway_order.gateway_order_reference }}</span>]
+    </h3>
 
-    <h3>Order # {{ order_id }} [{{ gateway_order.gateway_order_reference }}]</h3>
-
-    <table id="alfabank-table" class="table table-bordered">
+    <table id="alfabank-operation-table" class="table table-bordered">
         <tbody>
-        <tr id="input-fields">
-            <td class="text-right col-sm-2">
-                {{ entry_payment_status }}
-            </td>
+        <tr id="alfabank-refund-row"{% if gateway_order.status != 0 or gateway_order.status_deposited != 1 %} style="display: none;"{% endif %}>
+            <td class="text-right col-sm-2">{{ entry_refund }}</td>
             <td class="text-left">
                 <div class="col-sm-6">
-                <span class="btn btn-info btn-alfabank"
-                      data-action="payment_status">{{ button_payment_status }}</span>
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="{{ gateway_amount }}" id="user_amount">
+                        <span class="input-group-btn">
+                            <button class="btn btn-warning btn-alfabank btn-selected-attempt"
+                                    data-action="payment_refund_partial"
+                                    data-gateway-order-reference="{{ gateway_order.gateway_order_reference }}"
+                                    type="button">{{ button_refund }}</button>
+                            <button class="btn btn-warning btn-alfabank btn-selected-attempt"
+                                    data-action="payment_refund_full"
+                                    data-gateway-order-reference="{{ gateway_order.gateway_order_reference }}"
+                                    type="button">{{ button_refund_full }}</button>
+                        </span>
+                    </div>
                 </div>
+                <div class="col-sm-12" id="alfabank-amount-help">{{ help_alfabank_amount }}</div>
             </td>
         </tr>
-        {% if gateway_order.status == 0 %}
-            {% if gateway_order.status_deposited == 1 %} <!-- APPROVED -->
-                <tr id="input-fields">
-                    <td class="text-right col-sm-2">
-                        {{ entry_refund }}
-                    </td>
-                    <td class="text-left">
-
-                        <div class="col-sm-6">
-                            <div class="input-group">
-                                <input type="text" class="form-control" value="{{ gateway_amount }}" id="user_amount">
-                                <span class="input-group-btn">
-                                <button class="btn btn-warning btn-alfabank"
-                                        data-action="payment_refund_partial"
-                                        type="button">{{ button_refund }}</button>
-                                <button class="btn btn-warning btn-alfabank"
-                                        data-action="payment_refund_full"
-                                        type="button">{{ button_refund_full }}</button>
-                            </span>
-                            </div>
-                        </div>
-                        <div class="col-sm-12">
-                            {{ help_alfabank_amount }}
-                        </div>
-
-                    </td>
-                </tr>
-            {% elseif gateway_order.status_deposited == 0 %} <!-- DEPOSITED -->
-                <tr id="input-fields">
-                    <td class="text-right col-sm-2">
-                        {{ entry_deposit }}
-                    </td>
-                    <td class="text-left">
-
-                        <div class="col-sm-6">
-                            <div class="input-group">
-                                <input type="text" class="form-control" value="{{ gateway_amount }}" id="user_amount">
-                                <span class="input-group-btn">
-                                <button class="btn btn-success btn-alfabank"
-                                        data-action="payment_deposit_partial"
-                                        type="button">{{ button_deposit }}</button>
-                                <button class="btn btn-success btn-alfabank"
-                                        data-action="payment_deposit_full"
-                                        type="button">{{ button_deposit_full }}</button>
-                            </span>
-                            </div>
-                        </div>
-                        <div class="col-sm-12">
-                            {{ help_alfabank_amount }}
-                        </div>
-
-
-                    </td>
-                </tr>
-            {% endif %}
-            {% if gateway_order.status_reversed == 0 %}
-                <tr id="input-fields">
-                    <td class="text-right col-sm-2">
-                        {{ entry_reverse }}
-                    </td>
-                    <td class="text-left">
-                        <div class="col-sm-6">
-                        <span class="btn btn-danger btn-alfabank"
-                              data-action="payment_reverse"> {{ button_reverse }}</span>
-                        </div>
-                    </td>
-                </tr>
-            {% endif %}
-        {% endif %}
+        <tr id="alfabank-deposit-row"{% if gateway_order.status != 0 or gateway_order.status_deposited != 0 %} style="display: none;"{% endif %}>
+            <td class="text-right col-sm-2">{{ entry_deposit }}</td>
+            <td class="text-left">
+                <div class="col-sm-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="{{ gateway_amount }}" id="deposit_user_amount">
+                        <span class="input-group-btn">
+                            <button class="btn btn-success btn-alfabank btn-selected-attempt"
+                                    data-action="payment_deposit_partial"
+                                    data-gateway-order-reference="{{ gateway_order.gateway_order_reference }}"
+                                    type="button">{{ button_deposit }}</button>
+                            <button class="btn btn-success btn-alfabank btn-selected-attempt"
+                                    data-action="payment_deposit_full"
+                                    data-gateway-order-reference="{{ gateway_order.gateway_order_reference }}"
+                                    type="button">{{ button_deposit_full }}</button>
+                        </span>
+                    </div>
+                </div>
+                <div class="col-sm-12 alfabank-amount-help">{{ help_alfabank_amount }}</div>
+            </td>
+        </tr>
         </tbody>
     </table>
-    <script type="text/javascript"><!--
-        $('.btn-alfabank').on('click', function () {
-            let clickedElement = $(this);
-            let orderAction = $(this).data('action');
-            let userAmount = 0;
 
-            if (orderAction == 'payment_deposit_partial' || orderAction == 'payment_refund_partial') {
-                userAmount = $('#user_amount').val();
+    <h4>Payment attempts</h4>
+    <table id="alfabank-attempts-table" class="table table-bordered table-hover">
+        <thead>
+        <tr>
+            <th>Gateway reference</th>
+            <th>Order number</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Updated</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for attempt in gateway_orders %}
+            <tr class="alfabank-attempt-row{% if attempt.gateway_order_id == gateway_order.gateway_order_id %} info{% endif %}"
+                data-gateway-order-reference="{{ attempt.gateway_order_reference }}"
+                data-gateway-amount="{{ attempt.gateway_amount }}"
+                data-help-amount="{{ attempt.help_alfabank_amount }}"
+                data-status="{{ attempt.status }}"
+                data-status-deposited="{{ attempt.status_deposited }}"
+                tabindex="0">
+                <td>{{ attempt.gateway_order_reference }}</td>
+                <td>{{ attempt.order_number }}</td>
+                <td>{{ attempt.status_deposited }}</td>
+                <td>{{ attempt.date_added }}</td>
+                <td>{{ attempt.date_updated }}</td>
+                <td class="text-nowrap">
+                    <button class="btn btn-info btn-sm btn-alfabank"
+                            data-action="payment_status"
+                            data-gateway-order-reference="{{ attempt.gateway_order_reference }}"
+                            type="button">{{ button_payment_status }}</button>
+                    {% if attempt.status == 0 and attempt.status_reversed == 0 %}
+                        <button class="btn btn-danger btn-sm btn-alfabank"
+                                data-action="payment_reverse"
+                                data-gateway-order-reference="{{ attempt.gateway_order_reference }}"
+                                type="button">{{ button_reverse }}</button>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <script type="text/javascript"><!--
+        (function ($) {
+            let selectedGatewayReference = '{{ gateway_order.gateway_order_reference|e('js') }}';
+
+            function selectAttempt(row) {
+                if (!row || !row.length) {
+                    return;
+                }
+
+                selectedGatewayReference = row.attr('data-gateway-order-reference');
+
+                $('.alfabank-attempt-row').removeClass('info');
+                row.addClass('info');
+                $('#alfabank-selected-reference').text(selectedGatewayReference);
+                $('.btn-selected-attempt').attr('data-gateway-order-reference', selectedGatewayReference);
+
+                const gatewayAmount = row.attr('data-gateway-amount');
+                const helpAmount = row.attr('data-help-amount');
+                const status = parseInt(row.attr('data-status'), 10);
+                const depositedStatus = parseInt(row.attr('data-status-deposited'), 10);
+                const canOperate = status === 0;
+                const showRefund = canOperate && depositedStatus === 1;
+                const showDeposit = canOperate && depositedStatus === 0;
+
+                $('#user_amount, #deposit_user_amount').val(gatewayAmount);
+                $('#alfabank-amount-help, .alfabank-amount-help').text(helpAmount);
+                $('#alfabank-refund-row').toggle(showRefund);
+                $('#alfabank-deposit-row').toggle(showDeposit);
+                $('#alfabank-operation-table').toggle(showRefund || showDeposit);
             }
 
-            $.ajax({
-                url: 'index.php?route=extension/payment/alfabank/gatewayOrderAction&user_token={{ user_token }}&order_id={{ order_id }}',
-                type: 'POST',
-                data: {
-                    'user_amount': userAmount,
-                    'order_action': orderAction
-                },
-                dataType: 'json',
-                beforeSend: function (xhr) {
-                    clickedElement.append('<i style="margin-left: 10px;" id="alfabank-loading" class="fa fa-refresh"></i>');
-                },
-                complete: function (xhr) {
-                    if ($('#alfabank-loading').length) {
-                        $('#alfabank-loading').remove();
-                    }
-                },
-                success: function (json) {
-
-                    if (typeof json.error != 'undefined') {
-                        //alert(json.error);
-                        $('.alert').remove();
-
-                        if (json['error']) {
-                            $('#alfabank-table').before('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json['error'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
-                        }
-                    } else if (typeof json.success != 'undefined') {
-
-                        if (typeof json.history != 'undefined') {
-                            addOrderHistory(json.history.order_status_id, json.history.comment, json.history.notify);
-                        }
-
-                        //alert(json.success);
-                        $('.alert').remove();
-                        $('#alfabank-table').before('<div class="alert alert-success alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + json['success'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
-
-                        if (typeof json.redirect != 'undefined') {
-                            window.location.reload();
-                        }
-                    }
+            $('.alfabank-attempt-row').on('click', function (event) {
+                selectAttempt($(this));
+            }).on('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    selectAttempt($(this));
                 }
             });
 
-            function addOrderHistory(order_status_id, comment, notify) {
+            $('.btn-alfabank').on('click', function (event) {
+                event.stopPropagation();
+
+                const clickedElement = $(this);
+                const attemptRow = clickedElement.closest('.alfabank-attempt-row');
+
+                if (attemptRow.length) {
+                    selectAttempt(attemptRow);
+                }
+
+                const orderAction = clickedElement.attr('data-action');
+                const gatewayOrderReference = clickedElement.attr('data-gateway-order-reference') || selectedGatewayReference;
+                let userAmount = 0;
+
+                if (orderAction === 'payment_deposit_partial') {
+                    userAmount = $('#deposit_user_amount').val();
+                } else if (orderAction === 'payment_refund_partial') {
+                    userAmount = $('#user_amount').val();
+                }
+
+                $.ajax({
+                    url: 'index.php?route=extension/payment/alfabank/gatewayOrderAction&user_token={{ user_token }}&order_id={{ order_id }}',
+                    type: 'POST',
+                    data: {
+                        'user_amount': userAmount,
+                        'order_action': orderAction,
+                        'gateway_order_reference': gatewayOrderReference
+                    },
+                    dataType: 'json',
+                    beforeSend: function () {
+                        clickedElement.append('<i class="fa fa-refresh alfabank-loading" style="margin-left: 10px;"></i>');
+                    },
+                    complete: function () {
+                        clickedElement.find('.alfabank-loading').remove();
+                    },
+                    success: function (json) {
+                        $('.alert').remove();
+
+                        if (typeof json.error !== 'undefined' && json.error) {
+                            $('#alfabank-attempts-table').before(
+                                '<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' +
+                                json.error +
+                                ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>'
+                            );
+                        } else if (typeof json.success !== 'undefined') {
+                            if (typeof json.history !== 'undefined') {
+                                addOrderHistory(json.history.order_status_id, json.history.comment, json.history.notify);
+                            }
+
+                            $('#alfabank-attempts-table').before(
+                                '<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' +
+                                json.success +
+                                ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>'
+                            );
+
+                            if (typeof json.redirect !== 'undefined') {
+                                window.location.reload();
+                            }
+                        }
+                    }
+                });
+            });
+
+            function addOrderHistory(orderStatusId, comment, notify) {
                 $.ajax({
                     url: '{{ catalog }}index.php?route=api/order/history&api_token={{ api_token }}&store_id={{ store_id }}&order_id={{ order_id }}',
                     type: 'post',
                     dataType: 'json',
-                    data: 'order_status_id=' + order_status_id + '&notify=' + notify + '&comment=' + comment
+                    data: 'order_status_id=' + orderStatusId + '&notify=' + notify + '&comment=' + comment
                 });
             }
-        });
+
+            selectAttempt($('.alfabank-attempt-row.info').first());
+        })(jQuery);
         //--></script>
 {% endif %}

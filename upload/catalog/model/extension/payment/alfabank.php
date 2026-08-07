@@ -88,6 +88,7 @@ class ModelExtensionPaymentAlfabank extends Model
     }
     public function storeGatewayOrder($data)
     {
+        // Each gateway reference is one payment attempt. Repeated callbacks update only that attempt.
         $this->db->query("INSERT INTO `" . DB_PREFIX . "alfabank_order` SET
             `order_id` = '" . (int)$data['order_id'] . "',
             `gateway_order_reference` = '" . $this->db->escape($data['gateway_order_reference']) . "',
@@ -102,6 +103,7 @@ class ModelExtensionPaymentAlfabank extends Model
             `date_added` = NOW(),
             `date_updated` = NOW()
         ON DUPLICATE KEY UPDATE
+            `gateway_order_reference` = '" . $this->db->escape($data['gateway_order_reference']) . "',
             `tx_url` = IF('" . (isset($data['tx_url']) && !empty($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "' != '', '" . (isset($data['tx_url']) ? $this->db->escape($data['tx_url']) : '') . "', `tx_url`),
             `order_number` = '" . (isset($data['order_number']) ? $this->db->escape($data['order_number']) : '') . "',
             `currency` = '" . $this->db->escape($data['currency']) . "',
@@ -126,6 +128,8 @@ class ModelExtensionPaymentAlfabank extends Model
         $this->initializeAlfabank();
         $response = $this->alfabank->_getGatewayOrderStatus($orderId);
         $response = json_decode($response, true);
+        $response['orderId'] = $orderId;
+
         if (($response['errorCode'] == 0)) {
             if ($this->config->get('payment_alfabank_logging'))
                 $this->log->write(sprintf(
@@ -135,7 +139,6 @@ class ModelExtensionPaymentAlfabank extends Model
                     $response['actionCode'],
                     $response['actionCodeDescription']
                 ));
-            $response['orderId'] = $orderId;
         } else {
             if ($this->config->get('payment_alfabank_logging'))
                 $this->log->write(sprintf(
@@ -166,8 +169,11 @@ class ModelExtensionPaymentAlfabank extends Model
 
         $sql = "UPDATE " . DB_PREFIX . "alfabank_order SET
             `date_updated` = NOW(),
-            `status_deposited` = " . (int)$data['orderStatus'] . ",
-            `order_amount_deposited` = " . (float)$data['amount'];
+            `status_deposited` = " . (int)$data['orderStatus'];
+
+        if (isset($data['amount'])) {
+            $sql .= ", `order_amount_deposited` = " . (float)$data['amount'];
+        }
 
         if ($payment_way !== null) {
             $sql .= ", `payment_way` = '" . $this->db->escape($payment_way) . "'";

@@ -260,23 +260,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 			);
 			$this->model_checkout_order->addOrderHistory($order_number, $this->config->get('payment_alfabank_order_status_before_id'), $comment, false);
 
-			// Store initial payment transaction data for Odoo sync
-			$this->load->model('extension/payment/alfabank');
-			// Convert currency to numeric format
-			$currency_value = isset($response['currency']) ? $response['currency'] : $order_info['currency_code'];
-			$numeric_currency = $this->method_library->normalize_currency_to_numeric($currency_value);
-
-			$initial_data = array(
-				'order_id' => (int)$order_info['order_id'],
-				'gateway_order_reference' => $response['orderId'],
-				'tx_url' => isset($response['formUrl']) ? $response['formUrl'] : '',
-				'order_number' => $args['orderNumber'],
-				'currency' => $numeric_currency,
-				'order_amount' => $amount,
-				'order_amount_deposited' => 0,
-				'status_deposited' => 0, // Registered, not paid
-			);
-			$this->model_extension_payment_alfabank->storeGatewayOrder($initial_data);
+			$this->_storeInitialGatewayOrderData($order_info, $response, $args['orderNumber'], $amount);
 		}
 		if (isset($response['errorCode'])) {
 			$this->document->setTitle($this->language->get('error_title'));
@@ -360,10 +344,9 @@ class ControllerExtensionPaymentAlfabank extends Controller
 				// Check if this order has already been marked as paid to prevent duplicate history entries
 				$completed_status_id = $this->config->get('payment_alfabank_order_status_completed_id');
 				$already_paid = $this->model_extension_payment_alfabank->get_oc_paid_status($order_number, array($completed_status_id));
+				$this->_storeGatewayOrderData($order_id, $order_info, $response);
 
 				if (!$already_paid) {
-					$this->_storeGatewayOrderData($order_id, $order_info, $response);
-
 					$payment_type = $response['orderStatus'] == 2
 						? 'Полная авторизация'
 						: 'Предавторизация (Двухстадийный платеж)';
@@ -441,14 +424,14 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		$order_info = $this->model_checkout_order->getOrder($order_number);
 		if ($order_info) {
 			if (($response['errorCode'] == 0) && (($response['orderStatus'] == 1) || ($response['orderStatus'] == 2))) {
+				$this->_storeGatewayOrderData($order_id, $order_info, $response);
+
 				if ($this->method_library->allowCallbacks == false) {
 					// Check if this order has already been marked as paid to prevent duplicate history entries
 					$completed_status_id = $this->config->get('payment_alfabank_order_status_completed_id');
 					$already_paid = $this->model_extension_payment_alfabank->get_oc_paid_status($order_number, array($completed_status_id));
 
 					if (!$already_paid) {
-						$this->_storeGatewayOrderData($order_id, $order_info, $response);
-
 						$payment_status = $response['orderStatus'] == 2
 							? 'Полная авторизация'
 							: 'Предавторизация';
@@ -501,6 +484,28 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		);
 		$this->model_extension_payment_alfabank->storeGatewayOrder($data);
 	}
+
+	private function _storeInitialGatewayOrderData($order_info, $response, $order_number, $amount)
+	{
+		$this->load->model('extension/payment/alfabank');
+
+		$currency_value = isset($response['currency']) ? $response['currency'] : $order_info['currency_code'];
+		$numeric_currency = $this->method_library->normalize_currency_to_numeric($currency_value);
+
+		$data = array(
+			'order_id' => (int)$order_info['order_id'],
+			'gateway_order_reference' => $response['orderId'],
+			'tx_url' => isset($response['formUrl']) ? $response['formUrl'] : '',
+			'order_number' => $order_number,
+			'currency' => $numeric_currency,
+			'order_amount' => $amount,
+			'order_amount_deposited' => 0,
+			'status_deposited' => 0,
+		);
+
+		$this->model_extension_payment_alfabank->storeGatewayOrder($data);
+	}
+
 	private function _getBillingPayerData($orderData)
 	{
 		$billingPayerData = array();
@@ -870,6 +875,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		if (isset($response['orderId'])) {
 			$comment = "Re-payment initiated from order history";
 			$this->model_checkout_order->addOrderHistory($order_number, $this->config->get('payment_alfabank_order_status_before_id'), $comment, false);
+			$this->_storeInitialGatewayOrderData($order_info, $response, $args['orderNumber'], $amount);
 		}
 
 		if (isset($response['errorCode'])) {

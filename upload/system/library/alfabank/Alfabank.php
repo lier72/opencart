@@ -12,6 +12,7 @@ define('RBSPAYMENT_ENABLE_CART_OPTIONS', true);
 define('RBSPAYMENT_MEASUREMENT_NAME', 'шт');
 define('RBSPAYMENT_MEASUREMENT_CODE', 0);
 define('RBSPAYMENT_ENABLE_CALLBACK', true);
+define('RBSPAYMENT_ENABLE_REFUND_TAB', true);
 
 //this close tag must be here -> ?>
 <?php

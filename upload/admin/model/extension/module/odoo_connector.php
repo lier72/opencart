@@ -488,7 +488,10 @@ class ModelExtensionModuleOdooConnector extends Model {
         $sql = "SELECT gateway_order_reference, tx_url, order_number, order_amount
                 FROM " . DB_PREFIX . "alfabank_order
                 WHERE order_id = " . (int)$oc_order_id . "
-                ORDER BY date_added DESC
+                ORDER BY
+                    CASE WHEN status_deposited IN (1, 2, 4) THEN 0 ELSE 1 END,
+                    date_updated DESC,
+                    gateway_order_id DESC
                 LIMIT 1";
         $result = $this->db->query($sql);
 

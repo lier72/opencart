@@ -10,6 +10,8 @@ class ControllerExtensionPaymentAlfabank extends Controller
         $this->library('alfabank/Alfabank');
         $method_library = new Alfabank();
         $this->load->language('extension/payment/alfabank');
+        $this->load->model('extension/payment/alfabank');
+        $this->model_extension_payment_alfabank->install();
         $this->document->setTitle($this->language->get('heading_title'));
         $this->load->model('setting/setting');
         if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
@@ -476,6 +478,14 @@ class ControllerExtensionPaymentAlfabank extends Controller
         $this->load->model('extension/payment/alfabank');
         $this->load->model('sale/order');
         $data['gateway_order'] = $this->model_extension_payment_alfabank->getGatewayOrder($this->request->get['order_id']);
+        $data['gateway_orders'] = $this->model_extension_payment_alfabank->getGatewayOrders($this->request->get['order_id']);
+        $data['gateway_order'] = $this->prepareGatewayOrderForView($data['gateway_order']);
+
+        foreach ($data['gateway_orders'] as &$gateway_order) {
+            $gateway_order = $this->prepareGatewayOrderForView($gateway_order);
+        }
+        unset($gateway_order);
+
         $order_info = $this->model_sale_order->getOrder($this->request->get['order_id']);
         $this->library('alfabank/Alfabank');
         $method_library = new Alfabank();
@@ -483,15 +493,6 @@ class ControllerExtensionPaymentAlfabank extends Controller
             $method_library->enable_refund_options === true &&
             !empty($order_info) && !empty($data['gateway_order'])
         ) {
-            if (!empty($data['gateway_order']['status_deposited'])) {
-                $amount = $data['gateway_order']['order_amount_deposited'];
-            } else {
-                $amount = $data['gateway_order']['order_amount'];
-            }
-            if (!empty($data['gateway_order']['status_refunded'])) {
-                $amount -= $data['gateway_order']['order_amount_refunded'];
-            }
-            $amount = (int)($amount / 100);
             $data['catalog'] = $this->request->server['HTTPS'] ? HTTPS_CATALOG : HTTP_CATALOG;
             $this->load->model('user/api');
             $api_info = $this->model_user_api->getApi($this->config->get('config_api_id'));
@@ -510,13 +511,42 @@ class ControllerExtensionPaymentAlfabank extends Controller
                 $data['api_token'] = '';
             }
             $data['store_id'] = $order_info['store_id'];
-            $data['help_alfabank_amount'] = sprintf($this->language->get('help_alfabank_amount'), $amount, $amount, $data['gateway_order']['currency']);
-            $data['gateway_amount'] = $amount;
+            $data['help_alfabank_amount'] = $data['gateway_order']['help_alfabank_amount'];
+            $data['gateway_amount'] = $data['gateway_order']['gateway_amount'];
             $data['user_token'] = $this->request->get['user_token'];
             $data['order_id'] = $this->request->get['order_id'];
             return $this->load->view('extension/payment/alfabank_order', $data);
         }
     }
+
+    private function prepareGatewayOrderForView($gateway_order)
+    {
+        if (empty($gateway_order)) {
+            return $gateway_order;
+        }
+
+        if (!empty($gateway_order['status_deposited'])) {
+            $amount = (float)$gateway_order['order_amount_deposited'];
+        } else {
+            $amount = (float)$gateway_order['order_amount'];
+        }
+
+        if (!empty($gateway_order['status_refunded'])) {
+            $amount -= (float)$gateway_order['order_amount_refunded'];
+        }
+
+        $amount = (int)($amount / 100);
+        $gateway_order['gateway_amount'] = $amount;
+        $gateway_order['help_alfabank_amount'] = sprintf(
+            $this->language->get('help_alfabank_amount'),
+            $amount,
+            $amount,
+            $gateway_order['currency']
+        );
+
+        return $gateway_order;
+    }
+
     public function gatewayOrderAction()
     {
         $this->language->load('extension/payment/alfabank');
@@ -524,7 +554,13 @@ class ControllerExtensionPaymentAlfabank extends Controller
         $this->load->model('sale/order');
         $this->library('alfabank/Alfabank');
         $method_library = new Alfabank();
-        $gateway_order = $this->model_extension_payment_alfabank->getGatewayOrder($this->request->get['order_id']);
+        $gateway_order_reference = isset($this->request->post['gateway_order_reference'])
+            ? trim($this->request->post['gateway_order_reference'])
+            : '';
+        $gateway_order = $this->model_extension_payment_alfabank->getGatewayOrder(
+            $this->request->get['order_id'],
+            $gateway_order_reference
+        );
         $order_info = $this->model_sale_order->getOrder($this->request->get['order_id']);
         if ($gateway_order && $order_info && !empty($this->request->post['order_action'])) {
             $gateway_order['order_amount'] = (int)round($gateway_order['order_amount']);
@@ -581,7 +617,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
                             'status_deposited' => 1,
                             'status_reversed' => 0,
                         );
-                        $this->model_extension_payment_alfabank->updateGatewayOrder($order_info['order_id'], $sql_data);
+                        $this->model_extension_payment_alfabank->updateGatewayOrder($gateway_order['gateway_order_reference'], $sql_data);
                         $json['history'] = array(
                             'order_status_id' => $this->config->get('payment_alfabank_order_status_completed_id'),
                             'comment' => sprintf($this->language->get('text_success_deposit_amount'), number_format(($order_action == 'payment_deposit_partial' ? $user_amount : $gateway_order['order_amount']) / 100, 2)),
@@ -620,7 +656,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
                         if ($gateway_order['order_amount_deposited'] == $sql_data['order_amount_refunded']) {
                             $sql_data['status'] = 1;
                         }
-                        $this->model_extension_payment_alfabank->updateGatewayOrder($order_info['order_id'], $sql_data);
+                        $this->model_extension_payment_alfabank->updateGatewayOrder($gateway_order['gateway_order_reference'], $sql_data);
                         $json['history'] = array(
                             'order_status_id' => $this->config->get('payment_alfabank_order_status_refunded_id'),
                             'comment' => sprintf($this->language->get('text_success_refund_amount'), number_format($user_amount / 100, 2)),
@@ -653,7 +689,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
                             $sql_data['status'] = 1;
                             $sql_data['status_reversed'] = 1;
                         }
-                        $this->model_extension_payment_alfabank->updateGatewayOrder($order_info['order_id'], $sql_data);
+                        $this->model_extension_payment_alfabank->updateGatewayOrder($gateway_order['gateway_order_reference'], $sql_data);
                         $json['history'] = array(
                             'order_status_id' => $this->config->get('payment_alfabank_order_status_reversed_id'),
                             'comment' => $this->language->get('text_success_reverse'),
