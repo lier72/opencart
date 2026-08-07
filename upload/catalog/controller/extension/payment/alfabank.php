@@ -480,7 +480,8 @@ class ControllerExtensionPaymentAlfabank extends Controller
 			'payment_system' => $payment_system,
 			'order_amount' => $response['amount'],
 			'order_amount_deposited' => $response['amount'],
-			'status_deposited' => $response['orderStatus'] === 1 ? 0 : 1, //todo
+			// Store the AlfaBank orderStatus code (-1..6), never a local boolean.
+			'status_deposited' => isset($response['orderStatus']) ? (int)$response['orderStatus'] : 0,
 		);
 		$this->model_extension_payment_alfabank->storeGatewayOrder($data);
 	}

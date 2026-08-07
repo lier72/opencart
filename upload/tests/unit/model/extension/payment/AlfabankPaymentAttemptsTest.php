@@ -88,12 +88,24 @@ class AlfabankPaymentAttemptsTest extends TestCase
 
         require_once(DIR_APPLICATION . '../admin/model/extension/module/odoo_connector.php');
         $odoo_model = new \ModelExtensionModuleOdooConnector($this->registry);
-        $method = new \ReflectionMethod($odoo_model, 'getAlfabankTransactionData');
+        $method = new \ReflectionMethod($odoo_model, 'getAlfabankTransactionsData');
         $method->setAccessible(true);
-        $odoo_attempt = $method->invoke($odoo_model, 1001);
+        $odoo_attempts = $method->invoke($odoo_model, 1001);
 
-        $this->assertSame('gateway-attempt-b', $odoo_attempt['gateway_order_reference']);
-        $this->assertSame('1001_2', $odoo_attempt['order_number']);
+        $this->assertCount(3, $odoo_attempts);
+        $this->assertSame('gateway-attempt-a', $odoo_attempts[0]['gateway_order_reference']);
+        $this->assertSame('1001_1', $odoo_attempts[0]['order_number']);
+        $this->assertSame('gateway-attempt-b', $odoo_attempts[1]['gateway_order_reference']);
+        $this->assertSame('1001_2', $odoo_attempts[1]['order_number']);
+        $this->assertSame('gateway-attempt-c', $odoo_attempts[2]['gateway_order_reference']);
+        $this->assertSame('1001_3', $odoo_attempts[2]['order_number']);
+
+        $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order`
+            SET `status` = 1 WHERE `gateway_order_reference` = 'gateway-attempt-a'");
+        $this->model->storeGatewayOrder($this->attemptData('gateway-attempt-a', '1001_1'));
+        $export_status = $this->db->query("SELECT `status` FROM `" . DB_PREFIX . "alfabank_order`
+            WHERE `gateway_order_reference` = 'gateway-attempt-a'");
+        $this->assertSame('1', $export_status->row['status']);
     }
 
     private function attemptData($gateway_reference, $order_number)

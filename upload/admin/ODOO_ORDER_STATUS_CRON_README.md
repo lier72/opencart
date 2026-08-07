@@ -22,19 +22,24 @@ The cron job performs the following checks:
 ### 1. Sync Order Statuses
 Calls the existing `syncOpenCartOrderState()` method to update all order statuses between OpenCart and Odoo.
 
-### 2. Identify Orders NOT Created in Odoo
+### 2. Ensure AlfaBank Payment Transactions Exist
+Processes a bounded batch of mapped orders containing AlfaBank attempts whose existing `status` field is `0` (Odoo transaction not yet confirmed). An exact existing or newly created Odoo `payment.transaction` changes the field to `1`, so later cron runs do not recheck it. OpenCart sends only the minimum registration data; Odoo's `payment_sbp` module polls the gateway and owns all subsequent payment state changes.
+
+Before selecting attempts, the cron runs the idempotent AlfaBank schema migration. This safely installs the export-status index and one-time legacy status normalization without uninstalling the payment extension.
+
+### 3. Identify Orders NOT Created in Odoo
 Finds OpenCart orders that don't exist in the `odoo_order_map` table:
 - Excludes cancelled orders (status 0, 9, 13)
 - Only checks orders from the last 30 days
 - These orders need manual creation in Odoo
 
-### 3. Identify Draft Orders in Odoo
+### 4. Identify Draft Orders in Odoo
 Finds orders that exist in Odoo but are still in "draft" state:
 - Checks `odoo_order_map` for orders with `odoo_order_state LIKE '%draft%'`
 - Only checks orders modified in the last 7 days
 - These orders need to be confirmed in Odoo
 
-### 4. Check CDEK Delivery Status
+### 5. Check CDEK Delivery Status
 Finds orders in the CDEK delivery system that are in early stages (CREATED or ACCEPTED):
 - **Only checks orders with status: CREATED or ACCEPTED**
 - These are orders submitted to CDEK but not yet progressing
@@ -42,7 +47,7 @@ Finds orders in the CDEK delivery system that are in early stages (CREATED or AC
 - Filters to orders updated in last 14 days
 - These orders may need follow-up with delivery agent
 
-### 5. Send Email Notification
+### 6. Send Email Notification
 If any issues are found:
 - Sends an HTML formatted email to the admin email address
 - Includes detailed tables for each issue category

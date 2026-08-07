@@ -479,26 +479,244 @@ class ModelExtensionModuleOdooConnector extends Model {
     }
 
     /**
-     * Get Alfabank payment transaction data for an order
+     * Get every AlfaBank payment attempt that Odoo can poll independently.
+     *
      * @param int $oc_order_id OpenCart order ID
-     * @return array|null Transaction data or null if not found
+     * @return array
      */
-    private function getAlfabankTransactionData($oc_order_id)
+    private function getAlfabankTransactionsData($oc_order_id)
     {
-        $sql = "SELECT gateway_order_reference, tx_url, order_number, order_amount
+        $sql = "SELECT gateway_order_reference, order_number, order_amount
                 FROM " . DB_PREFIX . "alfabank_order
                 WHERE order_id = " . (int)$oc_order_id . "
-                ORDER BY
-                    CASE WHEN status_deposited IN (1, 2, 4) THEN 0 ELSE 1 END,
-                    date_updated DESC,
-                    gateway_order_id DESC
-                LIMIT 1";
+                  AND gateway_order_reference <> ''
+                  AND order_number <> ''
+                  AND status = 0
+                ORDER BY gateway_order_id ASC";
         $result = $this->db->query($sql);
 
-        if ($result->num_rows) {
-            return $result->row;
+        return $result->rows;
+    }
+
+    private function getOdooMany2OneId($value)
+    {
+        if (is_array($value)) {
+            return isset($value[0]) ? (int)$value[0] : 0;
         }
-        return null;
+
+        return (int)$value;
+    }
+
+    private function markAlfabankTransactionExported($gateway_order_reference)
+    {
+        $this->db->query("UPDATE " . DB_PREFIX . "alfabank_order
+            SET status = 1
+            WHERE gateway_order_reference = '" . $this->db->escape($gateway_order_reference) . "'
+              AND status = 0");
+    }
+
+    private function findOdooPaymentTransactions($models, $db_name, $uid, $password, array $domain)
+    {
+        return $models->execute_kw(
+            $db_name,
+            $uid,
+            $password,
+            'payment.transaction',
+            'search_read',
+            array($domain),
+            array(
+                'fields' => array('id', 'acquirer_id', 'reference', 'acquirer_reference', 'state'),
+                'limit' => 2,
+            )
+        );
+    }
+
+    /**
+     * Create any missing Odoo payment.transaction rows for an AlfaBank order.
+     *
+     * OpenCart only supplies the identifiers and immutable registration data.
+     * payment_sbp owns all later gateway polling and transaction state changes.
+     * alfabank_order.status is only a delivery marker: 0=pending, 1=confirmed.
+     *
+     * @param int $oc_order_id OpenCart order ID
+     * @param int|null $odoo_partner Known Odoo partner ID, when already resolved
+     * @return array
+     */
+    public function ensureAlfabankTransactionsExist($oc_order_id, $odoo_partner = null)
+    {
+        $result = array(
+            'success' => true,
+            'order_id' => (int)$oc_order_id,
+            'attempts' => 0,
+            'created' => 0,
+            'existing' => 0,
+            'errors' => array(),
+        );
+
+        $attempts = $this->getAlfabankTransactionsData($oc_order_id);
+        $result['attempts'] = count($attempts);
+
+        if (!$attempts) {
+            return $result;
+        }
+
+        $order_query = $this->db->query("SELECT email, currency_code
+            FROM " . DB_PREFIX . "order
+            WHERE order_id = " . (int)$oc_order_id . "
+            LIMIT 1");
+
+        if (!$order_query->num_rows) {
+            $result['success'] = false;
+            $result['errors'][] = 'OpenCart order ' . (int)$oc_order_id . ' was not found.';
+            return $result;
+        }
+
+        if (!$odoo_partner) {
+            $clean_email = strtolower(preg_replace('/\s*/', '', $order_query->row['email']));
+            $odoo_partner = $this->checkClient($clean_email);
+        }
+
+        if (!$odoo_partner) {
+            $result['success'] = false;
+            $result['errors'][] = 'Odoo partner mapping was not found for OpenCart order ' . (int)$oc_order_id . '.';
+            return $result;
+        }
+
+        $acquirer_mapping = $this->getPaymentAcquirerMapping('alfabank');
+
+        if (!$acquirer_mapping || !$acquirer_mapping['odoo_acquirer_id']) {
+            $result['success'] = false;
+            $result['errors'][] = 'Active Odoo payment acquirer mapping was not found for alfabank.';
+            return $result;
+        }
+
+        $currency_code = !empty($order_query->row['currency_code']) ? $order_query->row['currency_code'] : 'RUB';
+        $currency_mapping = $this->getCurrencyMapping($currency_code);
+        $currency_id = $currency_mapping ? (int)$currency_mapping['odoo_currency_id'] : 36;
+
+        if (!$this->connection || !is_array($this->connection)) {
+            $this->getConfig();
+        }
+
+        if (!$this->connection || empty($this->connection['status'])) {
+            $result['success'] = false;
+            $result['errors'][] = 'Odoo connection is not available while synchronizing AlfaBank transactions.';
+            return $result;
+        }
+
+        $models = $this->connection['client'];
+        $db_name = $this->connection['db'];
+        $uid = $this->connection['userId'];
+        $password = $this->connection['pwd'];
+        $acquirer_id = (int)$acquirer_mapping['odoo_acquirer_id'];
+
+        foreach ($attempts as $attempt) {
+            $gateway_reference = trim((string)$attempt['gateway_order_reference']);
+            $reference = trim((string)$attempt['order_number']);
+            $context = 'OpenCart order ' . (int)$oc_order_id . ', AlfaBank reference ' . $gateway_reference;
+
+            $existing_by_gateway = $this->findOdooPaymentTransactions(
+                $models,
+                $db_name,
+                $uid,
+                $password,
+                array(
+                    array('acquirer_id', '=', $acquirer_id),
+                    array('acquirer_reference', '=', $gateway_reference),
+                )
+            );
+
+            if (isset($existing_by_gateway['faultCode'])) {
+                $result['success'] = false;
+                $result['errors'][] = $context . ': ' . $this->getOdooFaultDetail($existing_by_gateway);
+                continue;
+            }
+
+            if (!empty($existing_by_gateway)) {
+                if (count($existing_by_gateway) === 1 &&
+                    isset($existing_by_gateway[0]['reference']) &&
+                    $existing_by_gateway[0]['reference'] === $reference) {
+                    $this->markAlfabankTransactionExported($gateway_reference);
+                    $result['existing']++;
+                    continue;
+                }
+
+                $result['success'] = false;
+                $result['errors'][] = $context . ': an Odoo transaction already uses this gateway reference with a different payment reference.';
+                continue;
+            }
+
+            $existing_by_reference = $this->findOdooPaymentTransactions(
+                $models,
+                $db_name,
+                $uid,
+                $password,
+                array(array('reference', '=', $reference))
+            );
+
+            if (isset($existing_by_reference['faultCode'])) {
+                $result['success'] = false;
+                $result['errors'][] = $context . ': ' . $this->getOdooFaultDetail($existing_by_reference);
+                continue;
+            }
+
+            if (!empty($existing_by_reference)) {
+                $existing = $existing_by_reference[0];
+                $existing_gateway_reference = isset($existing['acquirer_reference']) ? (string)$existing['acquirer_reference'] : '';
+                $existing_acquirer_id = isset($existing['acquirer_id']) ? $this->getOdooMany2OneId($existing['acquirer_id']) : 0;
+
+                if (count($existing_by_reference) === 1 &&
+                    $existing_gateway_reference === $gateway_reference &&
+                    $existing_acquirer_id === $acquirer_id) {
+                    $this->markAlfabankTransactionExported($gateway_reference);
+                    $result['existing']++;
+                    continue;
+                }
+
+                $result['success'] = false;
+                $result['errors'][] = $context . ': Odoo payment reference ' . $reference . ' already belongs to another transaction.';
+                continue;
+            }
+
+            $transaction_data = array(
+                'acquirer_id' => $acquirer_id,
+                'partner_id' => (int)$odoo_partner,
+                'type' => 'form',
+                'amount' => (float)$attempt['order_amount'] / 100,
+                'currency_id' => $currency_id,
+                'state' => 'pending',
+                'reference' => $reference,
+                'acquirer_reference' => $gateway_reference,
+            );
+
+            $create_response = $models->execute_kw(
+                $db_name,
+                $uid,
+                $password,
+                'payment.transaction',
+                'create',
+                array($transaction_data)
+            );
+
+            if (isset($create_response['faultCode'])) {
+                $result['success'] = false;
+                $result['errors'][] = $context . ': ' . $this->getOdooFaultDetail($create_response);
+                continue;
+            }
+
+            $this->markAlfabankTransactionExported($gateway_reference);
+            $result['created']++;
+
+            if ($this->debug) {
+                $this->log->write('Created Odoo payment.transaction ' . $create_response . ' for ' . $context . '.');
+            }
+        }
+
+        foreach ($result['errors'] as $error) {
+            $this->log->write('ensureAlfabankTransactionsExist: ' . $error);
+        }
+
+        return $result;
     }
 
     /**
@@ -524,10 +742,14 @@ class ModelExtensionModuleOdooConnector extends Model {
             $this->getConfig();
         }
 
-        // Proceed  only of the order is not already mapped
+        // A mapped sale order can still be missing a transaction if the earlier
+        // export stopped after mapOdooOrder(), or if the customer repaid later.
         if ($this->checkOdooOrder($oc_order_id)) {
-            $json['success'] = true;
+            $transaction_sync = $this->ensureAlfabankTransactionsExist($oc_order_id);
+            $json['success'] = $transaction_sync['success'];
             $json['message'] = 'The order ' .$oc_order_id .' has been already created...';
+            $json['alfabank_transactions'] = $transaction_sync;
+            $json['errors'] = array_merge($json['errors'], $transaction_sync['errors']);
             if ($this->debug) $this->log->write('Model odoo_connector createOdooOrder: Order already exists in Odoo');
             return $json;
         }
@@ -611,6 +833,10 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }//$odoo_order_id if rpc call was successful contains the odoo's (int) ID of created sale.order
 
                 $this->mapOdooOrder($odoo_order_id, $customer_data);
+
+                $transaction_sync = $this->ensureAlfabankTransactionsExist($oc_order_id, $odoo_partner);
+                $json['alfabank_transactions'] = $transaction_sync;
+                $json['errors'] = array_merge($json['errors'], $transaction_sync['errors']);
 
                 $sql = "SELECT product_id, name, order_product_id, quantity, price FROM " . DB_PREFIX . "order_product WHERE order_id =" . $oc_order_id;
                 $result = $this->db->query($sql) or die("Error in Selecting products from order. " . mysqli_error($this->db));
@@ -725,18 +951,15 @@ class ModelExtensionModuleOdooConnector extends Model {
                     return $json;
                 }
 
-                // Create payment.transaction record if payment method has a mapping
-                if (isset($customer_data['payment_code']) && !empty($customer_data['payment_code'])) {
+                // AlfaBank attempts are handled above by ensureAlfabankTransactionsExist().
+                // Keep the legacy single-transaction behavior for other payment methods.
+                if (isset($customer_data['payment_code']) &&
+                    !empty($customer_data['payment_code']) &&
+                    $customer_data['payment_code'] !== 'alfabank') {
                     // Get payment acquirer mapping
                     $acquirer_mapping = $this->getPaymentAcquirerMapping($customer_data['payment_code']);
 
                     if ($acquirer_mapping && $acquirer_mapping['odoo_acquirer_id']) {
-                        // Get payment-specific transaction data
-                        $payment_tx_data = null;
-                        if ($customer_data['payment_code'] == 'alfabank') {
-                            $payment_tx_data = $this->getAlfabankTransactionData($oc_order_id);
-                        }
-
                         // Get currency from order
                         $currency_code = 'RUB'; // Default
                         $currency_sql = "SELECT currency_code FROM " . DB_PREFIX . "order WHERE order_id = " . (int)$oc_order_id;
@@ -757,21 +980,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                             'state' => 'pending',
                         );
 
-                        // Add payment-specific fields if available
-                        if ($payment_tx_data) {
-                            if (isset($payment_tx_data['order_number'])) {
-                                $transaction_data['reference'] = $payment_tx_data['order_number'];
-                            }
-                            if (isset($payment_tx_data['gateway_order_reference'])) {
-                                $transaction_data['acquirer_reference'] = $payment_tx_data['gateway_order_reference'];
-                            }
-                            if (isset($payment_tx_data['tx_url'])) {
-                                $transaction_data['tx_url'] = $payment_tx_data['tx_url'];
-                            }
-                        } else {
-                            // For payment methods without specific transaction data
-                            $transaction_data['reference'] = 'OC-' . $oc_order_id;
-                        }
+                        $transaction_data['reference'] = 'OC-' . $oc_order_id;
 
                         // Check if transaction with this reference already exists
                         $existing_tx = $models->execute_kw($db_name, $uid, $password,
@@ -2435,10 +2644,11 @@ class ModelExtensionModuleOdooConnector extends Model {
      * Cron method to check order statuses and send notifications for orders needing attention
      * This method:
      * 1. Calls syncOpenCartOrderState to update order statuses
-     * 2. Identifies OC orders not in odoo_order_map (not created in Odoo)
-     * 3. Identifies OC orders still in "draft" state in Odoo (not confirmed)
-     * 4. Checks OC orders in CDEK that haven't reached RECEIVED_AT_SHIPMENT_WAREHOUSE status
-     * 5. Sends email notification to admin with all orders needing attention
+     * 2. Ensures a bounded batch of unsynchronized AlfaBank attempts exists in Odoo
+     * 3. Identifies OC orders not in odoo_order_map (not created in Odoo)
+     * 4. Identifies OC orders still in "draft" state in Odoo (not confirmed)
+     * 5. Checks OC orders in CDEK that haven't reached RECEIVED_AT_SHIPMENT_WAREHOUSE status
+     * 6. Sends email notification to admin with all orders needing attention
      *
      * @param bool $debug Enable debug mode
      * @return array Result with success status and message
@@ -2450,6 +2660,13 @@ class ModelExtensionModuleOdooConnector extends Model {
             'orders_not_in_odoo' => array(),
             'orders_draft_in_odoo' => array(),
             'orders_cdek_not_received' => array(),
+            'alfabank_transactions' => array(
+                'orders_checked' => 0,
+                'attempts' => 0,
+                'created' => 0,
+                'existing' => 0,
+                'errors' => 0,
+            ),
             'errors' => array()
         );
 
@@ -2471,7 +2688,44 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 2: Find OC orders NOT in odoo_order_map (not created in Odoo)
+            // Step 2: Ensure a bounded batch of pending AlfaBank attempts exists in Odoo.
+            // This is intentionally create-only; payment_sbp polls AlfaBank and owns state changes.
+            $this->load->model('extension/payment/alfabank');
+            $this->model_extension_payment_alfabank->migratePaymentAttemptsSchema();
+            $alfabank_sync_batch_size = !empty($this->config_data['sync_batch_size'])
+                ? max(1, min(1000, (int)$this->config_data['sync_batch_size']))
+                : 100;
+            $alfabank_orders = $this->db->query("SELECT ao.order_id,
+                    MIN(ao.gateway_order_id) AS first_gateway_order_id
+                FROM " . DB_PREFIX . "alfabank_order ao
+                INNER JOIN " . DB_PREFIX . "odoo_order_map oom
+                    ON oom.opencart_order_id = ao.order_id
+                WHERE ao.gateway_order_reference <> ''
+                  AND ao.order_number <> ''
+                  AND ao.status = 0
+                GROUP BY ao.order_id
+                ORDER BY first_gateway_order_id ASC
+                LIMIT " . $alfabank_sync_batch_size);
+
+            foreach ($alfabank_orders->rows as $alfabank_order) {
+                $transaction_sync = $this->ensureAlfabankTransactionsExist((int)$alfabank_order['order_id']);
+                $json['alfabank_transactions']['orders_checked']++;
+                $json['alfabank_transactions']['attempts'] += $transaction_sync['attempts'];
+                $json['alfabank_transactions']['created'] += $transaction_sync['created'];
+                $json['alfabank_transactions']['existing'] += $transaction_sync['existing'];
+
+                if (!$transaction_sync['success']) {
+                    $json['alfabank_transactions']['errors'] += count($transaction_sync['errors']);
+                    $json['errors'] = array_merge($json['errors'], $transaction_sync['errors']);
+                }
+            }
+
+            if ($debug) {
+                $this->log->write('cronCheckOrderStatuses: AlfaBank transaction sync ' .
+                    json_encode($json['alfabank_transactions']));
+            }
+
+            // Step 3: Find OC orders NOT in odoo_order_map (not created in Odoo)
             // Exclude cancelled and completed orders, focus on active orders
             $sql_not_in_odoo = "SELECT o.order_id, o.order_status_id, o.date_added, o.date_modified,
                                 CONCAT(o.firstname, ' ', o.lastname) as customer_name, o.email, o.total,
@@ -2492,7 +2746,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 3: Find OC orders still in "draft" state in Odoo (not confirmed)
+            // Step 4: Find OC orders still in "draft" state in Odoo (not confirmed)
             $sql_draft_in_odoo = "SELECT m.opencart_order_id, m.odoo_order_id, m.odoo_order_state,
                                   m.opencart_order_state, m.modified_on, o.total,
                                   CONCAT(o.firstname, ' ', o.lastname) as customer_name, o.email
@@ -2510,7 +2764,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 4: Find OC orders in CDEK that need attention (CREATED or ACCEPTED state)
+            // Step 5: Find OC orders in CDEK that need attention (CREATED or ACCEPTED state)
             // These are orders that have been submitted to CDEK but haven't progressed to warehouse/delivery
             $sql_cdek_not_received = "SELECT c.order_id, c.dispatch_number, c.cdek_number, c.status_id,
                                       c.delivery_date, c.last_exchange, c.recipient_name, c.phone,
@@ -2531,7 +2785,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 5: Send email notification if any issues found
+            // Step 6: Send email notification if any issues found
             $total_issues = count($json['orders_not_in_odoo']) +
                            count($json['orders_draft_in_odoo']) +
                            count($json['orders_cdek_not_received']);
@@ -2556,6 +2810,10 @@ class ModelExtensionModuleOdooConnector extends Model {
         } catch (Exception $e) {
             $json['errors'][] = 'Exception: ' . $e->getMessage();
             $this->log->write('cronCheckOrderStatuses ERROR: ' . $e->getMessage());
+        }
+
+        if ($json['errors']) {
+            $json['success'] = false;
         }
 
         return $json;

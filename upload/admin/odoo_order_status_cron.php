@@ -117,6 +117,16 @@ try {
     echo "Success: " . ($result['success'] ? 'YES' : 'NO') . "\n";
     echo "Message: " . $result['message'] . "\n\n";
 
+    if (!empty($result['alfabank_transactions'])) {
+        $alfabank = $result['alfabank_transactions'];
+        echo "AlfaBank transactions: " .
+            "orders=" . (int)$alfabank['orders_checked'] .
+            ", attempts=" . (int)$alfabank['attempts'] .
+            ", created=" . (int)$alfabank['created'] .
+            ", existing=" . (int)$alfabank['existing'] .
+            ", errors=" . (int)$alfabank['errors'] . "\n\n";
+    }
+
     if (!empty($result['orders_not_in_odoo'])) {
         echo "Orders NOT in Odoo: " . count($result['orders_not_in_odoo']) . "\n";
         foreach ($result['orders_not_in_odoo'] as $order) {

@@ -15,22 +15,23 @@ class ModelExtensionPaymentAlfabank extends Model
             `order_amount` decimal(15,4) NOT NULL COMMENT 'Order amount',
             `order_amount_deposited` decimal(15,4) NOT NULL COMMENT 'Order deposited amount',
             `order_amount_refunded` decimal(15,4) NOT NULL DEFAULT 0 COMMENT 'Order refunded amount',
-            `status_deposited` tinyint(1) NOT NULL DEFAULT 0,
+            `status_deposited` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'AlfaBank orderStatus code (-1..6)',
             `status_reversed` tinyint(1) NOT NULL DEFAULT 0,
             `status_refunded` tinyint(1) NOT NULL DEFAULT 0,
-            `status` tinyint(1) NOT NULL DEFAULT 0,
+            `status` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Odoo transaction confirmed: 0 pending, 1 confirmed',
             `date_added` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
             `date_updated` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
             PRIMARY KEY (`gateway_order_id`),
             UNIQUE KEY `unique_gateway_reference` (`gateway_order_reference`),
-            KEY `idx_order_id` (`order_id`)
+            KEY `idx_order_id` (`order_id`),
+            KEY `idx_odoo_export_status` (`status`, `gateway_order_id`)
         ) ENGINE=MyISAM DEFAULT CHARSET=utf8");
 
         $this->migratePaymentAttemptsSchema();
     }
 
     /**
-     * Convert legacy one-row-per-order installations to one row per gateway transaction.
+     * Migrate legacy payment-attempt indexes and status semantics.
      */
     public function migratePaymentAttemptsSchema()
     {
@@ -45,6 +46,23 @@ class ModelExtensionPaymentAlfabank extends Model
 
         if (!$order_index->num_rows) {
             $this->db->query("ALTER TABLE `" . $table . "` ADD INDEX `idx_order_id` (`order_id`)");
+        }
+
+        $export_status_index = $this->db->query("SHOW INDEX FROM `" . $table . "` WHERE `Key_name` = 'idx_odoo_export_status'");
+
+        if (!$export_status_index->num_rows) {
+            // Legacy status=1 meant locally closed. Normalize those rows to the
+            // corresponding gateway state, then reuse status solely as the
+            // Odoo payment.transaction existence-confirmation flag.
+            $this->db->query("UPDATE `" . $table . "` SET
+                `status_deposited` = CASE
+                    WHEN `status_refunded` = 1 THEN 4
+                    WHEN `status_reversed` = 1 THEN 3
+                    ELSE `status_deposited`
+                END,
+                `status` = 0");
+            $this->db->query("ALTER TABLE `" . $table . "`
+                ADD INDEX `idx_odoo_export_status` (`status`, `gateway_order_id`)");
         }
     }
 
@@ -96,10 +114,6 @@ class ModelExtensionPaymentAlfabank extends Model
         if (isset($data['status_refunded'])) {
             $sql_data[] = "`status_refunded` = " . (int)$data['status_refunded'];
         }
-        if (isset($data['status'])) {
-            $sql_data[] = "`status` = " . (int)$data['status'];
-        }
-
         $sql_data[] = "`date_updated` = NOW()";
 
         $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order` SET " .
