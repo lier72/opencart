@@ -198,7 +198,10 @@ class AlfabankAdminOrderTest extends TestCase
             'column_date_updated' => 'Updated',
             'column_actions' => 'Actions',
             'entry_admin_password' => 'Admin password',
+            'entry_deposit' => 'Deposit',
             'button_payment_status' => 'Check',
+            'button_deposit' => 'Deposit amount',
+            'button_deposit_full' => 'Deposit full amount',
             'button_reverse' => 'Cancel payment',
             'button_confirm_reverse' => 'Confirm cancellation',
             'button_cancel' => 'Close',
@@ -210,9 +213,25 @@ class AlfabankAdminOrderTest extends TestCase
         $this->assertStringContainsString('2 — Fully authorized, paid', $html);
         $this->assertStringContainsString('6 — Authorization declined', $html);
         $this->assertSame(1, substr_count($html, 'data-action="payment_reverse"'));
+        $this->assertStringContainsString('data-action="payment_deposit_partial"', $html);
+        $this->assertStringContainsString('data-action="payment_deposit_full"', $html);
+        $this->assertStringNotContainsString('payment_refund_partial', $html);
+        $this->assertStringNotContainsString('payment_refund_full', $html);
         $this->assertStringContainsString('id="alfabank-reverse-modal"', $html);
+        $this->assertStringContainsString("if (orderAction === 'payment_reverse')", $html);
         $this->assertStringContainsString("'admin_password': adminPassword", $html);
         $this->assertStringNotContainsString('gateway_order.status != 0', $template);
+
+        $controller_source = file_get_contents(DIR_APPLICATION . '../admin/controller/extension/payment/alfabank.php');
+        $this->assertStringContainsString("if (\$order_action === 'payment_reverse')", $controller_source);
+
+        $status_branch_start = strpos($controller_source, "if (\$order_action == 'payment_status')");
+        $status_branch_end = strpos($controller_source, "} elseif (strpos(\$order_action, 'payment_deposit')", $status_branch_start);
+        $this->assertNotFalse($status_branch_start);
+        $this->assertNotFalse($status_branch_end);
+
+        $status_branch = substr($controller_source, $status_branch_start, $status_branch_end - $status_branch_start);
+        $this->assertStringNotContainsString("\$json['redirect']", $status_branch);
 
         $data['can_modify_order_payment'] = false;
         $read_only_html = $twig->render('alfabank_order.twig', $data);

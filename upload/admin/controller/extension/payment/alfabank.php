@@ -765,7 +765,6 @@ class ControllerExtensionPaymentAlfabank extends Controller
                         ? $response['paymentAmountInfo']['paymentState']
                         : $this->getGatewayStatusForView($response['orderStatus'])['label'];
                     $json['success'] = "Gateway transaction status is: " . $payment_state;
-                    $json['redirect'] = 1;
                 } else {
                     $json['error'] = isset($response['errorMessage'])
                         ? $response['errorMessage']

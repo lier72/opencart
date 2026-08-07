@@ -6,27 +6,6 @@
 
     <table id="alfabank-operation-table" class="table table-bordered"{% if not can_modify_order_payment %} style="display: none;"{% endif %}>
         <tbody>
-        <tr id="alfabank-refund-row"{% if not gateway_order.can_refund %} style="display: none;"{% endif %}>
-            <td class="text-right col-sm-2">{{ entry_refund }}</td>
-            <td class="text-left">
-                <div class="col-sm-6">
-                    <div class="input-group">
-                        <input type="text" class="form-control" value="{{ gateway_amount|e('html_attr') }}" id="user_amount">
-                        <span class="input-group-btn">
-                            <button class="btn btn-warning btn-alfabank btn-selected-attempt"
-                                    data-action="payment_refund_partial"
-                                    data-gateway-order-reference="{{ gateway_order.gateway_order_reference|e('html_attr') }}"
-                                    type="button">{{ button_refund }}</button>
-                            <button class="btn btn-warning btn-alfabank btn-selected-attempt"
-                                    data-action="payment_refund_full"
-                                    data-gateway-order-reference="{{ gateway_order.gateway_order_reference|e('html_attr') }}"
-                                    type="button">{{ button_refund_full }}</button>
-                        </span>
-                    </div>
-                </div>
-                <div class="col-sm-12" id="alfabank-amount-help">{{ help_alfabank_amount }}</div>
-            </td>
-        </tr>
         <tr id="alfabank-deposit-row"{% if not gateway_order.can_deposit %} style="display: none;"{% endif %}>
             <td class="text-right col-sm-2">{{ entry_deposit }}</td>
             <td class="text-left">
@@ -70,7 +49,6 @@
                 data-gateway-amount="{{ attempt.gateway_amount|e('html_attr') }}"
                 data-help-amount="{{ attempt.help_alfabank_amount|e('html_attr') }}"
                 data-can-deposit="{{ attempt.can_deposit ? '1' : '0' }}"
-                data-can-refund="{{ attempt.can_refund ? '1' : '0' }}"
                 tabindex="0">
                 <td>{{ attempt.gateway_order_reference|e }}</td>
                 <td>{{ attempt.order_number|e }}</td>
@@ -154,14 +132,12 @@
 
                 const gatewayAmount = row.attr('data-gateway-amount');
                 const helpAmount = row.attr('data-help-amount');
-                const showRefund = canModifyOrderPayment && row.attr('data-can-refund') === '1';
                 const showDeposit = canModifyOrderPayment && row.attr('data-can-deposit') === '1';
 
-                $('#user_amount, #deposit_user_amount').val(gatewayAmount);
-                $('#alfabank-amount-help, .alfabank-amount-help').text(helpAmount);
-                $('#alfabank-refund-row').toggle(showRefund);
+                $('#deposit_user_amount').val(gatewayAmount);
+                $('.alfabank-amount-help').text(helpAmount);
                 $('#alfabank-deposit-row').toggle(showDeposit);
-                $('#alfabank-operation-table').toggle(showRefund || showDeposit);
+                $('#alfabank-operation-table').toggle(showDeposit);
             }
 
             $('.alfabank-attempt-row').on('click', function (event) {
@@ -197,8 +173,6 @@
 
                 if (orderAction === 'payment_deposit_partial') {
                     userAmount = $('#deposit_user_amount').val();
-                } else if (orderAction === 'payment_refund_partial') {
-                    userAmount = $('#user_amount').val();
                 }
 
                 $.ajax({
