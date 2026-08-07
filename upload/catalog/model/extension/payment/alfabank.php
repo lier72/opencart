@@ -112,6 +112,7 @@ class ModelExtensionPaymentAlfabank extends Model
             `order_amount` = '" . (float)$data['order_amount'] . "',
             `order_amount_deposited` = '" . (float)$data['order_amount_deposited'] . "',
             `status_deposited` = '" . (int)$data['status_deposited'] . "',
+            `status` = IF(`status` = 2 AND " . (int)$data['status_deposited'] . " IN (1, 2, 4), 0, `status`),
             `date_updated` = NOW()");
     }
 
@@ -170,6 +171,11 @@ class ModelExtensionPaymentAlfabank extends Model
         $sql = "UPDATE " . DB_PREFIX . "alfabank_order SET
             `date_updated` = NOW(),
             `status_deposited` = " . (int)$data['orderStatus'];
+
+        if (in_array((int)$data['orderStatus'], array(1, 2, 4), true)) {
+            // Reopen an attempt that was ignored as old/unpaid but was paid later.
+            $sql .= ", `status` = IF(`status` = 2, 0, `status`)";
+        }
 
         if (isset($data['amount'])) {
             $sql .= ", `order_amount_deposited` = " . (float)$data['amount'];

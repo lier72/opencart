@@ -127,6 +127,26 @@ try {
             ", errors=" . (int)$alfabank['errors'] . "\n\n";
     }
 
+    if (!empty($result['alfabank_unmapped'])) {
+        $unmapped = $result['alfabank_unmapped'];
+        echo "AlfaBank unmapped attempts: " .
+            "checked=" . (int)$unmapped['checked'] .
+            ", ignored_unpaid=" . (int)$unmapped['ignored_unpaid'] .
+            ", paid_without_order=" . (int)$unmapped['paid_without_order'] .
+            ", unresolved=" . (int)$unmapped['unresolved'] .
+            ", errors=" . (int)$unmapped['errors'] . "\n";
+
+        if (!empty($unmapped['paid_attempts'])) {
+            foreach ($unmapped['paid_attempts'] as $attempt) {
+                echo "  - Paid attempt for order #" . (int)$attempt['order_id'] .
+                    " (AlfaBank: " . $attempt['gateway_order_reference'] .
+                    ", status: " . (int)$attempt['status_deposited'] . ")\n";
+            }
+        }
+
+        echo "\n";
+    }
+
     if (!empty($result['orders_not_in_odoo'])) {
         echo "Orders NOT in Odoo: " . count($result['orders_not_in_odoo']) . "\n";
         foreach ($result['orders_not_in_odoo'] as $order) {

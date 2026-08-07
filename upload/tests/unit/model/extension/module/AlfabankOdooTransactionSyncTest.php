@@ -112,6 +112,8 @@ class AlfabankOdooTransactionSyncTest extends TestCase
         $this->assertStringContainsString('SET status = 1', $source);
         $this->assertStringContainsString('LIMIT " . $alfabank_sync_batch_size', $source);
         $this->assertStringContainsString('migratePaymentAttemptsSchema()', $source);
+        $this->assertStringContainsString('reconcileUnmappedPaymentAttempts(', $source);
+        $this->assertStringContainsString("'ignored_unpaid' => 0", $source);
     }
 
     private function createModel(AlfabankOdooFakeClient $client, array $attempts)

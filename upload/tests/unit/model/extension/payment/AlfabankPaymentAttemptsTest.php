@@ -106,6 +106,16 @@ class AlfabankPaymentAttemptsTest extends TestCase
         $export_status = $this->db->query("SELECT `status` FROM `" . DB_PREFIX . "alfabank_order`
             WHERE `gateway_order_reference` = 'gateway-attempt-a'");
         $this->assertSame('1', $export_status->row['status']);
+
+        $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order`
+            SET `status` = 2 WHERE `gateway_order_reference` = 'gateway-attempt-c'");
+        $late_payment = $this->attemptData('gateway-attempt-c', '1001_3');
+        $late_payment['status_deposited'] = 2;
+        $late_payment['order_amount_deposited'] = 159900;
+        $this->model->storeGatewayOrder($late_payment);
+        $reopened = $this->db->query("SELECT `status` FROM `" . DB_PREFIX . "alfabank_order`
+            WHERE `gateway_order_reference` = 'gateway-attempt-c'");
+        $this->assertSame('0', $reopened->row['status']);
     }
 
     private function attemptData($gateway_reference, $order_number)

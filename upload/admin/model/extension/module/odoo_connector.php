@@ -2644,11 +2644,12 @@ class ModelExtensionModuleOdooConnector extends Model {
      * Cron method to check order statuses and send notifications for orders needing attention
      * This method:
      * 1. Calls syncOpenCartOrderState to update order statuses
-     * 2. Ensures a bounded batch of unsynchronized AlfaBank attempts exists in Odoo
-     * 3. Identifies OC orders not in odoo_order_map (not created in Odoo)
-     * 4. Identifies OC orders still in "draft" state in Odoo (not confirmed)
-     * 5. Checks OC orders in CDEK that haven't reached RECEIVED_AT_SHIPMENT_WAREHOUSE status
-     * 6. Sends email notification to admin with all orders needing attention
+     * 2. Reconciles old unpaid AlfaBank attempts whose order is not mapped to Odoo
+     * 3. Ensures a bounded batch of unsynchronized AlfaBank attempts exists in Odoo
+     * 4. Identifies OC orders not in odoo_order_map (not created in Odoo)
+     * 5. Identifies OC orders still in "draft" state in Odoo (not confirmed)
+     * 6. Checks OC orders in CDEK that haven't reached RECEIVED_AT_SHIPMENT_WAREHOUSE status
+     * 7. Sends email notification to admin with all orders needing attention
      *
      * @param bool $debug Enable debug mode
      * @return array Result with success status and message
@@ -2666,6 +2667,15 @@ class ModelExtensionModuleOdooConnector extends Model {
                 'created' => 0,
                 'existing' => 0,
                 'errors' => 0,
+            ),
+            'alfabank_unmapped' => array(
+                'checked' => 0,
+                'ignored_unpaid' => 0,
+                'paid_without_order' => 0,
+                'unresolved' => 0,
+                'errors' => 0,
+                'paid_attempts' => array(),
+                'error_messages' => array(),
             ),
             'errors' => array()
         );
@@ -2688,13 +2698,30 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 2: Ensure a bounded batch of pending AlfaBank attempts exists in Odoo.
-            // This is intentionally create-only; payment_sbp polls AlfaBank and owns state changes.
+            // Step 2: Ignore only old, freshly verified unpaid attempts that cannot
+            // yet be attached to an Odoo sale order. Paid attempts remain pending.
             $this->load->model('extension/payment/alfabank');
             $this->model_extension_payment_alfabank->migratePaymentAttemptsSchema();
             $alfabank_sync_batch_size = !empty($this->config_data['sync_batch_size'])
                 ? max(1, min(1000, (int)$this->config_data['sync_batch_size']))
                 : 100;
+            $json['alfabank_unmapped'] = $this->model_extension_payment_alfabank
+                ->reconcileUnmappedPaymentAttempts($alfabank_sync_batch_size, 7, 24);
+
+            if (!empty($json['alfabank_unmapped']['error_messages'])) {
+                $json['errors'] = array_merge(
+                    $json['errors'],
+                    $json['alfabank_unmapped']['error_messages']
+                );
+            }
+
+            if ($debug) {
+                $this->log->write('cronCheckOrderStatuses: AlfaBank unmapped reconciliation ' .
+                    json_encode($json['alfabank_unmapped']));
+            }
+
+            // Step 3: Ensure a bounded batch of pending AlfaBank attempts exists in Odoo.
+            // This is intentionally create-only; payment_sbp polls AlfaBank and owns state changes.
             $alfabank_orders = $this->db->query("SELECT ao.order_id,
                     MIN(ao.gateway_order_id) AS first_gateway_order_id
                 FROM " . DB_PREFIX . "alfabank_order ao
@@ -2725,7 +2752,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                     json_encode($json['alfabank_transactions']));
             }
 
-            // Step 3: Find OC orders NOT in odoo_order_map (not created in Odoo)
+            // Step 4: Find OC orders NOT in odoo_order_map (not created in Odoo)
             // Exclude cancelled and completed orders, focus on active orders
             $sql_not_in_odoo = "SELECT o.order_id, o.order_status_id, o.date_added, o.date_modified,
                                 CONCAT(o.firstname, ' ', o.lastname) as customer_name, o.email, o.total,
@@ -2746,7 +2773,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 4: Find OC orders still in "draft" state in Odoo (not confirmed)
+            // Step 5: Find OC orders still in "draft" state in Odoo (not confirmed)
             $sql_draft_in_odoo = "SELECT m.opencart_order_id, m.odoo_order_id, m.odoo_order_state,
                                   m.opencart_order_state, m.modified_on, o.total,
                                   CONCAT(o.firstname, ' ', o.lastname) as customer_name, o.email
@@ -2764,7 +2791,7 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 5: Find OC orders in CDEK that need attention (CREATED or ACCEPTED state)
+            // Step 6: Find OC orders in CDEK that need attention (CREATED or ACCEPTED state)
             // These are orders that have been submitted to CDEK but haven't progressed to warehouse/delivery
             $sql_cdek_not_received = "SELECT c.order_id, c.dispatch_number, c.cdek_number, c.status_id,
                                       c.delivery_date, c.last_exchange, c.recipient_name, c.phone,
@@ -2785,19 +2812,20 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
-            // Step 6: Send email notification if any issues found
+            // Step 7: Send email notification if any issues found
             $total_issues = count($json['orders_not_in_odoo']) +
                            count($json['orders_draft_in_odoo']) +
-                           count($json['orders_cdek_not_received']);
+                           count($json['orders_cdek_not_received']) +
+                           (int)$json['alfabank_unmapped']['paid_without_order'];
 
             if ($total_issues > 0) {
                 $email_sent = $this->sendOrderStatusNotificationEmail($json, $debug);
                 if ($email_sent) {
-                    $json['message'] = 'Found ' . $total_issues . ' orders needing attention. Email notification sent.';
+                    $json['message'] = 'Found ' . $total_issues . ' issues needing attention. Email notification sent.';
                     $json['success'] = true;
                 } else {
                     $json['errors'][] = 'Failed to send email notification';
-                    $json['message'] = 'Found ' . $total_issues . ' orders needing attention, but email failed.';
+                    $json['message'] = 'Found ' . $total_issues . ' issues needing attention, but email failed.';
                 }
             } else {
                 $json['success'] = true;
@@ -2906,10 +2934,42 @@ class ModelExtensionModuleOdooConnector extends Model {
 
         $total_count = count($data['orders_not_in_odoo']) +
                       count($data['orders_draft_in_odoo']) +
-                      count($data['orders_cdek_not_received']);
+                      count($data['orders_cdek_not_received']) +
+                      (int)$data['alfabank_unmapped']['paid_without_order'];
 
         $message .= '<p><strong>Всего обнаружено проблем: ' . $total_count . '</strong></p>';
         $message .= '<hr/>';
+
+        if (!empty($data['alfabank_unmapped']['paid_attempts'])) {
+            $message .= '<h3 style="color: #c00;">Оплаченные AlfaBank транзакции без заказа Odoo (' .
+                (int)$data['alfabank_unmapped']['paid_without_order'] . ')</h3>';
+            $message .= '<p>Эти попытки оплаты имеют финансовую историю, но заказ OpenCart не найден в odoo_order_map:</p>';
+            $message .= '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+            $message .= '<tr style="background-color: #f0f0f0;">
+                            <th>ID заказа</th>
+                            <th>Номер платежа</th>
+                            <th>ID транзакции AlfaBank</th>
+                            <th>Статус AlfaBank</th>
+                            <th>Подтверждено</th>
+                            <th>Возвращено</th>
+                            <th>Обновлено</th>
+                         </tr>';
+
+            foreach ($data['alfabank_unmapped']['paid_attempts'] as $attempt) {
+                $order_link = $admin_url . 'index.php?route=sale/order/info&order_id=' . (int)$attempt['order_id'];
+                $message .= '<tr>';
+                $message .= '<td><a href="' . $order_link . '">' . (int)$attempt['order_id'] . '</a></td>';
+                $message .= '<td>' . htmlspecialchars($attempt['order_number']) . '</td>';
+                $message .= '<td>' . htmlspecialchars($attempt['gateway_order_reference']) . '</td>';
+                $message .= '<td>' . (int)$attempt['status_deposited'] . '</td>';
+                $message .= '<td>' . number_format((float)$attempt['order_amount_deposited'] / 100, 2) . ' ₽</td>';
+                $message .= '<td>' . number_format((float)$attempt['order_amount_refunded'] / 100, 2) . ' ₽</td>';
+                $message .= '<td>' . htmlspecialchars($attempt['date_updated']) . '</td>';
+                $message .= '</tr>';
+            }
+
+            $message .= '</table><br/>';
+        }
 
         // Section 1: Orders not in Odoo
         if (!empty($data['orders_not_in_odoo'])) {

@@ -103,6 +103,14 @@ class AlfabankPaymentSchemaMigrationTest extends TestCase
                 ORDER BY `gateway_order_id`")->rows;
             $this->assertSame('2', $statuses[0]['status_deposited']);
             $this->assertSame('0', $statuses[1]['status_deposited']);
+
+            $db->query("UPDATE `" . DB_PREFIX . "alfabank_order`
+                SET `status` = 2, `status_deposited` = 2
+                WHERE `gateway_order_reference` = 'attempt-b'");
+            $model->migratePaymentAttemptsSchema();
+            $reopened = $db->query("SELECT `status` FROM `" . DB_PREFIX . "alfabank_order`
+                WHERE `gateway_order_reference` = 'attempt-b'");
+            $this->assertSame('0', $reopened->row['status']);
         } finally {
             $db->query("DROP TABLE IF EXISTS `" . DB_PREFIX . "alfabank_order`");
         }
