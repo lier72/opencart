@@ -57,8 +57,8 @@ All files are already in place in the correct directories:
    **Image Width/Height**: Set dimensions for variant images (default: 60x60px)
 
    **Strict Mode**: Enable to use product.model field instead of attributes for grouping
-   - When enabled, products are grouped by their model base (removes -1, -2, etc.)
-   - Example: AWSU076-1 and AWSU076-2 both have model base "AWSU076"
+   - When enabled, products from the same manufacturer are grouped by their model base
+   - Supports numeric suffixes (`AWSU076-1`) and space-separated colour suffixes (`P9200NTD AF`)
 
    **Strict Mode Categories**: Select categories where strict mode should be used
    - Only products in these categories will use model-based grouping
@@ -86,23 +86,27 @@ Products are grouped by a shared attribute value (e.g., "Модель" attribute
 
 ### Mode 2: Model Field-Based Grouping (Strict Mode)
 
-Products are grouped by their `product.model` field, with variant suffixes removed.
+Products from the same manufacturer are grouped by their `product.model` field, with recognized variant suffixes removed.
 
 **When to use:**
-- When your products use a naming pattern like: BASE-VARIANT (e.g., AWSU076-1, AWSU076-2)
+- When products use numeric variants such as `AWSU076-1` or space-separated colour variants such as `P9200NTD AF`
 - For simple product families where the model field already contains grouping info
 - When you don't want to maintain separate attributes
 
 **How it works:**
-1. Takes the current product's model field (e.g., "AWSU076-1")
-2. Removes the variant suffix using pattern: `preg_replace('/-\d{1,2}$/', '', $model)`
-3. Finds all products matching the base model (AWSU076-1, AWSU076-2, etc.)
+1. Takes the current product's model field (e.g., `AWSU076-1` or `P9200NTD AF`)
+2. Removes a recognized numeric or colour variant suffix
+3. Finds enabled products from the same manufacturer with the same normalized base model
 
 **Example:**
 - Product 1: model = "AWSU076-1"  → base = "AWSU076"
 - Product 2: model = "AWSU076-2"  → base = "AWSU076"
 - Product 3: model = "AWSU076-12" → base = "AWSU076"
 - All three products will be grouped together
+
+- Product 4: model = "P9200NTD AF" → base = "P9200NTD"
+- Product 5: model = "P9200NTD B"  → base = "P9200NTD"
+- Victor products 4 and 5 will be grouped together
 
 **Configuration:**
 1. Enable "Strict Mode" in module settings
@@ -269,8 +273,8 @@ The tool uses the same parsing logic as the Yandex Market feed:
 
 **For Strict Mode:**
 - Check that the product is in a category selected for strict mode
-- Verify that product model fields follow the pattern: BASE-NUMBER (e.g., AWSU076-1)
-- Ensure the base model (after removing -1, -2) is the same for all variants
+- Verify that product model fields use a supported suffix: `BASE-NUMBER` (e.g., AWSU076-1) or `BASE CODE` (e.g., P9200NTD AF)
+- Ensure the base model (after removing the recognized suffix) is the same for all variants
 - Example: AWSU076-1 and AWSU076-2 will group, but AWSU076-1 and AWSU077-1 won't
 
 ### Styling Issues

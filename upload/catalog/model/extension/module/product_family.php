@@ -162,6 +162,73 @@ class ModelExtensionModuleProductFamily extends Model {
 	}
 
 	/**
+	 * Extract the family base from a strict-mode product model.
+	 *
+	 * Supported variant suffixes:
+	 * - Li-Ning-style numeric suffixes: AWSU076-1
+	 * - Victor-style colour suffixes: P9200NTD AF
+	 *
+	 * @param string $model
+	 * @return string
+	 */
+	private function getStrictModelBase($model) {
+		$model = trim($model);
+		$model_base = preg_replace('/(?:-\d{1,2}|\s+[A-Z]{1,2})$/u', '', $model);
+
+		return $model_base !== null ? trim($model_base) : $model;
+	}
+
+	/**
+	 * Get enabled products that belong to the current product's strict family.
+	 * Products must have the same manufacturer and normalized model base.
+	 *
+	 * @param int $product_id
+	 * @return array
+	 */
+	private function getStrictFamilyRows($product_id) {
+		$product_id = (int)$product_id;
+
+		$current_product_query = $this->db->query("
+			SELECT model, manufacturer_id
+			FROM " . DB_PREFIX . "product
+			WHERE product_id = '" . $product_id . "'
+			LIMIT 1
+		");
+
+		if (!$current_product_query->num_rows) {
+			return array();
+		}
+
+		$current_product = $current_product_query->row;
+		$model_base = $this->getStrictModelBase($current_product['model']);
+
+		if ($model_base === '') {
+			return array();
+		}
+
+		// Use the base as an indexed prefix filter, then apply the authoritative
+		// normalization in PHP so SQL and PHP regex behavior cannot diverge.
+		$candidate_query = $this->db->query("
+			SELECT DISTINCT p.product_id, p.model
+			FROM " . DB_PREFIX . "product p
+			WHERE p.model LIKE '" . $this->db->escape($model_base) . "%'
+			AND p.manufacturer_id = '" . (int)$current_product['manufacturer_id'] . "'
+			AND p.status = '1'
+			ORDER BY p.model ASC
+		");
+
+		$family_rows = array();
+
+		foreach ($candidate_query->rows as $row) {
+			if ($this->getStrictModelBase($row['model']) === $model_base) {
+				$family_rows[] = $row;
+			}
+		}
+
+		return $family_rows;
+	}
+
+	/**
 	 * Get all product IDs in the family (including current product)
 	 *
 	 * @param int $product_id Current product ID
@@ -194,35 +261,9 @@ class ModelExtensionModuleProductFamily extends Model {
 
 		// Use strict mode (model field) or attribute mode
 		if ($use_strict_mode) {
-			// Get current product's model field
-			$current_product_query = $this->db->query("
-				SELECT model
-				FROM " . DB_PREFIX . "product
-				WHERE product_id = '" . $product_id . "'
-				LIMIT 1
-			");
-
-			if ($current_product_query->num_rows) {
-				$current_model = $current_product_query->row['model'];
-				$model_base = preg_replace('/-\d{1,2}$/', '', $current_model);
-
-				if (!empty($model_base)) {
-					$family_query = $this->db->query("
-						SELECT DISTINCT p.product_id
-						FROM " . DB_PREFIX . "product p
-						WHERE p.model LIKE '" . $this->db->escape($model_base) . "%'
-						AND p.status = '1'
-						AND (
-							p.model = '" . $this->db->escape($model_base) . "'
-							OR p.model REGEXP '^" . $this->db->escape($model_base) . "-[0-9]{1,2}$'
-						)
-					");
-
-					foreach ($family_query->rows as $row) {
-						if (!in_array($row['product_id'], $all_product_ids)) {
-							$all_product_ids[] = $row['product_id'];
-						}
-					}
+			foreach ($this->getStrictFamilyRows($product_id) as $row) {
+				if (!in_array($row['product_id'], $all_product_ids)) {
+					$all_product_ids[] = $row['product_id'];
 				}
 			}
 		} else {
@@ -538,50 +579,21 @@ class ModelExtensionModuleProductFamily extends Model {
 	 */
 	private function getProductFamilyByModelField($product_id, $variant_attribute_ids) {
 		$product_id = (int)$product_id;
+		$family_rows = array();
 
-		// Get current product's model field
-		$current_product_query = $this->db->query("
-			SELECT model
-			FROM " . DB_PREFIX . "product
-			WHERE product_id = '" . $product_id . "'
-			LIMIT 1
-		");
-
-		if (!$current_product_query->num_rows) {
-			return array();
+		foreach ($this->getStrictFamilyRows($product_id) as $row) {
+			if ((int)$row['product_id'] !== $product_id) {
+				$family_rows[] = $row;
+			}
 		}
 
-		$current_model = $current_product_query->row['model'];
-
-		// Extract model base by removing variant suffix (-1, -2, -12, etc.)
-		$model_base = preg_replace('/-\d{1,2}$/', '', $current_model);
-
-		if (empty($model_base)) {
-			return array();
-		}
-
-		// Find all products with model starting with model_base
-		// This will match: AWSU076-1, AWSU076-2, AWSU076-12, etc. for base AWSU076
-		$family_query = $this->db->query("
-			SELECT DISTINCT p.product_id
-			FROM " . DB_PREFIX . "product p
-			WHERE p.model LIKE '" . $this->db->escape($model_base) . "%'
-			AND p.product_id != '" . $product_id . "'
-			AND p.status = '1'
-			AND (
-				p.model = '" . $this->db->escape($model_base) . "'
-				OR p.model REGEXP '^" . $this->db->escape($model_base) . "-[0-9]{1,2}$'
-			)
-			ORDER BY p.model ASC
-		");
-
-		if (!$family_query->num_rows) {
+		if (empty($family_rows)) {
 			return array();
 		}
 
 		// Collect all product IDs in family (including current product)
 		$all_product_ids = array($product_id);
-		foreach ($family_query->rows as $row) {
+		foreach ($family_rows as $row) {
 			$all_product_ids[] = $row['product_id'];
 		}
 
@@ -592,7 +604,7 @@ class ModelExtensionModuleProductFamily extends Model {
 		$this->load->model('catalog/product');
 		$this->load->model('tool/image');
 
-		foreach ($family_query->rows as $row) {
+		foreach ($family_rows as $row) {
 			$product_info = $this->model_catalog_product->getProduct($row['product_id']);
 
 			if ($product_info) {
