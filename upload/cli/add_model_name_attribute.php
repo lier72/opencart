@@ -125,6 +125,49 @@ class ModelNameParser {
 	);
 
 	/**
+	 * Remove a vendor prefix from a parsed model while preserving vendor text
+	 * that may legitimately appear later in the model name.
+	 */
+	private function removeLeadingVendor($model, $manufacturer = '') {
+		$vendor_names = $this->vendors;
+
+		if (!empty($manufacturer)) {
+			array_unshift($vendor_names, $manufacturer);
+		}
+
+		foreach ($vendor_names as $vendor_name) {
+			$vendor_name = trim($vendor_name);
+
+			if ($vendor_name === '') {
+				continue;
+			}
+
+			$cleaned_model = preg_replace(
+				'/^' . preg_quote($vendor_name, '/') . '(?=$|[\s\-–—:|\/,\.])[\s\-–—:|\/,\.]*/iu',
+				'',
+				trim($model),
+				1
+			);
+
+			// Do not turn a vendor-only fallback into an empty attribute value.
+			if ($cleaned_model !== null && $cleaned_model !== trim($model) && $cleaned_model !== '') {
+				return trim($cleaned_model);
+			}
+		}
+
+		return trim($model);
+	}
+
+	/**
+	 * Remove a standalone colour variant appended to a model (for example B or AF).
+	 */
+	private function removeTrailingColourCode($model) {
+		$cleaned_model = preg_replace('/\s+[A-Z]{1,2}$/u', '', trim($model));
+
+		return $cleaned_model !== null && $cleaned_model !== '' ? $cleaned_model : trim($model);
+	}
+
+	/**
 	 * Parse product name to extract model name
 	 * This is adapted from the yandex_market feed parseProductName method
 	 */
@@ -261,6 +304,10 @@ class ModelNameParser {
 		if (!empty($model) && $model === $product_model) {
  		   $model = preg_replace('/-\d{1,2}$/', '', $model);
 		}
+
+		// The model attribute should contain only the model, not its vendor prefix.
+		$model = $this->removeLeadingVendor($model, $manufacturer);
+		$model = $this->removeTrailingColourCode($model);
 
 		return $model;
 	}

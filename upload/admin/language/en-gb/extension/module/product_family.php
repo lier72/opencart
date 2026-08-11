@@ -23,7 +23,7 @@ $_['entry_attribute_config'] = 'Attribute Configuration';
 // Help
 $_['help_model_attribute'] = 'Select the attribute that defines the product model (e.g., "model_name" from "General" group)';
 $_['help_variant_attributes'] = 'Select attributes that differentiate variants of the same model (e.g., Color, Size, Weight)';
-$_['help_strict_mode'] = 'Group products by model base from product.model field (removes -1, -2, etc.)';
+$_['help_strict_mode'] = 'Group products from the same manufacturer by model base from product.model (supports numeric suffixes such as -1 and colour suffixes such as AF or B)';
 $_['help_strict_categories'] = 'Select categories where strict mode grouping by model field will be used';
 $_['help_show_image_categories'] = 'Only selected categories will show variant images. If no categories selected, uses global setting';
 $_['help_attribute_config'] = 'Configure labels and regex patterns for each attribute. Example: for "Grip Size: 79.3mm (G6)" use regex \((G\d+)\) to show only "G6"';
