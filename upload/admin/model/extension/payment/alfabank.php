@@ -16,8 +16,8 @@ class ModelExtensionPaymentAlfabank extends Model
             `order_id` int(11) NOT NULL,
             `order_number` varchar(64),
             `currency` varchar(3) COMMENT 'ISO 4217 numeric currency code (e.g., 810 for RUB)',
-            `payment_way` varchar(50) COMMENT 'Payment method (e.g., ALFAPAY, CARD)',
-            `payment_system` varchar(50) COMMENT 'Payment system (e.g., MIR, VISA, MASTERCARD)',
+            `payment_way` varchar(50) NOT NULL DEFAULT '' COMMENT 'Payment method (e.g., ALFAPAY, CARD)',
+            `payment_system` varchar(50) NOT NULL DEFAULT '' COMMENT 'Payment system (e.g., MIR, VISA, MASTERCARD)',
             `order_amount` decimal(15,4) NOT NULL COMMENT 'Order amount',
             `order_amount_deposited` decimal(15,4) NOT NULL COMMENT 'Order deposited amount',
             `order_amount_refunded` decimal(15,4) NOT NULL DEFAULT 0 COMMENT 'Order refunded amount',
@@ -42,6 +42,23 @@ class ModelExtensionPaymentAlfabank extends Model
     public function migratePaymentAttemptsSchema()
     {
         $table = DB_PREFIX . 'alfabank_order';
+
+        $payment_way_column = $this->db->query("SHOW COLUMNS FROM `" . $table . "` LIKE 'payment_way'");
+
+        if (!$payment_way_column->num_rows) {
+            $this->db->query("ALTER TABLE `" . $table . "`
+                ADD `payment_way` varchar(50) NOT NULL DEFAULT ''
+                COMMENT 'Payment method (e.g., ALFAPAY, CARD)'");
+        }
+
+        $payment_system_column = $this->db->query("SHOW COLUMNS FROM `" . $table . "` LIKE 'payment_system'");
+
+        if (!$payment_system_column->num_rows) {
+            $this->db->query("ALTER TABLE `" . $table . "`
+                ADD `payment_system` varchar(50) NOT NULL DEFAULT ''
+                COMMENT 'Payment system (e.g., MIR, VISA, MASTERCARD)'");
+        }
+
         $legacy_index = $this->db->query("SHOW INDEX FROM `" . $table . "` WHERE `Key_name` = 'unique_order_id'");
 
         if ($legacy_index->num_rows) {

@@ -50,11 +50,19 @@ class AlfabankPaymentSchemaMigrationTest extends TestCase
                 WHERE `Key_name` = 'idx_order_id'");
             $export_status_index = $db->query("SHOW INDEX FROM `" . DB_PREFIX . "alfabank_order`
                 WHERE `Key_name` = 'idx_odoo_export_status'");
+            $payment_way_column = $db->query("SHOW COLUMNS FROM `" . DB_PREFIX . "alfabank_order`
+                LIKE 'payment_way'");
+            $payment_system_column = $db->query("SHOW COLUMNS FROM `" . DB_PREFIX . "alfabank_order`
+                LIKE 'payment_system'");
 
             $this->assertSame(0, $legacy_index->num_rows);
             $this->assertSame(1, $order_index->num_rows);
             $this->assertSame('1', $order_index->row['Non_unique']);
             $this->assertSame(2, $export_status_index->num_rows);
+            $this->assertSame(1, $payment_way_column->num_rows);
+            $this->assertSame('', $payment_way_column->row['Default']);
+            $this->assertSame(1, $payment_system_column->num_rows);
+            $this->assertSame('', $payment_system_column->row['Default']);
 
             $normalized = $db->query("SELECT `gateway_order_reference`, `status_deposited`, `status`
                 FROM `" . DB_PREFIX . "alfabank_order`
