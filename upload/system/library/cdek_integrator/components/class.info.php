@@ -1,5 +1,7 @@
 <?php  
 class info extends cdek_integrator {
+
+	private static $auth_token_cache = array();
 	
 	public function getTariffMode() {
 		return array(
@@ -221,31 +223,117 @@ class info extends cdek_integrator {
 		return array_key_exists($service_id, $all) ? $all[$service_id] : FALSE;
 	}
 	
-    public function getAuthToken() {
+	public function getAuthToken($force_refresh = false) {
+		$cache_key = hash('sha256', $this->ajax_url . '|' . $this->account . '|' . $this->secure_password);
 
-        $data = array(
-            'grant_type' => 'client_credentials',
-            'client_id' => $this->account,
-            'client_secret' => $this->secure_password
-        );
+		if (!$force_refresh && isset(self::$auth_token_cache[$cache_key]) && $this->isAuthTokenValid(self::$auth_token_cache[$cache_key])) {
+			return self::$auth_token_cache[$cache_key];
+		}
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $this->ajax_url . 'v2/oauth/token?grant_type=client_credentials&client_id=' . $this->account . '&client_secret=' . $this->secure_password);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                'Content-Type: application/x-www-form-urlencoded')
-        );
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-        $result = curl_exec($ch);
-        curl_close($ch);
+		$cache_file = $this->getAuthTokenCacheFile($cache_key);
 
-        return json_decode($result, true);
-    }
+		if ($cache_file) {
+			$handle = @fopen($cache_file, 'c+');
+
+			if ($handle && flock($handle, LOCK_EX)) {
+				@chmod($cache_file, 0660);
+
+				if (!$force_refresh) {
+					rewind($handle);
+					$cached_token = json_decode(stream_get_contents($handle), true);
+
+					if ($this->isAuthTokenValid($cached_token)) {
+						flock($handle, LOCK_UN);
+						fclose($handle);
+						self::$auth_token_cache[$cache_key] = $cached_token;
+						return $cached_token;
+					}
+				}
+
+				$auth_token = $this->requestAuthToken();
+
+				if ($this->isAuthTokenValid($auth_token)) {
+					ftruncate($handle, 0);
+					rewind($handle);
+					fwrite($handle, json_encode($auth_token));
+					fflush($handle);
+					self::$auth_token_cache[$cache_key] = $auth_token;
+				}
+
+				flock($handle, LOCK_UN);
+				fclose($handle);
+
+				return $this->isAuthTokenValid($auth_token) ? $auth_token : array();
+			}
+
+			if ($handle) {
+				fclose($handle);
+			}
+		}
+
+		$auth_token = $this->requestAuthToken();
+
+		if ($this->isAuthTokenValid($auth_token)) {
+			self::$auth_token_cache[$cache_key] = $auth_token;
+			return $auth_token;
+		}
+
+		return array();
+	}
+
+	private function getAuthTokenCacheFile($cache_key) {
+		if (!defined('DIR_CACHE') || !is_dir(DIR_CACHE) || !is_writable(DIR_CACHE)) {
+			return '';
+		}
+
+		return DIR_CACHE . 'cdek_auth_' . $cache_key . '.json';
+	}
+
+	private function isAuthTokenValid($auth_token) {
+		return is_array($auth_token)
+			&& !empty($auth_token['access_token'])
+			&& !empty($auth_token['expires_at'])
+			&& (int)$auth_token['expires_at'] > time() + 60;
+	}
+
+	private function requestAuthToken() {
+		$data = array(
+			'grant_type' => 'client_credentials',
+			'client_id' => $this->account,
+			'client_secret' => $this->secure_password
+		);
+
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $this->ajax_url . 'v2/oauth/token');
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/x-www-form-urlencoded'));
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+		curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+
+		$result = curl_exec($ch);
+		$http_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$curl_error = curl_error($ch);
+		curl_close($ch);
+
+		$auth_token = json_decode($result, true);
+
+		if ($http_code < 200 || $http_code >= 300 || empty($auth_token['access_token'])) {
+			if ($this->logger) {
+				$this->logger->write('CDEK OAuth error: HTTP ' . $http_code . ($curl_error ? ', ' . $curl_error : ''));
+			}
+
+			return array();
+		}
+
+		$expires_in = !empty($auth_token['expires_in']) ? (int)$auth_token['expires_in'] : 3600;
+		$auth_token['expires_at'] = time() + max(120, $expires_in);
+
+		return $auth_token;
+	}
 
 	public function getAddServices() {
 		
@@ -560,16 +648,23 @@ class info extends cdek_integrator {
         $response = $this->getURL($this->ajax_url . 'v2/location/suggest/cities?name=' . urlencode($city), new parser_json());
 
         if (is_array($response)) {
-            $result = array_map(function($item) {
-                return [
-                    'code' => $item['code'],
-                    'full_name' => $item['full_name']
-                    ];
-            }, $response);
-            return $result;
+			$result = array();
+
+			foreach ($response as $item) {
+				if (!is_array($item) || empty($item['code']) || empty($item['full_name'])) {
+					continue;
+				}
+
+				$result[] = array(
+					'code' => $item['code'],
+					'full_name' => $item['full_name']
+				);
+			}
+
+			return $result;
         }
 				
-        return FALSE; // return FALSE when no array is in the response
+		return array();
 	}
 
 	public function getBaseUrl() {

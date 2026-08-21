@@ -884,7 +884,32 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 	}
 
 	public function getCityById($id) {		
-		return $this->db->query("SELECT * FROM `" . DB_PREFIX . "cdek_city` WHERE `id` = '".$id."'")->row;
+		return $this->db->query("SELECT * FROM `" . DB_PREFIX . "cdek_city` WHERE `id` = '" . (int)$id . "'")->row;
+	}
+
+	public function getCitiesByIds($ids = array()) {
+		$city_ids = array();
+
+		foreach ((array)$ids as $id) {
+			$id = (int)$id;
+
+			if ($id > 0) {
+				$city_ids[$id] = $id;
+			}
+		}
+
+		if (!$city_ids) {
+			return array();
+		}
+
+		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "cdek_city` WHERE `id` IN (" . implode(',', $city_ids) . ")");
+		$cities = array();
+
+		foreach ($query->rows as $city) {
+			$cities[(int)$city['id']] = $city;
+		}
+
+		return $cities;
 	}
 	
 	public function install() {

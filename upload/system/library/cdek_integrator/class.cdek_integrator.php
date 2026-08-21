@@ -113,6 +113,12 @@ class cdek_integrator {
 		$info = $this->loadComponent('info');
 
 		$auth_data = $info->getAuthToken();
+
+		if (empty($auth_data['access_token'])) {
+			$this->curl_success = FALSE;
+			return FALSE;
+		}
+
         $headers = array('Authorization: Bearer ' . $auth_data['access_token']);
 		
 		$ch = curl_init();
@@ -133,9 +139,19 @@ class cdek_integrator {
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
 		$out = curl_exec($ch);
+		$curl_error = curl_error($ch);
 		curl_close($ch);
 
 		$this->curl_success = $out;
+
+		if ($out === FALSE) {
+			if ($this->logger) {
+				$this->logger->write('CDEK API transport error: ' . $curl_error);
+			}
+
+			return FALSE;
+		}
+
 		$parser->setData($out);
 
 		

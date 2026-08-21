@@ -848,6 +848,9 @@
 
 <script type="text/javascript"><!--
 
+var recipientPvzRequest = null;
+var recipientPvzRequestSequence = 0;
+
 $('.vtabs-link').click(function(){
 	$('#vtabs').find("a").removeClass('active');
 	$(this).addClass('active');
@@ -970,33 +973,49 @@ $('.tariff_switcher').change(function(event){
 $(".setting-city-name").bind('cityselect', function(){
 
 	var context = $(this).closest('.tab-pane');
-
-	var city_code = $('input.setting-city-id', context).val();
+	var city_code = $('input.setting-city-id', $(this).parent()).val();
 
 	if (city_code != '') {
 
 		var element = $('#cdek-orders-address-pvz-code', context);
+		var pvzRequestSequence = ++recipientPvzRequestSequence;
+		var originalPlaceholder = element.data('pvz-placeholder') || element.attr('placeholder');
+
+		element.data('pvz-placeholder', originalPlaceholder);
+
+		if (recipientPvzRequest) {
+			recipientPvzRequest.abort();
+			recipientPvzRequest = null;
+		}
 
 		// Clear current value
-		element.val('');
+		element.val('').data('pvz-list', []).prop('disabled', true).attr('placeholder', 'Загрузка пунктов выдачи...');
 		$('#cdek-orders-address-pvz-code-value').val('');
 		$('.address-mode.pvz .pvz-wrapper').html('');
 
-		$.ajax({
+		recipientPvzRequest = $.ajax({
 			url: "index.php?route=extension/module/cdek_integrator/getPVZByCity&user_token={{ token }}&city_code=" + city_code,
 			dataType: "json",
 			beforeSend: function(jqXHR, settings){
 				if (!$('.address-mode.pvz .loader', context).length) element.after('<img class="loader" src="view/image/cdek_integrator/loader.gif" alt="Загрузка..." title="Загрузка..." />');
 			},
 			complete: function(jqXHR, textStatus) {
-				$('.address-mode.pvz .loader', context).remove();
+				if (recipientPvzRequest === jqXHR) {
+					recipientPvzRequest = null;
+					$('.address-mode.pvz .loader', context).remove();
+					element.prop('disabled', false).attr('placeholder', originalPlaceholder);
+				}
 			},
 			success: function(json) {
-				if (json.List) {
-					// Update pvz_list_recipient with new data
-					pvz_list_recipient = [];
+				if (pvzRequestSequence !== recipientPvzRequestSequence) {
+					return;
+				}
+
+				var pvzList = [];
+
+				if (json && json.List) {
 					for (var row in json.List) {
-						pvz_list_recipient.push({
+						pvzList.push({
 							code: json.List[row].Code,
 							name: json.List[row].Name,
 							address: json.List[row].Address,
@@ -1007,72 +1026,9 @@ $(".setting-city-name").bind('cityselect', function(){
 							label: json.List[row].Name + ' (' + json.List[row].Address + ')'
 						});
 					}
-
-					// Reinitialize autocomplete with new data
-					element.autocomplete('destroy');
-					element.autocomplete({
-						source: function(request, response) {
-							var term = (request.term || '').toLowerCase();
-							var results = [];
-
-							for (var i = 0; i < pvz_list_recipient.length; i++) {
-								var item = pvz_list_recipient[i];
-								// Search only in code and address
-								var searchText = (item.code + ' ' + item.address).toLowerCase();
-
-								if (searchText.indexOf(term) !== -1) {
-									results.push({
-										label: item.code + ', ' + item.address,
-										value: item.code + ', ' + item.address,
-										pvz_code: item.code,
-										pvz_name: item.name,
-										pvz_address: item.address,
-										pvz_y: item.y,
-										pvz_x: item.x,
-										pvz_worktime: item.worktime,
-										pvz_phone: item.phone
-									});
-								}
-							}
-
-							response(results);
-						},
-						minLength: 1,
-						select: function(event, ui) {
-							// Handle different autocomplete library signatures
-							var item = ui && ui.item ? ui.item : (ui || event);
-
-							if (!item) {
-								console.error('No item data in PVZ select!');
-								return false;
-							}
-
-							// Set hidden field with PVZ code
-							var code = item.pvz_code || item.id || item.value;
-							$('#cdek-orders-address-pvz-code-value').val(code);
-
-							// Update PVZ info display
-							if (item.pvz_name) {
-								var html = '<p>' + item.pvz_name;
-								if (item.pvz_x) {
-									html += ' (<a href="http://maps.google.ru/maps?q=' + item.pvz_y + ',' + item.pvz_x + '" target="_blank">на карте</a>)';
-								}
-								html += '</p><span class="help">';
-								html += '<strong>Адрес</strong>: ' + item.pvz_address + '<br />';
-								if (item.pvz_phone && item.pvz_phone != '-') {
-									html += '<strong>Телефон</strong>: ' + item.pvz_phone + '<br />';
-								}
-								if (item.pvz_worktime && item.pvz_worktime != '-') {
-									html += '<strong>Режим работы</strong>: ' + item.pvz_worktime;
-								}
-								html += '</span>';
-								$('.address-mode.pvz .pvz-wrapper').html(html);
-							}
-
-							return false; // Prevent default
-						}
-					});
 				}
+
+				element.data('pvz-list', pvzList);
 			}
 		});
 	}
@@ -1099,16 +1055,37 @@ initTimepicker();
 
 <script type="text/javascript">
     $(document).ready(function() {
-		$('#cdek-orders-recipient-city-name').autocomplete({
+		var $recipientCityInput = $('#cdek-orders-recipient-city-name');
+		var recipientCityRequest = null;
+		var recipientCityRequestSequence = 0;
+
+		$recipientCityInput.autocomplete({
 			source: function(request,response) {
-				$.ajax({
+				var term = $.trim(request && request.term !== undefined ? request.term : (request || ''));
+				var requestSequence = ++recipientCityRequestSequence;
+
+				if (recipientCityRequest) {
+					recipientCityRequest.abort();
+					recipientCityRequest = null;
+				}
+
+				// OpenCart's custom autocomplete ignores the minLength option.
+				if (term.length < 2) {
+					response([]);
+					return;
+				}
+
+				recipientCityRequest = $.ajax({
 					url: "index.php?route=extension/module/cdek_integrator/getCityByName&user_token={{ token }}",
 					dataType: "json",
 					data: {
-						q: function () { return $('#cdek-orders-recipient-city-name').val() },
-						name_startsWith: function () { return $('#cdek-orders-recipient-city-name').val() }
+						q: term
 					},
 					success: function(data) {
+						if (requestSequence !== recipientCityRequestSequence || !$.isArray(data)) {
+							return;
+						}
+
 						response($.map(data, function(item) {
 							return {
 								label: item.full_name,
@@ -1116,21 +1093,39 @@ initTimepicker();
 								id: item.code
 							}
 						}));
+					},
+					error: function(jqXHR, textStatus) {
+						if (requestSequence === recipientCityRequestSequence && textStatus !== 'abort') {
+							response([]);
+						}
+					},
+					complete: function(jqXHR) {
+						if (recipientCityRequest === jqXHR) {
+							recipientCityRequest = null;
+						}
 					}
 				});
 			},
-			minLength: 1,
-			select: function(event) {
-				$('.setting-city-id').parent().find('.error').remove();
-				$('.setting-city-id').val(event.id);
-				$('.setting-city-name').val(event.value);
-				$('.js.city-from').text(event.label).show();
-				$('.setting-city-name').hide();
+			minLength: 2,
+			select: function(event, ui) {
+				var item = ui && ui.item ? ui.item : (ui || event);
 
-				$('.setting-city-name').trigger('cityselect');
+				if (!item || item.id === undefined) {
+					return false;
+				}
 
-				$('.setting-city-id').trigger('change');
+				var context = $recipientCityInput.parent();
+				var $recipientCityId = $('.setting-city-id', context);
 
+				$recipientCityId.parent().find('.error').remove();
+				$recipientCityId.val(item.id);
+				$recipientCityInput.val(item.value).hide();
+				$('.js.city-from', context).text(item.label).show();
+
+				$recipientCityInput.trigger('cityselect');
+				$recipientCityId.trigger('change');
+
+				return false;
 			}
 		});
 		$('input[name=\'checkpackage\']').trigger('change');
@@ -1171,26 +1166,37 @@ initTimepicker();
 		];
 
 		// Check if jQuery UI autocomplete is available
-		if (typeof $.fn.autocomplete === 'undefined') {
-			console.error('jQuery UI autocomplete is not loaded!');
-			return;
-		}
+			if (typeof $.fn.autocomplete === 'undefined') {
+				console.error('jQuery UI autocomplete is not loaded!');
+				return;
+			}
 
-		// Initialize recipient PVZ autocomplete
+			var normalizePvzSearch = function(value) {
+				return String(value || '').toLowerCase().replace(/ё/g, 'е');
+			};
+
+			// Initialize recipient PVZ autocomplete
 		if ($('#cdek-orders-address-pvz-code').length) {
 			var $input = $('#cdek-orders-address-pvz-code');
-			$input.attr('autocomplete', 'new-password');
+			$input.attr('autocomplete', 'new-password').data('pvz-list', pvz_list_recipient);
 
-			$input.autocomplete({
+				$input.autocomplete({
 				source: function(request, response) {
 					// Handle different autocomplete library signatures
-					var term = (typeof request === 'string' ? request : (request.term || '')).toLowerCase();
+					var term = normalizePvzSearch(typeof request === 'string' ? request : (request.term || '')).trim();
 					var results = [];
 
-					for (var i = 0; i < pvz_list_recipient.length; i++) {
-						var item = pvz_list_recipient[i];
-						// Search only in code and address
-						var searchText = (item.code + ' ' + item.address).toLowerCase();
+					// OpenCart's custom autocomplete ignores the minLength option.
+					if (!term) {
+						response([]);
+						return;
+					}
+
+					var pvzList = $input.data('pvz-list') || [];
+
+					for (var i = 0; i < pvzList.length; i++) {
+						var item = pvzList[i];
+						var searchText = normalizePvzSearch(item.code + ' ' + item.name + ' ' + item.address);
 
 						if (searchText.indexOf(term) !== -1) {
 							results.push({
@@ -1213,7 +1219,7 @@ initTimepicker();
 				minLength: 1,
 				select: function(event, ui) {
 					// Handle different autocomplete library signatures
-					var item = ui || event;
+					var item = ui && ui.item ? ui.item : (ui || event);
 
 					if (!item) {
 						console.error('No item data!');
@@ -1258,13 +1264,17 @@ initTimepicker();
 			$sellerInput.autocomplete({
 				source: function(request, response) {
 					// Handle different autocomplete library signatures
-					var term = (typeof request === 'string' ? request : (request.term || '')).toLowerCase();
+					var term = normalizePvzSearch(typeof request === 'string' ? request : (request.term || '')).trim();
 					var results = [];
+
+					if (!term) {
+						response([]);
+						return;
+					}
 
 					for (var i = 0; i < pvz_list_seller.length; i++) {
 						var item = pvz_list_seller[i];
-						// Search only in code and address
-						var searchText = (item.code + ' ' + item.address).toLowerCase();
+						var searchText = normalizePvzSearch(item.code + ' ' + item.name + ' ' + item.address);
 
 						if (searchText.indexOf(term) !== -1) {
 							results.push({
@@ -1281,7 +1291,7 @@ initTimepicker();
 				minLength: 1,
 				select: function(event, ui) {
 					// Handle different autocomplete library signatures
-					var item = ui || event;
+					var item = ui && ui.item ? ui.item : (ui || event);
 
 					if (!item) {
 						return false;

@@ -3877,7 +3877,9 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$this->load->language('extension/module/cdek_integrator');
 
 		$this->document->addStyle('view/stylesheet/cdek_integrator.css');
-		$this->document->addScript('view/javascript/jquery/cdek_integrator.js');
+		$cdek_script = DIR_APPLICATION . 'view/javascript/jquery/cdek_integrator.js';
+		$cdek_script_version = is_file($cdek_script) ? filemtime($cdek_script) : self::VERSION;
+		$this->document->addScript('view/javascript/jquery/cdek_integrator.js?v=' . $cdek_script_version);
 
 		require_once DIR_SYSTEM . 'library/cdek_integrator/class.app.php';
 		app::registry()->create($this->registry);
@@ -4240,25 +4242,52 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 	}
 
 	public function getCityByName($cityName = null) {
+		$return_data = $cityName !== null;
 		$cdek_cities = array();
 
-		if($cityName) {
-			$cdek_cities = $this->getInfo()->getCityByName($cityName);
-			return $cdek_cities;
-		}
-
-		if(isset($this->request->get['q'])) {
+		if (!$return_data && isset($this->request->get['q'])) {
 			$cityName = $this->request->get['q'];
-		} elseif(isset($this->request->get['name_startsWith'])) {
+		} elseif (!$return_data && isset($this->request->get['name_startsWith'])) {
 			$cityName = $this->request->get['name_startsWith'];
-		} elseif(isset($this->request->get['search'])) {
+		} elseif (!$return_data && isset($this->request->get['search'])) {
 			$cityName = $this->request->get['search'];
 		}
 
-		if($cityName) {
+		$cityName = trim((string)$cityName);
+
+		if ($cityName !== '' && mb_strlen($cityName, 'UTF-8') >= 2) {
 			$cdek_cities = $this->getInfo()->getCityByName($cityName);
-		} else {
-			$this->log->write('CDEK DEBUG: No cityName provided!');
+
+			if (!is_array($cdek_cities)) {
+				$cdek_cities = array();
+			}
+
+			if ($cdek_cities) {
+				$this->load->model('extension/module/cdek_integrator');
+
+				$city_ids = array_column($cdek_cities, 'code');
+				$local_cities = $this->model_extension_module_cdek_integrator->getCitiesByIds($city_ids);
+				$local_matches = array();
+				$external_matches = array();
+
+				foreach ($cdek_cities as $cdek_city) {
+					$city_id = isset($cdek_city['code']) ? (int)$cdek_city['code'] : 0;
+
+					if ($city_id && !empty($local_cities[$city_id]['name'])) {
+						$cdek_city['full_name'] = $local_cities[$city_id]['name'];
+						$local_matches[] = $cdek_city;
+					} else {
+						$external_matches[] = $cdek_city;
+					}
+				}
+
+				// Prefer locations supported by the storefront's local CDEK city table.
+				$cdek_cities = array_merge($local_matches, $external_matches);
+			}
+		}
+
+		if ($return_data) {
+			return $cdek_cities;
 		}
 
 		$this->response->addHeader('Content-Type: application/json');

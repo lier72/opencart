@@ -7,17 +7,28 @@ $(document).ready(function() {
 	});
 	
 	$(".setting-city-name").blur(function(){
-		
-		var context = $(this).parent();
-		
-		if ($('.setting-city-id', context).val() != '') {
-			$('.js.city-from', context).show();
-			$(this).hide();
-		}
+		var input = this;
+
+		// Let a dropdown click finish before restoring the selected-city link.
+		setTimeout(function() {
+			if ($(input).is(':focus')) {
+				return;
+			}
+
+			var context = $(input).parent();
+
+			if ($('.setting-city-id', context).val() != '') {
+				$('.js.city-from', context).show();
+				$(input).hide();
+			}
+		}, 200);
 	});
 	
-	$(".setting-city-name").change(function(){
-		$('.setting-city-id', $(this).parent()).val('');
+	$(".setting-city-name").on('input change', function(){
+		var context = $(this).parent();
+
+		$('.setting-city-id', context).val('');
+		$('.js.city-from', context).hide();
 	});
 						   
 	$('.slider').on('change', function(event){
