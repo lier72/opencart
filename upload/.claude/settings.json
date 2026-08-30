@@ -12,7 +12,8 @@
       "mcp__excel__read_data_from_excel",
       "Bash(curl -s \"https://uniqsport.ru/index.php?route=extension/feed/yandex_market\")",
       "Bash(php -v)",
-      "Bash(/usr/local/bin/mysql -h 127.0.0.1 -P 3306 -u root -N -e \"SELECT modification_id, code, name, version, status, date_added, date_modified FROM \\\\`a1627-unqs-oc3\\\\`.ocus_modification WHERE name LIKE '%Odoo%' OR code LIKE '%odoo%';\")"
+      "Bash(/usr/local/bin/mysql -h 127.0.0.1 -P 3306 -u root -N -e \"SELECT modification_id, code, name, version, status, date_added, date_modified FROM \\\\`a1627-unqs-oc3\\\\`.ocus_modification WHERE name LIKE '%Odoo%' OR code LIKE '%odoo%';\")",
+      "Bash(php cli/generate_filter_seo_urls.php --dry-run)"
     ]
   }
 }

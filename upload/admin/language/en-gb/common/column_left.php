@@ -39,6 +39,7 @@ $_['text_modification']         = 'Modifications';
 $_['text_manufacturer']         = 'Manufacturers';
 $_['text_navigation']           = 'Navigation';
 $_['text_option']               = 'Options';
+$_['text_filter_seo']           = 'Filter SEO';
 $_['text_order']                = 'Orders';
 $_['text_order_status']         = 'Order Statuses';
 $_['text_online']               = 'Who\'s Online';

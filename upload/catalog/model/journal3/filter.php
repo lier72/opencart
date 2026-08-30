@@ -250,6 +250,75 @@ class ModelJournal3Filter extends Model {
 		return http_build_query($result);
 	}
 
+	/**
+	 * Human-readable facet name for a given fa/fo/ff type+id, e.g. "Цвет" for
+	 * an attribute, "Размер" for an option, or a filter group's name. Used to
+	 * build filter-aware meta title/description text (see category.php) -
+	 * never for URL slugs, that's FilterSeoUrl::slugify()'s job.
+	 */
+	public function getFilterLabelName($type, $type_id) {
+		$language_id = (int)$this->config->get('config_language_id');
+
+		switch ($type) {
+			case 'fa':
+				$query = $this->db->query("SELECT `name` FROM " . DB_PREFIX . "attribute_description WHERE attribute_id = '" . (int)$type_id . "' AND language_id = '" . $language_id . "'");
+				break;
+
+			case 'fo':
+				$query = $this->db->query("SELECT `name` FROM " . DB_PREFIX . "option_description WHERE option_id = '" . (int)$type_id . "' AND language_id = '" . $language_id . "'");
+				break;
+
+			case 'ff':
+				$query = $this->db->query("SELECT `name` FROM " . DB_PREFIX . "filter_group_description WHERE filter_group_id = '" . (int)$type_id . "' AND language_id = '" . $language_id . "'");
+				break;
+
+			default:
+				return null;
+		}
+
+		return $query->num_rows ? $query->row['name'] : null;
+	}
+
+	/**
+	 * Human-readable label for a single selected fa/fo/ff value, for the
+	 * same meta-text use case as getFilterLabelName(). For 'fa' the value
+	 * from $filter_data is already literal display text (just decode
+	 * entities); 'fo'/'ff' values are numeric ids needing a lookup. A
+	 * trailing "(#RRGGBB)" swatch code (e.g. "Синий (#0000FF)") is stripped
+	 * for display - it's noise in a page title/description, not something a
+	 * shopper or search engine needs. This only ever touches the returned
+	 * label, never the stored/matched fa value or the URL slug, so filtering
+	 * and existing pretty URLs are unaffected.
+	 */
+	public function getFilterValueLabel($type, $type_id, $value) {
+		$language_id = (int)$this->config->get('config_language_id');
+
+		switch ($type) {
+			case 'fa':
+				$label = htmlspecialchars_decode((string)$value);
+				break;
+
+			case 'fo':
+				$query = $this->db->query("SELECT `name` FROM " . DB_PREFIX . "option_value_description WHERE option_value_id = '" . (int)$value . "' AND language_id = '" . $language_id . "'");
+				$label = $query->num_rows ? $query->row['name'] : null;
+				break;
+
+			case 'ff':
+				$query = $this->db->query("SELECT `name` FROM " . DB_PREFIX . "filter_description WHERE filter_id = '" . (int)$value . "' AND language_id = '" . $language_id . "'");
+				$label = $query->num_rows ? $query->row['name'] : null;
+				break;
+
+			default:
+				return null;
+		}
+
+		if ($label === null) {
+			return null;
+		}
+
+		return trim(preg_replace('/\s*\(#[0-9A-Fa-f]{3,8}\)\s*$/u', '', $label));
+	}
+
 	public function hasFilterData($filter_data, $key, $value = null) {
 		$values = Arr::get($filter_data, $key);
 

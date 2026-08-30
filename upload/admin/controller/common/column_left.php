@@ -82,10 +82,18 @@ class ControllerCommonColumnLeft extends Controller {
 				$catalog[] = array(
 					'name'	   => $this->language->get('text_option'),
 					'href'     => $this->url->link('catalog/option', 'user_token=' . $this->session->data['user_token'], true),
-					'children' => array()		
+					'children' => array()
 				);
 			}
-			
+
+			if ($this->user->hasPermission('access', 'catalog/filter_seo')) {
+				$catalog[] = array(
+					'name'	   => $this->language->get('text_filter_seo'),
+					'href'     => $this->url->link('catalog/filter_seo', 'user_token=' . $this->session->data['user_token'], true),
+					'children' => array()
+				);
+			}
+
 			if ($this->user->hasPermission('access', 'catalog/manufacturer')) {
 				$catalog[] = array(
 					'name'	   => $this->language->get('text_manufacturer'),

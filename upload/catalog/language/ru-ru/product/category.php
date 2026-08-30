@@ -23,3 +23,5 @@ $_['text_model_asc']    = 'Модель (А - Я)';
 $_['text_model_desc']   = 'Модель (Я - А)';
 $_['text_limit']        = 'Показать:';
 $_['text_disabled_product_notice'] = 'Товар, который вы искали, отключен. Похожие товары можно посмотреть в этой категории.';
+$_['text_filter_meta_suffix'] = 'Фильтр: %s.';
+$_['text_filter_manufacturer'] = 'Производитель';

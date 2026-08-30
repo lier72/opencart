@@ -508,6 +508,13 @@ class ControllerJournal3Filter extends ModuleController {
 
 		// Capture filter selections for Adaptive Filter module (simple version)
 		$this->captureFilterSelections();
+
+		// $this->settings may have been nulled above ("no filters available") -
+		// must not auto-vivify it back into an array, or the null check in
+		// index() right after beforeRender() would stop bailing out correctly.
+		if ($this->settings !== null) {
+			$this->settings['prettyUrl'] = $this->buildPrettyUrl();
+		}
 	}
 
 	/**
@@ -598,6 +605,27 @@ class ControllerJournal3Filter extends ModuleController {
 		} elseif ($debug_mode) {
 			$this->log->write('[Adaptive Filter - Journal3] No filter selections found in URL parameters');
 		}
+	}
+
+	/**
+	 * Pretty (SEO) version of the current filter selection's URL, e.g.
+	 * /category-slug/colour-belyi/razmer-42 instead of ?fa70=...&fo12=...
+	 * Built via the core Url class (not journal3_url, which has its own
+	 * separate, filter-unaware rewrite logic) so it benefits from the
+	 * fa/fo/ff-aware rewrite() added in catalog/controller/startup/seo_url.php.
+	 * Only meaningful for the category listing route - anything with an
+	 * unmapped filter value, or a non-category route, falls back to '' and
+	 * filter.js keeps using the plain query-string URL as it does today.
+	 */
+	private function buildPrettyUrl() {
+		if ($this->journal3_request->get('route') !== 'product/category' || !$this->journal3_request->get('path')) {
+			return '';
+		}
+
+		$params = $this->model_journal3_filter->getFilterParams($this->filter_data);
+		$args = 'path=' . $this->journal3_request->get('path') . ($params ? '&' . $params : '');
+
+		return htmlspecialchars_decode($this->url->link('product/category', $args, false));
 	}
 
 	protected function afterRender() {

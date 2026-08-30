@@ -143,6 +143,20 @@ function journal_filter(url, opts) {
 			$('.main-products-wrapper').replaceWith($response.find('.main-products-wrapper'));
 			$('#input-sort, #input-limit').removeAttr('onchange');
 
+			// Correct the address bar to the SEO-friendly URL once the server
+			// has resolved it (e.g. /category/colour-belyi instead of
+			// ?fa70=...). The initial pushState above already ran with the
+			// plain query-string url for responsiveness - this is a
+			// follow-up replaceState, not a second history entry. The AJAX
+			// fetch itself always stays on the plain query-string form.
+			if (updateHistory !== false && window.history && window.history.replaceState) {
+				var prettyUrl = $('.module-filter').data('pretty-url');
+
+				if (prettyUrl) {
+					window.history.replaceState({ Title: document.title, Url: prettyUrl }, document.title, prettyUrl);
+				}
+			}
+
 			var $panel_group = $('.panel-group');
 
 			$panel_group.on('show.bs.collapse', function (e) {
