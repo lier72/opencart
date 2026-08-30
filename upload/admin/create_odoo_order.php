@@ -1000,26 +1000,33 @@ class ExportOpenCartOdooCustomer extends ExportOpenCartOdoo
             // Find corresponding OpenCart client for each Odoo partner in $partners
             // Not found clients stored in $nf_clinets_array
             $sql = "SELECT a.customer_id, a.firstname, a.lastname, a.email, a.telephone, b.city, b.address_1, b.address_2
-                  FROM " . DB_PREFIX . "customer AS a LEFT JOIN " . DB_PREFIX . "address AS b ON a.address_id = b.address_id WHERE a.email = '" . $partner['email'] . "'";
+                  FROM " . DB_PREFIX . "customer AS a LEFT JOIN " . DB_PREFIX . "address AS b ON a.address_id = b.address_id WHERE a.email = '" . $this->db->real_escape_string((string)$partner['email']) . "'";
             $result = $this->db->query($sql) or die("Error SQL-ing OpenCart client\n" . mysqli_error($this->db));
             if ($result->num_rows > 0) {
                 $oc_client = $result->fetch_assoc();
+                $odoo_client_id = (int)$partner['id'];
+                $odoo_client_name = $this->db->real_escape_string((string)$partner['name']);
+                $opencart_client_id = (int)$oc_client['customer_id'];
+                $opencart_client_name = $this->db->real_escape_string(trim($oc_client['lastname'] . " " . $oc_client['firstname']));
+                $opencart_email = $this->db->real_escape_string((string)$oc_client['email']);
+                $opencart_delivery_address = $this->db->real_escape_string(trim(
+                    $oc_client['city'] . " " . $oc_client['address_1'] . " " . $oc_client['address_2']
+                ));
+
                 // Add new mapping data if the partner is found in OpenCart
-                $sql = "INSERT INTO " . DB_PREFIX . "odoo_client_map SET odoo_client_id = " . $partner['id'] .
-                    ", odoo_client_name = '" . $partner['name'] .
-                    "', opencart_client_id = " . $oc_client['customer_id'] .
-                    ", opencart_client_name ='" . $oc_client['lastname'] . " " . $oc_client['firstname'] .
-                    "', opencart_email ='" . $oc_client['email'] .
-                    "', opencart_delivery_address= '" . $oc_client['city'] . " " . $oc_client['address_1'] .
-                    " " . $oc_client['address_2'] . " " .
+                $sql = "INSERT INTO " . DB_PREFIX . "odoo_client_map SET odoo_client_id = " . $odoo_client_id .
+                    ", odoo_client_name = '" . $odoo_client_name .
+                    "', opencart_client_id = " . $opencart_client_id .
+                    ", opencart_client_name ='" . $opencart_client_name .
+                    "', opencart_email ='" . $opencart_email .
+                    "', opencart_delivery_address= '" . $opencart_delivery_address .
                     "', created_by ='oc_odoo_sync', created_on = NOW(), is_sync = 0 ON DUPLICATE KEY UPDATE
-                    odoo_client_id = " . $partner['id'] .
-                    ", odoo_client_name = '" . $partner['name'] .
-                    "', opencart_client_id = " . $oc_client['customer_id'] .
-                    ", opencart_client_name ='" . $oc_client['lastname'] . " " . $oc_client['firstname'] .
-                    "', opencart_email ='" . $oc_client['email'] .
-                    "', opencart_delivery_address= '" . $oc_client['city'] . " " . $oc_client['address_1'] .
-                    " " . $oc_client['address_2'] . " " .
+                    odoo_client_id = " . $odoo_client_id .
+                    ", odoo_client_name = '" . $odoo_client_name .
+                    "', opencart_client_id = " . $opencart_client_id .
+                    ", opencart_client_name ='" . $opencart_client_name .
+                    "', opencart_email ='" . $opencart_email .
+                    "', opencart_delivery_address= '" . $opencart_delivery_address .
                     "', created_by ='oc_odoo_sync', is_sync = 0";
                 $res = $this->db->query($sql) or die("Error in Adding map client" . mysqli_error($this->db));
             } else {
@@ -1042,7 +1049,7 @@ class ExportOpenCartOdooCustomer extends ExportOpenCartOdoo
      */
     public function checkClient($email)
     {
-        $sql = "SELECT `odoo_client_id` FROM " . DB_PREFIX . "odoo_client_map WHERE opencart_email = LOWER(TRIM('" . $email . "'))";
+        $sql = "SELECT `odoo_client_id` FROM " . DB_PREFIX . "odoo_client_map WHERE opencart_email = LOWER(TRIM('" . $this->db->real_escape_string((string)$email) . "'))";
 //        print_r($sql);
 //        echo "\n";
         $result = $this->db->query($sql) or die("Error in Selecting customer " . mysqli_error($this->db));
@@ -1126,20 +1133,28 @@ class ExportOpenCartOdooCustomer extends ExportOpenCartOdoo
      */
     function mapOdooPartner($odoo_partner, $data)
     {
+        $odoo_partner = (int)$odoo_partner;
+        $client_name = $this->db->real_escape_string(trim($data['lastname'] . " " . $data['firstname']));
+        $opencart_client_id = (int)$data['customer_id'];
+        $opencart_email = $this->db->real_escape_string((string)$data['email']);
+        $opencart_delivery_address = $this->db->real_escape_string(trim(
+            $data['payment_city'] . " " . $data['payment_address_1'] . " " . $data['payment_address_2']
+        ));
+
         // Add new mapping data if the odoo_partner is found in OpenCart
         $sql = "INSERT INTO " . DB_PREFIX . "odoo_client_map SET odoo_client_id = " . $odoo_partner .
-            ", odoo_client_name = '" . $data['lastname'] . " " . $data['firstname'] .
-            "', opencart_client_id = " . $data['customer_id'] .
-            ", opencart_client_name ='" . $data['lastname'] . " " . $data['firstname'] .
-            "', opencart_email ='" . $data['email'] .
-            "', opencart_delivery_address= '" . $data['payment_city'] . " " . $data['payment_address_1'] . " " . $data['payment_address_2'] .
+            ", odoo_client_name = '" . $client_name .
+            "', opencart_client_id = " . $opencart_client_id .
+            ", opencart_client_name ='" . $client_name .
+            "', opencart_email ='" . $opencart_email .
+            "', opencart_delivery_address= '" . $opencart_delivery_address .
             "', created_by ='oc_odoo_sync', created_on = NOW(), is_sync = 0 ON DUPLICATE KEY UPDATE
                 odoo_client_id = " . $odoo_partner .
-            ", odoo_client_name = '" . $data['lastname'] . " " . $data['firstname'] .
-            "', opencart_client_id = " . $data['customer_id'] .
-            ", opencart_client_name ='" . $data['lastname'] . " " . $data['firstname'] .
-            "', opencart_email ='" . $data['email'] .
-            "', opencart_delivery_address= '" . $data['payment_city'] . " " . $data['payment_address_1'] . " " . $data['payment_address_2'] . " " .
+            ", odoo_client_name = '" . $client_name .
+            "', opencart_client_id = " . $opencart_client_id .
+            ", opencart_client_name ='" . $client_name .
+            "', opencart_email ='" . $opencart_email .
+            "', opencart_delivery_address= '" . $opencart_delivery_address .
             "', created_by ='oc_odoo_sync', is_sync = 0";
         $res = $this->db->query($sql) or die("Error in Adding map client" . mysqli_error($this->db));
 //        }
