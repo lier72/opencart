@@ -32,6 +32,16 @@ $_['text_direction_from_odoo']= 'From Odoo';
 $_['text_status_success'] = 'Success';
 $_['text_status_error'] = 'Error';
 $_['text_status_warning'] = 'Warning';
+$_['tab_products'] = 'Сопоставление товаров';
+$_['tab_vendors'] = 'Сопоставление брендов / поставщиков';
+$_['text_vendor_mapping_help'] = 'Загрузите бренды товаров из Odoo один раз и сопоставьте каждый бренд с производителем OpenCart. Загруженный список сохраняется в кеше OpenCart, а кнопка обновляет его из Odoo.';
+$_['text_no_vendor_mappings'] = 'Сопоставления брендов не найдены.';
+$_['text_fetch_odoo_vendors_first'] = 'Загрузите бренды из Odoo, чтобы выбрать бренд';
+$_['text_select_odoo_vendor'] = 'Выберите бренд Odoo';
+$_['text_fetching_odoo_vendors'] = 'Загрузка брендов из Odoo...';
+$_['text_odoo_vendors_loaded'] = 'Доступно брендов Odoo: ';
+$_['text_no_unmapped_odoo_vendors'] = 'Все бренды Odoo уже сопоставлены.';
+$_['text_no_odoo_vendors'] = 'В Odoo не найдено брендов товаров.';
 
 // Column
 $_['column_product_id']    = 'OC product ID';
@@ -46,6 +56,10 @@ $_['column_action']        = 'Action';
 $_['column_date']          = 'Date';
 $_['column_direction']     = 'Direction';
 $_['column_message']       = 'Sync Message';
+$_['column_odoo_vendor_id'] = 'ID бренда Odoo';
+$_['column_odoo_vendor_name'] = 'Бренд / поставщик Odoo';
+$_['column_manufacturer'] = 'Производитель OpenCart';
+$_['column_active'] = 'Активно';
 
 // Entry
 $_['entry_product_id']     = 'Product ID';
@@ -61,12 +75,18 @@ $_['button_mass_sync']     = 'Sync Selected';
 $_['button_history']       = 'Sync history';
 $_['button_back']          = 'Back';
 $_['button_stock']         = "Update Stock";
+$_['button_save']           = 'Сохранить';
+$_['button_delete']         = 'Удалить';
+$_['button_add_mapping']    = 'Добавить сопоставление';
+$_['button_fetch_odoo_vendors'] = 'Загрузить бренды из Odoo';
+$_['button_refresh_odoo_vendors'] = 'Обновить бренды из Odoo';
 
 // Error
 $_['error_permission']     = 'Warning: You do not have permission to modify Odoo product mapping!';
 $_['error_sync']           = 'Warning: Failed to synchronize with Odoo!';
 $_['error_connection']     = 'Warning: Could not connect to Odoo server!';
 $_['error_product']        = 'Warning: Product does not exist in Odoo!';
+$_['error_invalid_request'] = 'Недопустимый метод запроса.';
 
 // Date Format
 $_['date_format_short']    = 'd/m/Y';

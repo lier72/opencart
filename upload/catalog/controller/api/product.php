@@ -123,6 +123,8 @@ class ControllerApiProduct extends Controller {
 
                         $json['success'] = $this->language->get('text_success');
                         $json['language_id'] = $edit_result['language_id'];
+                        $json['brand'] = $edit_result['brand'];
+                        $json['vendor'] = $edit_result['brand'];
 
                     } catch (Exception $e) {
                         $this->log->write("API Product Edit - Error: " . $e->getMessage());
@@ -220,6 +222,145 @@ class ControllerApiProduct extends Controller {
     }
 
     /**
+     * Return a product using the field names understood by the Odoo sync.
+     *
+     * The response deliberately exposes both `brand` and `vendor`; Odoo calls
+     * the source record product.brand while OpenCart stores it as a
+     * manufacturer. Both keys describe the same mapping.
+     */
+    public function read() {
+        $this->load->language('api/product');
+        $json = array();
+
+        if (!isset($this->session->data['api_id'])) {
+            $json['error'] = $this->language->get('error_permission');
+        } else {
+            $product_id = isset($this->request->get['product_id'])
+                ? (int)$this->request->get['product_id'] : 0;
+            $product = $this->getProduct($product_id);
+
+            if (!$product) {
+                $json['error'] = $this->language->get('error_not_found');
+            } else {
+                $category_query = $this->db->query(
+                    "SELECT category_id FROM " . DB_PREFIX . "product_to_category " .
+                    "WHERE product_id = '" . $product_id . "' ORDER BY category_id"
+                );
+                $category_ids = array();
+                foreach ($category_query->rows as $category) {
+                    $category_ids[] = (int)$category['category_id'];
+                }
+
+                $vendor = $this->getProductVendorData(
+                    (int)$product['manufacturer_id']
+                );
+                $product_mapping = $this->getProductMapping(null, $product_id);
+
+                $json = array(
+                    'success' => true,
+                    'data' => array(
+                        'product_id' => $product_id,
+                        'odoo_product_id' => $product_mapping
+                            ? (int)$product_mapping['odoo_product_id'] : null,
+                        'name' => $product['name'],
+                        'default_code' => $product['model'],
+                        'barcode' => $product['ean'],
+                        'price' => (float)$product['price'],
+                        'oc_description' => $product['description'],
+                        'oc_tag' => $product['tag'],
+                        'oc_website_meta_title' => $product['meta_title'],
+                        'oc_website_meta_description' => $product['meta_description'],
+                        'oc_website_meta_keyword' => $product['meta_keyword'],
+                        'oc_seo_url' => $product['keyword'],
+                        'oc_category_ids' => $category_ids,
+                        'product_length' => (float)$product['length'],
+                        'product_width' => (float)$product['width'],
+                        'product_height' => (float)$product['height'],
+                        'weight' => (float)$product['weight'],
+                        'manufacturer_id' => (int)$product['manufacturer_id'],
+                        'brand' => $vendor,
+                        'vendor' => $vendor
+                    )
+                );
+            }
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    /**
+     * Return the OpenCart manufacturer catalogue and all Odoo vendor mappings.
+     */
+    public function vendors() {
+        $this->load->language('api/product');
+        $json = array();
+
+        if (!isset($this->session->data['api_id'])) {
+            $json['error'] = $this->language->get('error_permission');
+        } else {
+            $manufacturer_query = $this->db->query(
+                "SELECT m.manufacturer_id, m.name, m.image, m.sort_order, " .
+                "GROUP_CONCAT(DISTINCT m2s.store_id ORDER BY m2s.store_id) AS store_ids " .
+                "FROM " . DB_PREFIX . "manufacturer m " .
+                "LEFT JOIN " . DB_PREFIX . "manufacturer_to_store m2s " .
+                "ON (m2s.manufacturer_id = m.manufacturer_id) " .
+                "GROUP BY m.manufacturer_id, m.name, m.image, m.sort_order " .
+                "ORDER BY LCASE(m.name), m.manufacturer_id"
+            );
+
+            $manufacturers = array();
+            foreach ($manufacturer_query->rows as $manufacturer) {
+                $store_ids = array();
+                if ($manufacturer['store_ids'] !== null && $manufacturer['store_ids'] !== '') {
+                    foreach (explode(',', $manufacturer['store_ids']) as $store_id) {
+                        $store_ids[] = (int)$store_id;
+                    }
+                }
+
+                $manufacturers[] = array(
+                    'manufacturer_id' => (int)$manufacturer['manufacturer_id'],
+                    'name' => $manufacturer['name'],
+                    'image' => $manufacturer['image'],
+                    'sort_order' => (int)$manufacturer['sort_order'],
+                    'store_ids' => $store_ids
+                );
+            }
+
+            $mapping_query = $this->db->query(
+                "SELECT ovm.id, ovm.odoo_vendor_id, ovm.odoo_vendor_name, " .
+                "ovm.opencart_manufacturer_id, ovm.is_active, m.name AS manufacturer_name " .
+                "FROM " . DB_PREFIX . "odoo_vendor_map ovm " .
+                "LEFT JOIN " . DB_PREFIX . "manufacturer m " .
+                "ON (m.manufacturer_id = ovm.opencart_manufacturer_id) " .
+                "ORDER BY LCASE(ovm.odoo_vendor_name), ovm.odoo_vendor_id"
+            );
+
+            $mappings = array();
+            foreach ($mapping_query->rows as $mapping) {
+                $mappings[] = array(
+                    'mapping_id' => (int)$mapping['id'],
+                    'odoo_vendor_id' => (int)$mapping['odoo_vendor_id'],
+                    'odoo_brand_id' => (int)$mapping['odoo_vendor_id'],
+                    'name' => $mapping['odoo_vendor_name'],
+                    'manufacturer_id' => (int)$mapping['opencart_manufacturer_id'],
+                    'manufacturer_name' => $mapping['manufacturer_name'],
+                    'active' => (bool)$mapping['is_active']
+                );
+            }
+
+            $json = array(
+                'success' => true,
+                'manufacturers' => $manufacturers,
+                'vendor_mappings' => $mappings
+            );
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    /**
      * Validate json data for edit() method of the class
      *
      * @param $input_json
@@ -255,7 +396,7 @@ class ControllerApiProduct extends Controller {
             $this->error['barcode'] = $this->language->get('error_barcode');
         }
 
-        if (isset($data['price']) == 0) {
+        if (isset($data['price']) && (float)$data['price'] == 0.0) {
             $this->error['price'] = $this->language->get('error_zero_price');
         }
 
@@ -295,6 +436,14 @@ class ControllerApiProduct extends Controller {
             }
         }
 
+        if ($this->hasVendorData($data)) {
+            try {
+                $this->normalizeVendorData($data);
+            } catch (Exception $e) {
+                $this->error['vendor'] = $e->getMessage();
+            }
+        }
+
         return !$this->error;
     }
 
@@ -328,6 +477,10 @@ class ControllerApiProduct extends Controller {
      *      - `product_width` (float, optional): Product width in cm
      *      - `product_height` (float, optional): Product height in cm
      *      - `weight` (float, optional): Product weight in kg
+     *      - `brand` (object|null, optional): Odoo product brand/vendor.
+     *          - `odoo_brand_id` (int): Odoo product.brand ID
+     *          - `name` (string): Brand name. A matching OpenCart manufacturer
+     *            is reused or created and persisted in odoo_vendor_map.
      *      - `options` (object, optional): Product options/variants structure
      *          - `odoo_attribute_id` (int, required): Odoo attribute ID (from product.attribute table)
      *              This ID is mapped to OpenCart option_id via odoo_config table
@@ -463,7 +616,6 @@ class ControllerApiProduct extends Controller {
             if ($this->validateCreate($input_json)) {
                 try {
                     $this->default_language_id = $this->getConfiguredLanguageId();
-
                     // Check existing product by model/default_code
                     $existing_product = $this->checkExistingProduct($input_json['data']['default_code']);
 
@@ -485,6 +637,11 @@ class ControllerApiProduct extends Controller {
                             $json['success'] = $this->language->get('text_success');
                             $json['product_id'] = $product_id;
                             $json['language_id'] = $this->default_language_id;
+                            $json['brand'] = $this->getProductVendorData(
+                                isset($product_data['manufacturer_id'])
+                                    ? (int)$product_data['manufacturer_id'] : 0
+                            );
+                            $json['vendor'] = $json['brand'];
 
                             // Create variant mappings if we have Odoo product information
                             if (isset($input_json['data']['odoo_product_id'])) {
@@ -571,6 +728,305 @@ class ControllerApiProduct extends Controller {
     }
 
     /**
+     * True when a request explicitly contains vendor/brand information.
+     */
+    protected function hasVendorData($data) {
+        $vendor_keys = array(
+            'brand', 'vendor', 'odoo_brand_id', 'odoo_vendor_id',
+            'product_brand_id', 'brand_id', 'vendor_id', 'brand_name',
+            'vendor_name', 'odoo_brand_name', 'odoo_vendor_name',
+            'manufacturer_id'
+        );
+
+        foreach ($vendor_keys as $key) {
+            if (array_key_exists($key, $data)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Normalize the supported Odoo brand/vendor payload variants.
+     *
+     * Canonical payload:
+     *   "brand": {"odoo_brand_id": 12, "name": "Yonex"}
+     *
+     * `vendor`, flat odoo_vendor_* fields, and Odoo many2one [id, name]
+     * values are accepted as compatibility aliases.
+     */
+    protected function normalizeVendorData($data) {
+        $normalized = array(
+            'provided' => $this->hasVendorData($data),
+            'clear' => false,
+            'odoo_vendor_id' => 0,
+            'name' => '',
+            'manufacturer_id' => 0
+        );
+
+        if (!$normalized['provided']) {
+            return $normalized;
+        }
+
+        $nested_present = array_key_exists('brand', $data) ||
+            array_key_exists('vendor', $data);
+        $nested = array_key_exists('brand', $data)
+            ? $data['brand']
+            : (array_key_exists('vendor', $data) ? $data['vendor'] : null);
+
+        if ($nested_present && ($nested === null || $nested === false || $nested === '')) {
+            $normalized['clear'] = true;
+        } elseif ($nested_present) {
+            if (is_string($nested)) {
+                $normalized['name'] = trim($nested);
+            } elseif (!is_array($nested)) {
+                throw new Exception($this->language->get('error_vendor_format'));
+            } elseif (isset($nested[0]) && !isset($nested['name'])) {
+                $normalized['odoo_vendor_id'] = $this->normalizeVendorIdValue(
+                    $nested[0]
+                );
+                $normalized['name'] = isset($nested[1]) ? trim((string)$nested[1]) : '';
+            } else {
+                foreach (array('odoo_brand_id', 'odoo_vendor_id', 'product_brand_id', 'brand_id', 'vendor_id', 'id') as $key) {
+                    if (array_key_exists($key, $nested) && $nested[$key] !== '' && $nested[$key] !== null) {
+                        $normalized['odoo_vendor_id'] = $this->normalizeVendorIdValue(
+                            $nested[$key]
+                        );
+                        break;
+                    }
+                }
+
+                foreach (array('name', 'brand_name', 'vendor_name', 'odoo_brand_name', 'odoo_vendor_name') as $key) {
+                    if (array_key_exists($key, $nested)) {
+                        $normalized['name'] = trim((string)$nested[$key]);
+                        break;
+                    }
+                }
+
+                if (array_key_exists('manufacturer_id', $nested)) {
+                    $normalized['manufacturer_id'] = $this->normalizeVendorIdValue(
+                        $nested['manufacturer_id']
+                    );
+                }
+            }
+        }
+
+        foreach (array('odoo_brand_id', 'odoo_vendor_id', 'product_brand_id', 'brand_id', 'vendor_id') as $key) {
+            if (array_key_exists($key, $data) && $data[$key] !== '' && $data[$key] !== null) {
+                $normalized['odoo_vendor_id'] = $this->normalizeVendorIdValue(
+                    $data[$key]
+                );
+                break;
+            }
+        }
+
+        foreach (array('brand_name', 'vendor_name', 'odoo_brand_name', 'odoo_vendor_name') as $key) {
+            if (array_key_exists($key, $data)) {
+                $normalized['name'] = trim((string)$data[$key]);
+                break;
+            }
+        }
+
+        if (array_key_exists('manufacturer_id', $data)) {
+            $normalized['manufacturer_id'] = $this->normalizeVendorIdValue(
+                $data['manufacturer_id']
+            );
+            if ((string)$data['manufacturer_id'] === '' || $normalized['manufacturer_id'] === 0) {
+                $normalized['clear'] = true;
+            }
+        }
+
+        if ($normalized['odoo_vendor_id'] < 0 || $normalized['manufacturer_id'] < 0) {
+            throw new Exception($this->language->get('error_vendor_format'));
+        }
+
+        if ($normalized['name'] !== '' &&
+            (utf8_strlen($normalized['name']) < 1 || utf8_strlen($normalized['name']) > 64)) {
+            throw new Exception($this->language->get('error_vendor_name'));
+        }
+
+        if (!$normalized['clear'] && !$normalized['odoo_vendor_id'] &&
+            !$normalized['manufacturer_id'] && $normalized['name'] === '') {
+            $normalized['clear'] = true;
+        }
+
+        return $normalized;
+    }
+
+    protected function normalizeVendorIdValue($value) {
+        if ($value === null || $value === '' || $value === false) {
+            return 0;
+        }
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && ctype_digit(trim($value))) {
+            return (int)trim($value);
+        }
+
+        throw new Exception($this->language->get('error_vendor_format'));
+    }
+
+    protected function resolveVendorManufacturer($data) {
+        $vendor = $this->normalizeVendorData($data);
+
+        if (!$vendor['provided']) {
+            return null;
+        }
+
+        if ($vendor['clear']) {
+            return 0;
+        }
+
+        if ($vendor['manufacturer_id']) {
+            $manufacturer_query = $this->db->query(
+                "SELECT manufacturer_id, name FROM " . DB_PREFIX . "manufacturer " .
+                "WHERE manufacturer_id = '" . (int)$vendor['manufacturer_id'] . "' LIMIT 1"
+            );
+            if (!$manufacturer_query->num_rows) {
+                throw new Exception(sprintf(
+                    $this->language->get('error_manufacturer_not_found'),
+                    $vendor['manufacturer_id']
+                ));
+            }
+
+            if ($vendor['name'] === '') {
+                $vendor['name'] = $manufacturer_query->row['name'];
+            }
+
+            if ($vendor['odoo_vendor_id']) {
+                $this->saveAutomaticVendorMapping(
+                    $vendor['odoo_vendor_id'],
+                    $vendor['name'],
+                    $vendor['manufacturer_id']
+                );
+            }
+
+            return (int)$vendor['manufacturer_id'];
+        }
+
+        if ($vendor['odoo_vendor_id']) {
+            $mapping_query = $this->db->query(
+                "SELECT ovm.*, m.manufacturer_id FROM " . DB_PREFIX . "odoo_vendor_map ovm " .
+                "LEFT JOIN " . DB_PREFIX . "manufacturer m " .
+                "ON (m.manufacturer_id = ovm.opencart_manufacturer_id) " .
+                "WHERE ovm.odoo_vendor_id = '" . (int)$vendor['odoo_vendor_id'] . "' LIMIT 1"
+            );
+
+            if ($mapping_query->num_rows) {
+                if (!(int)$mapping_query->row['is_active']) {
+                    // A disabled manual mapping suppresses automatic brand
+                    // assignment without deleting the product's current
+                    // manufacturer during an edit.
+                    return false;
+                }
+
+                if (!empty($mapping_query->row['manufacturer_id'])) {
+                    if ($vendor['name'] !== '' &&
+                        $vendor['name'] !== $mapping_query->row['odoo_vendor_name']) {
+                        $this->db->query(
+                            "UPDATE " . DB_PREFIX . "odoo_vendor_map SET odoo_vendor_name = '" .
+                            $this->db->escape($vendor['name']) . "' WHERE id = '" .
+                            (int)$mapping_query->row['id'] . "'"
+                        );
+                    }
+                    return (int)$mapping_query->row['manufacturer_id'];
+                }
+            }
+        }
+
+        if ($vendor['name'] === '') {
+            throw new Exception($this->language->get('error_vendor_name_required'));
+        }
+
+        $manufacturer_query = $this->db->query(
+            "SELECT manufacturer_id FROM " . DB_PREFIX . "manufacturer " .
+            "WHERE LCASE(name) = LCASE('" . $this->db->escape($vendor['name']) . "') LIMIT 1"
+        );
+
+        if ($manufacturer_query->num_rows) {
+            $manufacturer_id = (int)$manufacturer_query->row['manufacturer_id'];
+        } else {
+            $this->db->query(
+                "INSERT INTO " . DB_PREFIX . "manufacturer SET name = '" .
+                $this->db->escape($vendor['name']) . "', sort_order = '0'"
+            );
+            $manufacturer_id = (int)$this->db->getLastId();
+
+            $store_ids = array(0);
+            $configured_store_id = (int)$this->config->get('config_store_id');
+            if ($configured_store_id > 0) {
+                $store_ids[] = $configured_store_id;
+            }
+            foreach (array_unique($store_ids) as $store_id) {
+                $this->db->query(
+                    "INSERT INTO " . DB_PREFIX . "manufacturer_to_store SET " .
+                    "manufacturer_id = '" . $manufacturer_id . "', store_id = '" .
+                    (int)$store_id . "'"
+                );
+            }
+            $this->cache->delete('manufacturer');
+        }
+
+        if ($vendor['odoo_vendor_id']) {
+            $this->saveAutomaticVendorMapping(
+                $vendor['odoo_vendor_id'],
+                $vendor['name'],
+                $manufacturer_id
+            );
+        }
+
+        return $manufacturer_id;
+    }
+
+    protected function saveAutomaticVendorMapping($odoo_vendor_id, $name, $manufacturer_id) {
+        $this->db->query(
+            "INSERT INTO " . DB_PREFIX . "odoo_vendor_map SET " .
+            "odoo_vendor_id = '" . (int)$odoo_vendor_id . "', " .
+            "odoo_vendor_name = '" . $this->db->escape($name) . "', " .
+            "opencart_manufacturer_id = '" . (int)$manufacturer_id . "', " .
+            "is_active = '1', created_by = 'api_product' " .
+            "ON DUPLICATE KEY UPDATE " .
+            "odoo_vendor_name = VALUES(odoo_vendor_name), " .
+            "opencart_manufacturer_id = VALUES(opencart_manufacturer_id), " .
+            "is_active = '1'"
+        );
+    }
+
+    protected function getProductVendorData($manufacturer_id) {
+        if (!$manufacturer_id) {
+            return null;
+        }
+
+        $query = $this->db->query(
+            "SELECT m.manufacturer_id, m.name, ovm.odoo_vendor_id, " .
+            "ovm.odoo_vendor_name, ovm.is_active " .
+            "FROM " . DB_PREFIX . "manufacturer m " .
+            "LEFT JOIN " . DB_PREFIX . "odoo_vendor_map ovm " .
+            "ON (ovm.opencart_manufacturer_id = m.manufacturer_id AND ovm.is_active = '1') " .
+            "WHERE m.manufacturer_id = '" . (int)$manufacturer_id . "' " .
+            "ORDER BY ovm.id LIMIT 1"
+        );
+
+        if (!$query->num_rows) {
+            return null;
+        }
+
+        return array(
+            'odoo_vendor_id' => $query->row['odoo_vendor_id'] !== null
+                ? (int)$query->row['odoo_vendor_id'] : null,
+            'odoo_brand_id' => $query->row['odoo_vendor_id'] !== null
+                ? (int)$query->row['odoo_vendor_id'] : null,
+            'name' => $query->row['name'],
+            'odoo_name' => $query->row['odoo_vendor_name'],
+            'manufacturer_id' => (int)$query->row['manufacturer_id']
+        );
+    }
+
+    /**
      * @param $input_json
      * @return bool
      */
@@ -615,6 +1071,14 @@ class ControllerApiProduct extends Controller {
                 }
             }
         }
+
+        if ($this->hasVendorData($data)) {
+            try {
+                $this->normalizeVendorData($data);
+            } catch (Exception $e) {
+                $this->error['vendor'] = $e->getMessage();
+            }
+        }
         $this->log->write('API Product Create ValidateCreate $input_json: ' . serialize($this->error), true);
 
         return !$this->error;
@@ -647,11 +1111,15 @@ class ControllerApiProduct extends Controller {
         // Length class is CM
         $product_data['length_class_id'] = 1; // Ensure this ID corresponds to centimeters
 
-        // Handle manufacturer
-        $manufacturer_id = $this->getManufacturerFromName($data['name']);
-        if ($manufacturer_id) {
-            $product_data['manufacturer_id'] = $manufacturer_id;
+        // Odoo product.brand maps to the OpenCart manufacturer. Explicit
+        // brand/vendor data wins; legacy name inference remains a fallback.
+        $manufacturer_id = $this->resolveVendorManufacturer($data);
+        if ($manufacturer_id === null) {
+            $manufacturer_id = $this->getManufacturerFromName($data['name']);
+        } elseif ($manufacturer_id === false) {
+            $manufacturer_id = 0;
         }
+        $product_data['manufacturer_id'] = (int)$manufacturer_id;
 
         // Handle SEO URL - OC3 uses product_seo_url array with [store_id][language_id] structure
         if (isset($data['oc_seo_url']) && !empty($data['oc_seo_url'])) {
@@ -820,6 +1288,14 @@ class ControllerApiProduct extends Controller {
 
             // 2. Update main product table for sync fields
             $main_update_fields = array();
+
+            if ($this->hasVendorData($data)) {
+                $manufacturer_id = $this->resolveVendorManufacturer($data);
+                if ($manufacturer_id !== null && $manufacturer_id !== false) {
+                    $main_update_fields[] = "manufacturer_id = '" .
+                        (int)$manufacturer_id . "'";
+                }
+            }
 
             if (isset($data['default_code'])) {
                 $main_update_fields[] = "model = '" . $this->db->escape($data['default_code']) . "'";
@@ -1062,7 +1538,13 @@ class ControllerApiProduct extends Controller {
                 'success' => true,
                 'message' => 'Product updated successfully',
                 'product_id' => $product_id,
-                'language_id' => $language_id
+                'language_id' => $language_id,
+                'brand' => $this->getProductVendorData(
+                    isset($manufacturer_id)
+                        ? (int)$manufacturer_id
+                        : (isset($existing_product['manufacturer_id'])
+                            ? (int)$existing_product['manufacturer_id'] : 0)
+                )
             );
 
         } catch (Exception $e) {

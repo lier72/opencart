@@ -16,6 +16,7 @@ class ModelExtensionModuleOdooProductMapping extends Model {
         2 => 'pending',
         3 => 'error'
     ];
+    const VENDOR_CACHE_KEY = 'odoo_product_brands';
 
     // Constructor to initialize the debug variable
     public function __construct($registry) {
@@ -23,7 +24,263 @@ class ModelExtensionModuleOdooProductMapping extends Model {
 
         $this->load->model('extension/module/odoo_connector');
         $config = $this->model_extension_module_odoo_connector->getConfig();
-        $this->debug = $config['debug'];
+        $this->debug = !empty($config['debug']);
+    }
+
+    public function getVendorMappings() {
+        $query = $this->db->query(
+            "SELECT ovm.*, m.name AS manufacturer_name " .
+            "FROM " . DB_PREFIX . "odoo_vendor_map ovm " .
+            "LEFT JOIN " . DB_PREFIX . "manufacturer m " .
+            "ON (m.manufacturer_id = ovm.opencart_manufacturer_id) " .
+            "ORDER BY LCASE(ovm.odoo_vendor_name), ovm.odoo_vendor_id"
+        );
+
+        return $query->rows;
+    }
+
+    public function getManufacturers() {
+        $query = $this->db->query(
+            "SELECT manufacturer_id, name FROM " . DB_PREFIX . "manufacturer " .
+            "ORDER BY LCASE(name), manufacturer_id"
+        );
+
+        return $query->rows;
+    }
+
+    public function getCachedOdooVendors() {
+        $vendors = $this->cache->get(self::VENDOR_CACHE_KEY);
+
+        if (!is_array($vendors)) {
+            return array();
+        }
+
+        return $this->prepareOdooVendors($vendors);
+    }
+
+    /**
+     * Product brands for the vendor-mapping UI, refreshed from Odoo on every
+     * view load (mirrors OdooPriceSync::getAvailableOdooPricelists()). A
+     * successful fetch replaces and re-caches the list; if Odoo is unreachable
+     * the last cached list is returned instead so the screen still works.
+     *
+     * @return array prepared vendor rows (see prepareOdooVendors())
+     */
+    public function getAvailableOdooVendors() {
+        try {
+            $vendors = $this->fetchOdooVendorsFromApi();
+
+            if (!empty($vendors)) {
+                $this->cache->set(self::VENDOR_CACHE_KEY, $vendors);
+            }
+
+            if ($this->debug) {
+                $this->log->write('odoo_product_mapping: refreshed ' . count($vendors) . ' Odoo product brands');
+            }
+
+            return $this->prepareOdooVendors($vendors);
+        } catch (Exception $e) {
+            $this->log->write('odoo_product_mapping getAvailableOdooVendors: ' . $e->getMessage() . ' - falling back to cached list');
+
+            return $this->getCachedOdooVendors();
+        }
+    }
+
+    /**
+     * Fetch product brands directly from Odoo for the vendor mapping UI
+     * (the manual "Refresh" button).
+     *
+     * @return array
+     */
+    public function fetchOdooVendors() {
+        $json = array('success' => false, 'data' => array());
+
+        try {
+            $vendors = $this->fetchOdooVendorsFromApi();
+
+            $this->cache->set(self::VENDOR_CACHE_KEY, $vendors);
+            $json['data'] = $this->prepareOdooVendors($vendors);
+            $json['success'] = true;
+        } catch (Exception $e) {
+            $json['error'] = 'Error fetching Odoo product brands: ' . $e->getMessage();
+            $this->log->write('Error odoo_product_mapping fetchOdooVendors: ' . $e->getMessage());
+        }
+
+        return $json;
+    }
+
+    /**
+     * Raw product.brand search_read from Odoo, normalised to
+     * array( array('id' => int, 'name' => string), ... ).
+     *
+     * @return array
+     * @throws Exception on connection or API failure
+     */
+    private function fetchOdooVendorsFromApi() {
+        $connection = $this->model_extension_module_odoo_connector->getConnection();
+
+        if (!$connection || empty($connection['status'])) {
+            throw new Exception('Odoo connection not established');
+        }
+
+        $vendors = $connection['client']->execute_kw(
+            $connection['db'],
+            $connection['userId'],
+            $connection['pwd'],
+            'product.brand',
+            'search_read',
+            array(array()),
+            array(
+                'fields' => array('id', 'name'),
+                'order' => 'name asc, id asc'
+            )
+        );
+
+        if (is_array($vendors) && isset($vendors['faultCode'])) {
+            throw new Exception(
+                isset($vendors['faultString'])
+                    ? $vendors['faultString']
+                    : 'Odoo returned an error while fetching product brands'
+            );
+        }
+
+        if (!is_array($vendors)) {
+            throw new Exception('Odoo returned an invalid product brand response');
+        }
+
+        $normalised = array();
+        foreach ($vendors as $vendor) {
+            $vendor_id = isset($vendor['id']) ? (int)$vendor['id'] : 0;
+            $vendor_name = isset($vendor['name']) ? trim((string)$vendor['name']) : '';
+
+            if ($vendor_id <= 0 || $vendor_name === '') {
+                continue;
+            }
+
+            $normalised[] = array(
+                'id' => $vendor_id,
+                'name' => $vendor_name
+            );
+        }
+
+        return $normalised;
+    }
+
+    private function prepareOdooVendors($vendors) {
+        $mapped_vendor_ids = array();
+        $mapping_query = $this->db->query(
+            "SELECT odoo_vendor_id FROM " . DB_PREFIX . "odoo_vendor_map"
+        );
+        foreach ($mapping_query->rows as $mapping) {
+            $mapped_vendor_ids[(int)$mapping['odoo_vendor_id']] = true;
+        }
+
+        $manufacturers_by_name = array();
+        foreach ($this->getManufacturers() as $manufacturer) {
+            $normalized_name = utf8_strtolower(trim($manufacturer['name']));
+            if ($normalized_name !== '' && !isset($manufacturers_by_name[$normalized_name])) {
+                $manufacturers_by_name[$normalized_name] = (int)$manufacturer['manufacturer_id'];
+            }
+        }
+
+        $prepared_vendors = array();
+        foreach ($vendors as $vendor) {
+            $vendor_id = isset($vendor['id']) ? (int)$vendor['id'] : 0;
+            $vendor_name = isset($vendor['name']) ? trim((string)$vendor['name']) : '';
+
+            if ($vendor_id <= 0 || $vendor_name === '') {
+                continue;
+            }
+
+            $normalized_name = utf8_strtolower($vendor_name);
+            $prepared_vendors[] = array(
+                'id' => $vendor_id,
+                'name' => $vendor_name,
+                'mapped' => isset($mapped_vendor_ids[$vendor_id]),
+                'suggested_manufacturer_id' => isset($manufacturers_by_name[$normalized_name])
+                    ? $manufacturers_by_name[$normalized_name]
+                    : 0
+            );
+        }
+
+        return $prepared_vendors;
+    }
+
+    public function saveVendorMapping($data) {
+        $mapping_id = isset($data['id']) ? (int)$data['id'] : 0;
+        $odoo_vendor_id = isset($data['odoo_vendor_id'])
+            ? (int)$data['odoo_vendor_id'] : 0;
+        $odoo_vendor_name = isset($data['odoo_vendor_name'])
+            ? trim((string)$data['odoo_vendor_name']) : '';
+        $manufacturer_id = isset($data['opencart_manufacturer_id'])
+            ? (int)$data['opencart_manufacturer_id'] : 0;
+        $is_active = !empty($data['is_active']) ? 1 : 0;
+
+        if ($odoo_vendor_id <= 0) {
+            return array('success' => false, 'error' => 'Odoo vendor/brand ID is required');
+        }
+        if (utf8_strlen($odoo_vendor_name) < 1 || utf8_strlen($odoo_vendor_name) > 64) {
+            return array('success' => false, 'error' => 'Odoo vendor/brand name must contain between 1 and 64 characters');
+        }
+
+        $manufacturer = $this->db->query(
+            "SELECT manufacturer_id FROM " . DB_PREFIX . "manufacturer " .
+            "WHERE manufacturer_id = '" . $manufacturer_id . "' LIMIT 1"
+        );
+        if (!$manufacturer->num_rows) {
+            return array('success' => false, 'error' => 'Select an OpenCart manufacturer');
+        }
+
+        $duplicate = $this->db->query(
+            "SELECT id FROM " . DB_PREFIX . "odoo_vendor_map " .
+            "WHERE odoo_vendor_id = '" . $odoo_vendor_id . "' " .
+            "AND id != '" . $mapping_id . "' LIMIT 1"
+        );
+        if ($duplicate->num_rows) {
+            return array('success' => false, 'error' => 'This Odoo vendor/brand ID is already mapped');
+        }
+
+        if ($mapping_id) {
+            $existing = $this->db->query(
+                "SELECT id FROM " . DB_PREFIX . "odoo_vendor_map " .
+                "WHERE id = '" . $mapping_id . "' LIMIT 1"
+            );
+            if (!$existing->num_rows) {
+                return array('success' => false, 'error' => 'Vendor mapping was not found');
+            }
+
+            $this->db->query(
+                "UPDATE " . DB_PREFIX . "odoo_vendor_map SET " .
+                "odoo_vendor_id = '" . $odoo_vendor_id . "', " .
+                "odoo_vendor_name = '" . $this->db->escape($odoo_vendor_name) . "', " .
+                "opencart_manufacturer_id = '" . $manufacturer_id . "', " .
+                "is_active = '" . $is_active . "' WHERE id = '" . $mapping_id . "'"
+            );
+        } else {
+            $this->db->query(
+                "INSERT INTO " . DB_PREFIX . "odoo_vendor_map SET " .
+                "odoo_vendor_id = '" . $odoo_vendor_id . "', " .
+                "odoo_vendor_name = '" . $this->db->escape($odoo_vendor_name) . "', " .
+                "opencart_manufacturer_id = '" . $manufacturer_id . "', " .
+                "is_active = '" . $is_active . "', created_by = 'admin_ui'"
+            );
+            $mapping_id = (int)$this->db->getLastId();
+        }
+
+        return array('success' => true, 'id' => $mapping_id);
+    }
+
+    public function deleteVendorMapping($mapping_id) {
+        if ((int)$mapping_id <= 0) {
+            return array('success' => false, 'error' => 'Vendor mapping ID is required');
+        }
+
+        $this->db->query(
+            "DELETE FROM " . DB_PREFIX . "odoo_vendor_map WHERE id = '" .
+            (int)$mapping_id . "'"
+        );
+
+        return array('success' => true);
     }
 
     // Helper method to convert numeric status to text

@@ -15,3 +15,7 @@ $_['error_seo_url_length'] = 'SEO Url exceeds allowed length';
 $_['error_seo_url_exists'] = 'Such SEO Url already exists';
 $_['error_category_format'] = 'Categories must be an array of IDs or comma-separated IDs';
 $_['error_category_not_found'] = 'OpenCart category ID %s does not exist';
+$_['error_vendor_format'] = 'Brand/vendor must be a name, an object, an Odoo many2one value, or null';
+$_['error_vendor_name'] = 'Brand/vendor name must contain between 1 and 64 characters';
+$_['error_vendor_name_required'] = 'Brand/vendor name is required when no mapping exists';
+$_['error_manufacturer_not_found'] = 'OpenCart manufacturer ID %s does not exist';

@@ -32,6 +32,16 @@ $_['text_direction_from_odoo'] = 'From Odoo';
 $_['text_status_success'] = 'Success';
 $_['text_status_error'] = 'Error';
 $_['text_status_warning'] = 'Warning';
+$_['tab_products'] = 'Product Mapping';
+$_['tab_vendors'] = 'Vendor / Brand Mapping';
+$_['text_vendor_mapping_help'] = 'Fetch product brands from Odoo once, then map each brand to an OpenCart manufacturer. The downloaded list is cached by OpenCart and the button refreshes it from Odoo.';
+$_['text_no_vendor_mappings'] = 'No vendor mappings found.';
+$_['text_fetch_odoo_vendors_first'] = 'Fetch brands from Odoo to select a brand';
+$_['text_select_odoo_vendor'] = 'Select an Odoo brand';
+$_['text_fetching_odoo_vendors'] = 'Loading brands from Odoo...';
+$_['text_odoo_vendors_loaded'] = 'Odoo brands available: ';
+$_['text_no_unmapped_odoo_vendors'] = 'All Odoo brands are already mapped.';
+$_['text_no_odoo_vendors'] = 'No product brands were found in Odoo.';
 
 
 // Column
@@ -47,6 +57,10 @@ $_['column_action']        = 'Action';
 $_['column_date']          = 'Date';
 $_['column_direction']     = 'Direction';
 $_['column_message']       = 'Sync Message';
+$_['column_odoo_vendor_id'] = 'Odoo Brand ID';
+$_['column_odoo_vendor_name'] = 'Odoo Brand / Vendor';
+$_['column_manufacturer'] = 'OpenCart Manufacturer';
+$_['column_active'] = 'Active';
 
 // Entry
 $_['entry_product_id']        = 'Product ID';
@@ -62,12 +76,18 @@ $_['button_mass_sync']     = 'Sync Selected';
 $_['button_history']       = 'Sync history';
 $_['button_back']          =  'Back';
 $_['button_stock']         = "Update Stock";
+$_['button_save']           = 'Save';
+$_['button_delete']         = 'Delete';
+$_['button_add_mapping']    = 'Add Mapping';
+$_['button_fetch_odoo_vendors'] = 'Fetch Brands from Odoo';
+$_['button_refresh_odoo_vendors'] = 'Refresh Brands from Odoo';
 
 // Error
 $_['error_permission']     = 'Warning: You do not have permission to modify Odoo product mapping!';
 $_['error_sync']           = 'Warning: Failed to synchronize with Odoo!';
 $_['error_connection']     = 'Warning: Could not connect to Odoo server!';
 $_['error_product']        = 'Warning: Product does not exist in Odoo!';
+$_['error_invalid_request'] = 'Invalid request method.';
 
 // Date Format
 $_['date_format_short']    = 'd/m/Y';

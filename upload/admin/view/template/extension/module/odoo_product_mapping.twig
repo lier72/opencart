@@ -2,7 +2,7 @@
 <div id="content">
     <div class="page-header">
         <div class="container-fluid">
-            <div class="pull-right">
+            <div class="pull-right product-mapping-action">
                 <button type="button" id="button-stock" class="btn btn-primary"><i class="fa fa-exchange"></i> {{ button_stock }}</button>
                 <button type="button" id="button-mass-sync" data-loading-text="{{ text_sync_progress }}" class="btn btn-primary" disabled="disabled">
                     <i class="fa fa-refresh"></i> {{ button_mass_sync }}
@@ -45,6 +45,20 @@
             <button type="button" class="close" data-dismiss="alert">&times;</button>
         </div>
         {% endif %}
+        <ul class="nav nav-tabs" role="tablist">
+            <li role="presentation" class="active">
+                <a href="#tab-products" aria-controls="tab-products" role="tab" data-toggle="tab">
+                    <i class="fa fa-cubes"></i> {{ tab_products }}
+                </a>
+            </li>
+            <li role="presentation">
+                <a href="#tab-vendors" aria-controls="tab-vendors" role="tab" data-toggle="tab">
+                    <i class="fa fa-tags"></i> {{ tab_vendors }}
+                </a>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <div role="tabpanel" class="tab-pane active" id="tab-products">
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h3 class="panel-title"><i class="fa fa-list"></i> {{ text_list }}</h3>
@@ -171,9 +185,282 @@
                 </div>
             </div>
         </div>
+            </div>
+            <div role="tabpanel" class="tab-pane" id="tab-vendors">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="fa fa-tags"></i> {{ tab_vendors }}</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"></i> {{ text_vendor_mapping_help }}
+                        </div>
+                        <div class="clearfix" style="margin-bottom: 15px;">
+                            <button type="button" id="button-fetch-odoo-vendors" class="btn btn-info pull-left">
+                                <i class="fa fa-cloud-download"></i> {% if odoo_vendor_cache_total %}{{ button_refresh_odoo_vendors }}{% else %}{{ button_fetch_odoo_vendors }}{% endif %}
+                            </button>
+                            <span id="odoo-vendor-fetch-status" class="pull-left {% if odoo_vendors %}text-success{% else %}text-muted{% endif %}" style="margin: 8px 0 0 12px;">
+                                {% if odoo_vendors %}{{ text_odoo_vendors_loaded }}{{ odoo_vendors|length }}{% elseif odoo_vendor_cache_total %}{{ text_no_unmapped_odoo_vendors }}{% endif %}
+                            </span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="vendor-mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th>{{ column_odoo_vendor_id }}</th>
+                                        <th>{{ column_odoo_vendor_name }}</th>
+                                        <th>{{ column_manufacturer }}</th>
+                                        <th class="text-center">{{ column_active }}</th>
+                                        <th class="text-right">{{ column_action }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mapping in vendor_mappings %}
+                                    <tr data-id="{{ mapping.id }}">
+                                        <td style="width: 140px;">
+                                            <input type="hidden" class="odoo-vendor-id" value="{{ mapping.odoo_vendor_id }}" />
+                                            <span class="odoo-vendor-id-label">{{ mapping.odoo_vendor_id }}</span>
+                                        </td>
+                                        <td>
+                                            <input type="hidden" class="odoo-vendor-name" value="{{ mapping.odoo_vendor_name }}" />
+                                            <strong class="odoo-vendor-name-label">{{ mapping.odoo_vendor_name }}</strong>
+                                        </td>
+                                        <td>
+                                            <select class="form-control input-sm manufacturer-id">
+                                                <option value="0"></option>
+                                                {% for manufacturer in manufacturers %}
+                                                <option value="{{ manufacturer.manufacturer_id }}"{% if manufacturer.manufacturer_id == mapping.opencart_manufacturer_id %} selected="selected"{% endif %}>{{ manufacturer.name }} (ID: {{ manufacturer.manufacturer_id }})</option>
+                                                {% endfor %}
+                                            </select>
+                                            {% if not mapping.manufacturer_name %}
+                                            <small class="text-danger">OpenCart manufacturer ID {{ mapping.opencart_manufacturer_id }} is missing</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center" style="width: 80px;">
+                                            <input type="checkbox" class="vendor-active"{% if mapping.is_active %} checked="checked"{% endif %} />
+                                        </td>
+                                        <td class="text-right" style="width: 110px; white-space: nowrap;">
+                                            <button type="button" class="btn btn-primary btn-sm save-vendor-mapping" data-toggle="tooltip" title="{{ button_save }}"><i class="fa fa-save"></i></button>
+                                            <button type="button" class="btn btn-danger btn-sm delete-vendor-mapping" data-toggle="tooltip" title="{{ button_delete }}"><i class="fa fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr class="no-vendor-mappings">
+                                        <td colspan="5" class="text-center text-muted">{{ text_no_vendor_mappings }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    <tr id="new-vendor-mapping" data-id="">
+                                        <td>
+                                            <input type="hidden" class="odoo-vendor-id" value="" />
+                                            <span class="odoo-vendor-id-label text-muted">&mdash;</span>
+                                        </td>
+                                        <td>
+                                            <select class="form-control input-sm odoo-vendor-select">
+                                                <option value="">{% if odoo_vendor_cache_total %}{{ text_select_odoo_vendor }}{% else %}{{ text_fetch_odoo_vendors_first }}{% endif %}</option>
+                                                {% for vendor in odoo_vendors %}
+                                                <option value="{{ vendor.id }}" data-vendor-name="{{ vendor.name|escape }}" data-manufacturer-id="{{ vendor.suggested_manufacturer_id }}">{{ vendor.name|escape }} (ID: {{ vendor.id }})</option>
+                                                {% endfor %}
+                                            </select>
+                                            <input type="hidden" class="odoo-vendor-name" value="" />
+                                        </td>
+                                        <td>
+                                            <select class="form-control input-sm manufacturer-id">
+                                                <option value="0"></option>
+                                                {% for manufacturer in manufacturers %}
+                                                <option value="{{ manufacturer.manufacturer_id }}">{{ manufacturer.name }} (ID: {{ manufacturer.manufacturer_id }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td class="text-center"><input type="checkbox" class="vendor-active" checked="checked" /></td>
+                                        <td class="text-right">
+                                            <button type="button" class="btn btn-success btn-sm save-vendor-mapping"><i class="fa fa-plus"></i> {{ button_add_mapping }}</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <script type="text/javascript"><!--
+    function activateMappingTab(hash) {
+        var target = hash || '#tab-products';
+        var tab = $('a[data-toggle="tab"][href="' + target + '"]');
+        if (tab.length) {
+            tab.tab('show');
+        }
+        $('.product-mapping-action').toggle(target !== '#tab-vendors');
+    }
+
+    activateMappingTab(window.location.hash);
+
+    $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+        var target = $(e.target).attr('href');
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, document.title, target);
+        }
+        $('.product-mapping-action').toggle(target !== '#tab-vendors');
+    });
+
+    function vendorMappingPayload(row) {
+        return {
+            id: row.data('id') || 0,
+            odoo_vendor_id: row.find('.odoo-vendor-id').val(),
+            odoo_vendor_name: row.find('.odoo-vendor-name').val(),
+            opencart_manufacturer_id: row.find('.manufacturer-id').val(),
+            is_active: row.find('.vendor-active').is(':checked') ? 1 : 0
+        };
+    }
+
+    $('#button-fetch-odoo-vendors').on('click', function() {
+        var button = $(this);
+        var status = $('#odoo-vendor-fetch-status');
+        var select = $('#new-vendor-mapping .odoo-vendor-select');
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_product_mapping/fetchOdooVendors&user_token={{ user_token }}',
+            type: 'GET',
+            dataType: 'json',
+            beforeSend: function() {
+                button.prop('disabled', true);
+                status.removeClass('text-danger text-success').addClass('text-muted').text('{{ text_fetching_odoo_vendors }}');
+            },
+            complete: function() {
+                button.prop('disabled', false);
+            },
+            success: function(json) {
+                if (!json.success) {
+                    status.removeClass('text-muted text-success').addClass('text-danger').text(json.error || 'Unable to fetch Odoo brands');
+                    return;
+                }
+                button.contents().filter(function() {
+                    return this.nodeType === 3;
+                }).remove();
+                button.append(' {{ button_refresh_odoo_vendors }}');
+
+                select.empty().append($('<option>', {
+                    value: '',
+                    text: '{{ text_select_odoo_vendor }}'
+                }));
+                $('#new-vendor-mapping .odoo-vendor-id, #new-vendor-mapping .odoo-vendor-name').val('');
+                $('#new-vendor-mapping .odoo-vendor-id-label').text('\u2014');
+                $('#new-vendor-mapping .manufacturer-id').val(0);
+
+                var available = 0;
+                $.each(json.data || [], function(index, vendor) {
+                    var mappedRow = $('#vendor-mapping-table tbody tr[data-id]').filter(function() {
+                        return String($(this).find('.odoo-vendor-id').val()) === String(vendor.id);
+                    });
+
+                    if (mappedRow.length) {
+                        mappedRow.find('.odoo-vendor-name').val(vendor.name);
+                        mappedRow.find('.odoo-vendor-name-label').text(vendor.name);
+                    }
+
+                    if (vendor.mapped) {
+                        return;
+                    }
+
+                    $('<option>')
+                        .val(vendor.id)
+                        .text(vendor.name + ' (ID: ' + vendor.id + ')')
+                        .attr('data-vendor-name', vendor.name)
+                        .attr('data-manufacturer-id', vendor.suggested_manufacturer_id || 0)
+                        .appendTo(select);
+                    available++;
+                });
+
+                if (!json.data || !json.data.length) {
+                    status.removeClass('text-danger text-success').addClass('text-muted').text('{{ text_no_odoo_vendors }}');
+                } else if (available) {
+                    status.removeClass('text-muted text-danger').addClass('text-success').text('{{ text_odoo_vendors_loaded }}' + available);
+                } else {
+                    status.removeClass('text-danger text-success').addClass('text-muted').text('{{ text_no_unmapped_odoo_vendors }}');
+                }
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                status.removeClass('text-muted text-success').addClass('text-danger').text(thrownError + ': ' + xhr.statusText);
+            }
+        });
+    });
+
+    $(document).on('change', '.odoo-vendor-select', function() {
+        var select = $(this);
+        var row = select.closest('tr');
+        var option = select.find('option:selected');
+        var vendorId = option.val();
+        var vendorName = vendorId ? option.attr('data-vendor-name') : '';
+        var manufacturerId = vendorId ? parseInt(option.attr('data-manufacturer-id'), 10) || 0 : 0;
+
+        row.find('.odoo-vendor-id').val(vendorId);
+        row.find('.odoo-vendor-id-label').text(vendorId || '\u2014');
+        row.find('.odoo-vendor-name').val(vendorName);
+        row.find('.manufacturer-id').val(manufacturerId);
+    });
+
+    $(document).on('click', '.save-vendor-mapping', function() {
+        var button = $(this);
+        var row = button.closest('tr');
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_product_mapping/saveVendorMapping&user_token={{ user_token }}',
+            type: 'POST',
+            dataType: 'json',
+            data: vendorMappingPayload(row),
+            beforeSend: function() {
+                button.prop('disabled', true);
+            },
+            complete: function() {
+                button.prop('disabled', false);
+            },
+            success: function(json) {
+                if (!json.success) {
+                    alert(json.error || 'Unable to save vendor mapping');
+                    return;
+                }
+                window.location.href = 'index.php?route=extension/module/odoo_product_mapping&user_token={{ user_token }}#tab-vendors';
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+            }
+        });
+    });
+
+    $(document).on('click', '.delete-vendor-mapping', function() {
+        var button = $(this);
+        var row = button.closest('tr');
+
+        if (!confirm('{{ text_confirm }}')) {
+            return;
+        }
+
+        $.ajax({
+            url: 'index.php?route=extension/module/odoo_product_mapping/deleteVendorMapping&user_token={{ user_token }}',
+            type: 'POST',
+            dataType: 'json',
+            data: { id: row.data('id') },
+            beforeSend: function() {
+                button.prop('disabled', true);
+            },
+            complete: function() {
+                button.prop('disabled', false);
+            },
+            success: function(json) {
+                if (!json.success) {
+                    alert(json.error || 'Unable to delete vendor mapping');
+                    return;
+                }
+                window.location.href = 'index.php?route=extension/module/odoo_product_mapping&user_token={{ user_token }}#tab-vendors';
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+            }
+        });
+    });
+
     $('#button-filter').on('click', function() {
         var url = 'index.php?route=extension/module/odoo_product_mapping&user_token={{ user_token }}';
 
@@ -221,12 +508,13 @@
             success: function(json) {
                 if (json['error']) {
                     alert(json['error']);
+                    return;
                 }
 
                 if (json['success']) {
                     alert(json['success']);
+                    window.location.href = 'index.php?route=extension/module/odoo_product_mapping&user_token={{ user_token }}#tab-products';
                 }
-                location.reload();
             },
             error: function(xhr, ajaxOptions, thrownError) {
                 alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
@@ -320,7 +608,7 @@
                             setTimeout(function() {
                                 modal.modal('hide');
                                 if (json.success) {
-                                    location.reload();
+                                    window.location.href = 'index.php?route=extension/module/odoo_product_mapping&user_token={{ user_token }}#tab-products';
                                 }
                             }, 2000);
                         }

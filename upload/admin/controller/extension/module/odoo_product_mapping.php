@@ -104,9 +104,20 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
         $url .= '&order=' . $filter_data['order'];
 
 //
-       $data['products'] = array();
+        $data['products'] = array();
 
-
+        $data['vendor_mappings'] = $this->model_extension_module_odoo_product_mapping->getVendorMappings();
+        $data['manufacturers'] = $this->model_extension_module_odoo_product_mapping->getManufacturers();
+        // Refresh brands from Odoo on view load (falls back to the cached list
+        // if Odoo is unreachable) - same pattern as odoo_price_mapping.
+        $available_odoo_vendors = $this->model_extension_module_odoo_product_mapping->getAvailableOdooVendors();
+        $data['odoo_vendor_cache_total'] = count($available_odoo_vendors);
+        $data['odoo_vendors'] = array();
+        foreach ($available_odoo_vendors as $vendor) {
+            if (empty($vendor['mapped'])) {
+                $data['odoo_vendors'][] = $vendor;
+            }
+        }
         $product_total = $this->model_extension_module_odoo_product_mapping->getTotalMappedProducts($filter_data);
         $results = $this->model_extension_module_odoo_product_mapping->getMappedProducts($filter_data);
 
@@ -151,6 +162,16 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
         $data['results'] = sprintf($this->language->get('text_pagination'), ($product_total) ? (($filter_data['page'] - 1) * $this->config->get('config_limit_admin')) + 1 : 0, ((($filter_data['page'] - 1) * $this->config->get('config_limit_admin')) > ($product_total - $this->config->get('config_limit_admin'))) ? $product_total : ((($filter_data['page'] - 1) * $this->config->get('config_limit_admin')) + $this->config->get('config_limit_admin')), $product_total, ceil($product_total / $this->config->get('config_limit_admin')));
 
         $data['text_list'] = $this->language->get('text_list');
+        $data['tab_products'] = $this->language->get('tab_products');
+        $data['tab_vendors'] = $this->language->get('tab_vendors');
+        $data['text_vendor_mapping_help'] = $this->language->get('text_vendor_mapping_help');
+        $data['text_no_vendor_mappings'] = $this->language->get('text_no_vendor_mappings');
+        $data['text_fetch_odoo_vendors_first'] = $this->language->get('text_fetch_odoo_vendors_first');
+        $data['text_select_odoo_vendor'] = $this->language->get('text_select_odoo_vendor');
+        $data['text_fetching_odoo_vendors'] = $this->language->get('text_fetching_odoo_vendors');
+        $data['text_odoo_vendors_loaded'] = $this->language->get('text_odoo_vendors_loaded');
+        $data['text_no_unmapped_odoo_vendors'] = $this->language->get('text_no_unmapped_odoo_vendors');
+        $data['text_no_odoo_vendors'] = $this->language->get('text_no_odoo_vendors');
         $data['text_no_results'] = $this->language->get('text_no_results');
         $data['text_confirm'] = $this->language->get('text_confirm');
         $data['text_sync_progress'] = $this->language->get('text_sync_progress');
@@ -164,6 +185,10 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
         $data['column_sync_status'] = $this->language->get('column_sync_status');
         $data['column_last_sync'] = $this->language->get('column_last_sync');
         $data['column_action'] = $this->language->get('column_action');
+        $data['column_odoo_vendor_id'] = $this->language->get('column_odoo_vendor_id');
+        $data['column_odoo_vendor_name'] = $this->language->get('column_odoo_vendor_name');
+        $data['column_manufacturer'] = $this->language->get('column_manufacturer');
+        $data['column_active'] = $this->language->get('column_active');
 
         $data['entry_product_id'] = $this->language->get('entry_product_id');
         $data['entry_product'] = $this->language->get('entry_product');
@@ -172,6 +197,11 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
         $data['entry_sync_status'] = $this->language->get('entry_sync_status');
 
         $data['button_stock'] = $this->language->get('button_stock');
+        $data['button_save'] = $this->language->get('button_save');
+        $data['button_delete'] = $this->language->get('button_delete');
+        $data['button_add_mapping'] = $this->language->get('button_add_mapping');
+        $data['button_fetch_odoo_vendors'] = $this->language->get('button_fetch_odoo_vendors');
+        $data['button_refresh_odoo_vendors'] = $this->language->get('button_refresh_odoo_vendors');
         $data['button_filter'] = $this->language->get('button_filter');
         $data['button_mass_sync'] = $this->language->get('button_mass_sync');
         $data['button_sync'] = $this->language->get('button_sync');
@@ -202,6 +232,7 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
         $required_connector_tables = array(
             'odoo_config',
             'odoo_product_variant_map',
+            'odoo_vendor_map',
             'odoo_order_total_map'
         );
 
@@ -230,14 +261,73 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
         return true;
     }
 
+    private function sendJsonResponse($json) {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json, JSON_UNESCAPED_UNICODE));
+    }
+
+    public function saveVendorMapping() {
+        ob_start();
+        $this->load->language('extension/module/odoo_product_mapping');
+        $this->load->model('extension/module/odoo_product_mapping');
+
+        if (!$this->user->hasPermission('modify', 'extension/module/odoo_product_mapping')) {
+            $json = array('success' => false, 'error' => $this->language->get('error_permission'));
+        } elseif ($this->request->server['REQUEST_METHOD'] !== 'POST') {
+            $json = array('success' => false, 'error' => $this->language->get('error_invalid_request'));
+        } else {
+            $json = $this->model_extension_module_odoo_product_mapping->saveVendorMapping(
+                $this->request->post
+            );
+        }
+
+        $this->sendJsonResponse($json);
+    }
+
+    public function deleteVendorMapping() {
+        ob_start();
+        $this->load->language('extension/module/odoo_product_mapping');
+        $this->load->model('extension/module/odoo_product_mapping');
+
+        if (!$this->user->hasPermission('modify', 'extension/module/odoo_product_mapping')) {
+            $json = array('success' => false, 'error' => $this->language->get('error_permission'));
+        } elseif ($this->request->server['REQUEST_METHOD'] !== 'POST') {
+            $json = array('success' => false, 'error' => $this->language->get('error_invalid_request'));
+        } else {
+            $mapping_id = isset($this->request->post['id'])
+                ? (int)$this->request->post['id'] : 0;
+            $json = $this->model_extension_module_odoo_product_mapping->deleteVendorMapping(
+                $mapping_id
+            );
+        }
+
+        $this->sendJsonResponse($json);
+    }
+
+    public function fetchOdooVendors() {
+        ob_start();
+        $this->load->language('extension/module/odoo_product_mapping');
+
+        if (!$this->user->hasPermission('access', 'extension/module/odoo_product_mapping')) {
+            $json = array('success' => false, 'error' => $this->language->get('error_permission'));
+        } else {
+            $this->load->model('extension/module/odoo_product_mapping');
+            $json = $this->model_extension_module_odoo_product_mapping->fetchOdooVendors();
+        }
+
+        $this->sendJsonResponse($json);
+    }
+
     public function sync()
     {
+        ob_start();
         $this->load->language('extension/module/odoo_product_mapping');
         $json = array();
 //        $this->log->write('Controller sync called with product_id: '. $this->request->get['product_id']);
-
-        // Check for explicit AJAX flag
-        $is_ajax_request = isset($this->request->post['ajax']) && $this->request->post['ajax'] === '1';
 //        $this->log->write('Controller sync called with product_id: '. $this->request->get['product_id']);
 
         if (!$this->user->hasPermission('modify', 'extension/module/odoo_product_mapping')) {
@@ -247,20 +337,11 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
                 $this->load->model('extension/module/odoo_product_mapping');
 
                 try {
-                    // Start output buffering to catch any stray output
-                    ob_start();
-
                     $result = $this->model_extension_module_odoo_product_mapping->syncProductToOdoo($this->request->get['product_id']);
-
-                    // Clear any debug output
-                    ob_clean();
 
                     $this->log->write("Info odoo_product_mapping syncProductToOdoo: " . $this->request->get['product_id'] . " \n" . serialize($result));
                     $json['success'] = $this->language->get('text_sync_success');
                 } catch (Exception $e) {
-                    // Clear any output before error handling
-                    ob_clean();
-
                     // Log error and return user-friendly message
                     $this->log->write('Error syncing product ' . $this->request->get['product_id'] . ': ' . $e->getMessage());
                     $json['error'] = $this->language->get('error_sync_failed');
@@ -270,24 +351,8 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
                 }
             }
         }
-        // Handle response based on request type
-        if ($is_ajax_request) {
-            // For AJAX requests, send direct output
-            while (ob_get_level()) {
-                ob_end_clean();
-            }
-            header('Content-Type: application/json');
-            echo json_encode($json);
-            exit();
-        } else {
-            // For regular requests, use OpenCart's response class
-            while (ob_get_level()) {
-                ob_end_clean();
-            }
 
-            $this->response->addHeader('Content-Type: application/json');
-            $this->response->setOutput(json_encode($json));
-        }
+        $this->sendJsonResponse($json);
     }
 
     private function getFilterData() {
@@ -363,6 +428,7 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
     }
 
     public function massSync() {
+        ob_start();
         $this->load->language('extension/module/odoo_product_mapping');
 
         $json = array();
@@ -380,24 +446,16 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
                 try {
                     // Sync only for unique product not every option
                     $product_ids_uniqs = array_unique($this->request->post['selected']);
-                    // Start output buffering to catch any stray output
-                    ob_start();
 
                     $result = $this->model_extension_module_odoo_product_mapping->massSyncProductsToOdoo(
                         $product_ids_uniqs,
                         $batch_size
                     );
 
-
-                    // Clear any debug output
-                    ob_clean();
-
                     $json = array_merge($json, $result);
                     $json['success'] = $this->language->get('text_sync_success');
 
                 } catch (Exception $e) {
-                    // Clear any output before error handling
-                    ob_clean();
                     $json['error'] = $e->getMessage();
                 }
             } else {
@@ -405,13 +463,7 @@ class ControllerExtensionModuleOdooProductMapping extends Controller {
             }
         }
 
-        // For regular requests, use OpenCart's response class
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($json));
+        $this->sendJsonResponse($json);
     }
 
     // Shows Individual product syncing information

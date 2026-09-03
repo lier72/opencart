@@ -2169,6 +2169,20 @@ class ModelExtensionModuleOdooConnector extends Model {
             `is_synch` tinyint(1) NOT NULL DEFAULT 0,
             PRIMARY KEY (`id`)
           ) DEFAULT CHARSET=utf8");
+// Vendor/brand mapping table
+        $this->db->query("CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "odoo_vendor_map (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `odoo_vendor_id` int(11) NOT NULL,
+            `odoo_vendor_name` varchar(64) NOT NULL,
+            `opencart_manufacturer_id` int(11) NOT NULL,
+            `is_active` tinyint(1) NOT NULL DEFAULT '1',
+            `created_by` varchar(128) NOT NULL,
+            `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `modified_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `odoo_vendor_id` (`odoo_vendor_id`),
+            KEY `opencart_manufacturer_id` (`opencart_manufacturer_id`)
+          ) DEFAULT CHARSET=utf8 COMMENT='Maps Odoo product brands/vendors to OpenCart manufacturers'");
 // Order mapping table
         $this->db->query("CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "odoo_order_map (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -2243,6 +2257,7 @@ class ModelExtensionModuleOdooConnector extends Model {
     {
         $sql  = "DROP TABLE IF EXISTS `" . DB_PREFIX . "odoo_config`, ";
         $sql .= "`" . DB_PREFIX . "odoo_product_variant_map`, ";
+        $sql .= "`" . DB_PREFIX . "odoo_vendor_map`, ";
         $sql .= "`" . DB_PREFIX . "odoo_order_map`, ";
         $sql .= "`" . DB_PREFIX . "odoo_client_map`, ";
         $sql .= "`" . DB_PREFIX . "odoo_region_map`, ";

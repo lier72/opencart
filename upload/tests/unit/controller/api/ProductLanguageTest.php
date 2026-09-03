@@ -110,6 +110,31 @@ class ProductLanguageTest extends TestCase
         $this->assertStringContainsString("tag = ''", $inserts[0]);
     }
 
+    public function testBrandAndVendorPayloadAliasesAreNormalized()
+    {
+        list($controller) = $this->makeController(2, true);
+
+        $brand = $controller->normalizeVendorForTest(array(
+            'brand' => array(
+                'odoo_brand_id' => 42,
+                'name' => 'Yonex',
+            ),
+        ));
+        $many2one = $controller->normalizeVendorForTest(array(
+            'vendor' => array(7, 'Li-Ning'),
+        ));
+        $cleared = $controller->normalizeVendorForTest(array(
+            'brand' => false,
+        ));
+
+        $this->assertSame(42, $brand['odoo_vendor_id']);
+        $this->assertSame('Yonex', $brand['name']);
+        $this->assertFalse($brand['clear']);
+        $this->assertSame(7, $many2one['odoo_vendor_id']);
+        $this->assertSame('Li-Ning', $many2one['name']);
+        $this->assertTrue($cleared['clear']);
+    }
+
     private function makeController($languageId, $descriptionExists)
     {
         $registry = new \Registry();
@@ -159,6 +184,11 @@ class TestableControllerApiProduct extends \ControllerApiProduct
         $property->setValue($this, $this->getConfiguredLanguageId());
 
         return $this->prepareProductData($data);
+    }
+
+    public function normalizeVendorForTest($data)
+    {
+        return $this->normalizeVendorData($data);
     }
 
     protected function getManufacturerFromName($productName)
