@@ -514,6 +514,12 @@ class ControllerJournal3Filter extends ModuleController {
 		// index() right after beforeRender() would stop bailing out correctly.
 		if ($this->settings !== null) {
 			$this->settings['prettyUrl'] = $this->buildPrettyUrl();
+
+			$meta = $this->buildMetaOverrides();
+			$this->settings['metaApplicable'] = $meta['applicable'];
+			$this->settings['metaTitle'] = $meta['title'];
+			$this->settings['metaDescription'] = $meta['description'];
+			$this->settings['metaHeading'] = $meta['heading'];
 		}
 	}
 
@@ -626,6 +632,59 @@ class ControllerJournal3Filter extends ModuleController {
 		$args = 'path=' . $this->journal3_request->get('path') . ($params ? '&' . $params : '');
 
 		return htmlspecialchars_decode($this->url->link('product/category', $args, false));
+	}
+
+	/**
+	 * <title>/meta-description/H1 text for the current filter selection, so
+	 * filter.js can apply them client-side after an AJAX filter swap - normal
+	 * (non-AJAX) requests already get this from
+	 * ControllerProductCategory::index(), which computes it the same way via
+	 * ModelJournal3Filter::getActiveFacets()/formatActiveFacetsText(), but
+	 * that controller never runs again on a Filter-Module AJAX request, so
+	 * without this the address bar's URL, product list, and filter panel all
+	 * update instantly while <title>/description/H1 stay stuck until a real
+	 * reload. Always returns the category's own base title/description/
+	 * heading (with no facet suffix) when no filter is active, so filter.js
+	 * has an authoritative value to reset to when a filter gets unchecked
+	 * back down to zero, not just when one is applied. Only meaningful for
+	 * the category listing route, same scope as buildPrettyUrl(). 'applicable'
+	 * is false on any other route/module context (or a stale category id) -
+	 * distinct from an empty title/description string, which is a legitimate
+	 * value for a category with no meta text configured, so filter.js knows
+	 * to leave <title>/description/H1 alone rather than blanking them out.
+	 */
+	private function buildMetaOverrides() {
+		if ($this->journal3_request->get('route') !== 'product/category' || !$this->journal3_request->get('path')) {
+			return array('applicable' => false, 'title' => '', 'description' => '', 'heading' => '');
+		}
+
+		$parts = explode('_', (string)$this->journal3_request->get('path'));
+		$category_id = (int)end($parts);
+		$category_info = $this->model_catalog_category->getCategory($category_id);
+
+		if (!$category_info) {
+			return array('applicable' => false, 'title' => '', 'description' => '', 'heading' => '');
+		}
+
+		// Base (no filter active) values - mirrors category.php's own
+		// defaults exactly: meta_title/meta_description for <title>/
+		// description, but the plain category name (never meta_title) for
+		// H1, same as $data['heading_title'] there.
+		$title = $category_info['meta_title'];
+		$description = $category_info['meta_description'];
+		$heading = $category_info['name'];
+
+		$active_facets = $this->model_journal3_filter->getActiveFacets($this->filter_data);
+
+		if ($active_facets) {
+			$facets_text = $this->model_journal3_filter->formatActiveFacetsText($active_facets);
+
+			$title = $category_info['name'] . ' — ' . $facets_text;
+			$description = trim($category_info['meta_description'] . ' ' . sprintf($this->language->get('text_filter_meta_suffix'), $facets_text));
+			$heading = $category_info['name'] . ' — ' . $facets_text;
+		}
+
+		return array('applicable' => true, 'title' => $title, 'description' => $description, 'heading' => $heading);
 	}
 
 	protected function afterRender() {

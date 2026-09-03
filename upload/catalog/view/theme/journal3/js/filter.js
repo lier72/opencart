@@ -157,6 +157,35 @@ function journal_filter(url, opts) {
 				}
 			}
 
+			// Sync <title>, meta description, and H1 to the new filter
+			// selection - a full page reload already gets this from
+			// ControllerProductCategory::index(), but this AJAX swap never
+			// re-runs that controller, so without this the URL/product list/
+			// filter panel all update instantly while the page's SEO text and
+			// heading stay stuck on the pre-filter values until a reload.
+			// data-meta-applicable is unset outside the category route (or a
+			// stale category id) - deliberately left alone in that case,
+			// rather than blanked, since an empty title/description here is
+			// otherwise a legitimate value for a category with none configured.
+			if ($('.module-filter').data('meta-applicable')) {
+				var metaTitle = $('.module-filter').data('meta-title');
+				var metaDescription = $('.module-filter').data('meta-description');
+				var metaHeading = $('.module-filter').data('meta-heading');
+
+				document.title = metaTitle;
+
+				$('meta[name="description"]').attr('content', metaDescription);
+
+				var $heading = $('h1.page-title');
+				var $headingText = $heading.find('.page-title-text');
+
+				if ($headingText.length) {
+					$headingText.text(metaHeading);
+				} else {
+					$heading.text(metaHeading);
+				}
+			}
+
 			var $panel_group = $('.panel-group');
 
 			$panel_group.on('show.bs.collapse', function (e) {

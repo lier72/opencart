@@ -319,6 +319,85 @@ class ModelJournal3Filter extends Model {
 		return trim(preg_replace('/\s*\(#[0-9A-Fa-f]{3,8}\)\s*$/u', '', $label));
 	}
 
+	/**
+	 * Turns raw filter_data (from getFilterData()) into a display-ready list
+	 * of active facets: [['name' => 'Игроки', 'value' => 'Anthony Ginting'], ...],
+	 * manufacturers first then fa/fo/ff in ascending type_id order (matching
+	 * the deterministic order used for canonical URL building). Shared by
+	 * catalog/controller/product/category.php (full page title/description/
+	 * H1) and catalog/controller/journal3/filter.php (AJAX meta sync via
+	 * data-meta-* attributes) so both stay in lockstep - see
+	 * formatActiveFacetsText() for turning this into the "Name: Value, ..."
+	 * text actually shown to the user.
+	 */
+	public function getActiveFacets($filter_data) {
+		$active_facets = array();
+
+		if (!empty($filter_data['manufacturers'])) {
+			$manufacturer_names = array();
+
+			foreach ($filter_data['manufacturers'] as $manufacturer_id) {
+				$query = $this->db->query("SELECT `name` FROM " . DB_PREFIX . "manufacturer WHERE manufacturer_id = '" . (int)$manufacturer_id . "'");
+
+				if ($query->num_rows) {
+					$manufacturer_names[] = $query->row['name'];
+				}
+			}
+
+			if ($manufacturer_names) {
+				$active_facets[] = array('name' => $this->language->get('text_filter_manufacturer'), 'value' => implode(', ', $manufacturer_names));
+			}
+		}
+
+		foreach (array('attributes' => 'fa', 'options' => 'fo', 'filters' => 'ff') as $filter_data_key => $type) {
+			if (empty($filter_data[$filter_data_key])) {
+				continue;
+			}
+
+			$facets = $filter_data[$filter_data_key];
+			ksort($facets);
+
+			foreach ($facets as $type_id => $values) {
+				$facet_name = $this->getFilterLabelName($type, $type_id);
+
+				if ($facet_name === null) {
+					continue;
+				}
+
+				$value_labels = array();
+
+				foreach ($values as $value) {
+					$label = $this->getFilterValueLabel($type, $type_id, $value);
+
+					if ($label !== null && $label !== '') {
+						$value_labels[] = $label;
+					}
+				}
+
+				if ($value_labels) {
+					$active_facets[] = array('name' => $facet_name, 'value' => implode(', ', $value_labels));
+				}
+			}
+		}
+
+		return $active_facets;
+	}
+
+	/**
+	 * "Name: Value, Name2: Value2" text for a getActiveFacets() result - the
+	 * shared suffix appended to <title> and meta description, and (per
+	 * category.php's heading_title) to H1, whenever any filter is active.
+	 */
+	public function formatActiveFacetsText($active_facets) {
+		$parts = array();
+
+		foreach ($active_facets as $facet) {
+			$parts[] = $facet['name'] . ': ' . $facet['value'];
+		}
+
+		return implode(', ', $parts);
+	}
+
 	public function hasFilterData($filter_data, $key, $value = null) {
 		$values = Arr::get($filter_data, $key);
 

@@ -1,69 +1,5 @@
 <?php
 class ControllerProductCategory extends Controller {
-	/**
-	 * Active fm/fa/fo/ff facets as [['name' => 'Цвет', 'value' => 'Белый'], ...],
-	 * in the same order (manufacturer first, then fa < fo < ff by type_id
-	 * ascending) that catalog/controller/startup/seo_url.php uses for path
-	 * segments, so meta text and canonical URLs agree. Facets with no
-	 * resolvable name/value (stale ids) are silently skipped. This is also
-	 * what the canonical/noindex depth check counts - a manufacturer filter
-	 * now counts toward that depth too, not just fa/fo/ff.
-	 */
-	private function buildActiveFacets($filter_data) {
-		$this->load->model('journal3/filter');
-
-		$active_facets = array();
-
-		if (!empty($filter_data['manufacturers'])) {
-			$manufacturer_names = array();
-
-			foreach ($filter_data['manufacturers'] as $manufacturer_id) {
-				$query = $this->db->query("SELECT `name` FROM " . DB_PREFIX . "manufacturer WHERE manufacturer_id = '" . (int)$manufacturer_id . "'");
-
-				if ($query->num_rows) {
-					$manufacturer_names[] = $query->row['name'];
-				}
-			}
-
-			if ($manufacturer_names) {
-				$active_facets[] = array('name' => $this->language->get('text_filter_manufacturer'), 'value' => implode(', ', $manufacturer_names));
-			}
-		}
-
-		foreach (array('attributes' => 'fa', 'options' => 'fo', 'filters' => 'ff') as $filter_data_key => $type) {
-			if (empty($filter_data[$filter_data_key])) {
-				continue;
-			}
-
-			$facets = $filter_data[$filter_data_key];
-			ksort($facets);
-
-			foreach ($facets as $type_id => $values) {
-				$facet_name = $this->model_journal3_filter->getFilterLabelName($type, $type_id);
-
-				if ($facet_name === null) {
-					continue;
-				}
-
-				$value_labels = array();
-
-				foreach ($values as $value) {
-					$label = $this->model_journal3_filter->getFilterValueLabel($type, $type_id, $value);
-
-					if ($label !== null && $label !== '') {
-						$value_labels[] = $label;
-					}
-				}
-
-				if ($value_labels) {
-					$active_facets[] = array('name' => $facet_name, 'value' => implode(', ', $value_labels));
-				}
-			}
-		}
-
-		return $active_facets;
-	}
-
 	public function index() {
 		$this->load->language('product/category');
 
@@ -195,20 +131,17 @@ class ControllerProductCategory extends Controller {
 
 			$this->load->model('journal3/filter');
 			$active_filter_data = $this->model_journal3_filter->getFilterData();
-			$active_facets = $this->buildActiveFacets($active_filter_data);
-
-			if ($active_facets) {
-				$active_facets_text = array();
-
-				foreach ($active_facets as $facet) {
-					$active_facets_text[] = $facet['name'] . ': ' . $facet['value'];
-				}
-
-				$this->document->setTitle($category_info['name'] . ' — ' . implode(', ', $active_facets_text));
-				$this->document->setDescription(trim($category_info['meta_description'] . ' ' . sprintf($this->language->get('text_filter_meta_suffix'), implode(', ', $active_facets_text))));
-			}
+			$active_facets = $this->model_journal3_filter->getActiveFacets($active_filter_data);
 
 			$data['heading_title'] = $category_info['name'];
+
+			if ($active_facets) {
+				$active_facets_text = $this->model_journal3_filter->formatActiveFacetsText($active_facets);
+
+				$this->document->setTitle($category_info['name'] . ' — ' . $active_facets_text);
+				$this->document->setDescription(trim($category_info['meta_description'] . ' ' . sprintf($this->language->get('text_filter_meta_suffix'), $active_facets_text)));
+				$data['heading_title'] = $category_info['name'] . ' — ' . $active_facets_text;
+			}
 
 			$data['text_compare'] = sprintf($this->language->get('text_compare'), (isset($this->session->data['compare']) ? count($this->session->data['compare']) : 0));
 

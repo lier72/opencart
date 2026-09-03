@@ -16,7 +16,7 @@ CREATE TABLE `ocus_filter_seo_url` (
   `value_id` int NOT NULL DEFAULT '0' COMMENT 'fo: option_value_id | ff: filter_id | fa: unused',
   `value_text` varchar(500) NOT NULL DEFAULT '' COMMENT 'fa only: TRIM()d attribute text',
   `value_hash` char(32) NOT NULL DEFAULT '' COMMENT 'fa only: MD5(value_text)',
-  `slug` varchar(255) NOT NULL COMMENT 'e.g. colour-belyi, razmer-42',
+  `slug` varchar(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT 'e.g. colour-belyi, razmer-42 (always ASCII output of slugify())',
   `needs_review` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'set when slug collided and had to be numerically suffixed',
   `date_added` datetime NOT NULL,
   `date_modified` datetime NOT NULL,

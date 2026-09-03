@@ -471,6 +471,37 @@ class FilterSeoUrl {
 		$this->clearConfigCache();
 	}
 
+	private static $attribute_table_cache = array();
+
+	/**
+	 * Which attribute-value table reflects live product data right now:
+	 * Journal3's own pre-split ocus_journal3_product_attribute (one atomic
+	 * row per value, e.g. one row per player for a CSV-style attribute like
+	 * "Players") when filterAttributeValuesSeparator is enabled, or the raw
+	 * ocus_product_attribute otherwise. Mirrors ModelJournal3Filter's own
+	 * $this->journal3->get('filterAttributeValuesSeparator') check
+	 * (catalog/model/journal3/filter.php:455) - NOT $this->config, which
+	 * only knows oc_setting and can never see this Journal3-specific
+	 * setting. Queried directly against journal3_setting (same
+	 * store-then-global precedence as ModelJournal3Settings::getSettings())
+	 * rather than via the registry's 'journal3' object, since this library
+	 * is also used from the CLI backfill, which never registers one.
+	 */
+	public function getAttributeTable() {
+		$store_id = (int)$this->config->get('config_store_id');
+		if (!array_key_exists($store_id, self::$attribute_table_cache)) {
+			$query = $this->db->query("SELECT setting_value FROM `" . DB_PREFIX . "journal3_setting`
+				WHERE setting_name = 'filterAttributeValuesSeparator' AND (store_id = '0' OR store_id = '" . $store_id . "')
+				ORDER BY store_id ASC");
+			$value = null;
+			foreach ($query->rows as $row) {
+				$value = $row['setting_value']; // last row wins: store-specific overrides global
+			}
+			self::$attribute_table_cache[$store_id] = $value ? 'journal3_product_attribute' : 'product_attribute';
+		}
+		return self::$attribute_table_cache[$store_id];
+	}
+
 	/**
 	 * Every value currently in use for a facet, at a given language - the
 	 * same per-type "what's actually on a product right now" queries the
@@ -484,7 +515,7 @@ class FilterSeoUrl {
 
 		switch ($type) {
 			case 'fa':
-				$attribute_table = $this->config->get('filterAttributeValuesSeparator') ? 'journal3_product_attribute' : 'product_attribute';
+				$attribute_table = $this->getAttributeTable();
 				$query = $this->db->query("SELECT DISTINCT TRIM(`text`) AS value_text FROM `" . DB_PREFIX . $attribute_table . "`
 					WHERE attribute_id = '" . (int)$type_id . "' AND language_id = '" . $language_id . "' AND TRIM(`text`) != ''");
 				foreach ($query->rows as $row) {
@@ -731,7 +762,7 @@ class FilterSeoUrl {
 	private function isValueInUse($type, $type_id, $value_id, $value_text) {
 		switch ($type) {
 			case 'fa':
-				$attribute_table = $this->config->get('filterAttributeValuesSeparator') ? 'journal3_product_attribute' : 'product_attribute';
+				$attribute_table = $this->getAttributeTable();
 				$query = $this->db->query("SELECT 1 FROM `" . DB_PREFIX . $attribute_table . "`
 					WHERE attribute_id = '" . (int)$type_id . "' AND TRIM(`text`) = '" . $this->db->escape(trim((string)$value_text)) . "' LIMIT 1");
 				return (bool)$query->num_rows;
