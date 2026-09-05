@@ -134,7 +134,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 			if (isset($this->session->data['vouchers']) && count($this->session->data['vouchers']) > 0) {
 				foreach ($this->session->data['vouchers'] as $key => $voucher) {
 					$itemVoucher = array(
-						'positionId' => 'voucher_' . $key,
+						'positionId' => 'v' . $key,
 						'name' => $voucher['description'],
 						'itemAmount' => (int)round($voucher['amount'] * 100),
 						'quantity' => array(
@@ -767,7 +767,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 			$order_vouchers = $this->model_checkout_order->getOrderVouchers($order_id);
 			foreach ($order_vouchers as $key => $voucher) {
 				$itemVoucher = array(
-					'positionId' => 'voucher_' . $key,
+					'positionId' => 'v' . $key,
 					'name' => $voucher['description'],
 					'itemAmount' => (int)round($voucher['amount'] * 100),
 					'quantity' => array(
