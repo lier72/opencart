@@ -237,13 +237,13 @@ class ModelExtensionPaymentAlfabank extends Model
             $gateway_data = $this->getGatewayUpdateData($response);
             $this->updateGatewayOrder($gateway_reference, $gateway_data);
 
-            if ($this->hasFinancialGatewayData($gateway_data)) {
-                continue;
-            }
-
             if ($this->isDefinitivelyUnpaid($response, $gateway_data)) {
                 $this->markGatewayOrderIgnoredUnpaid($gateway_reference);
                 $result['ignored_unpaid']++;
+                continue;
+            }
+
+            if ($this->hasFinancialGatewayData($gateway_data)) {
                 continue;
             }
 
@@ -253,8 +253,9 @@ class ModelExtensionPaymentAlfabank extends Model
         $paid_condition = "ao.status = " . self::ODOO_EXPORT_PENDING . "
             AND oom.opencart_order_id IS NULL
             AND (ao.status_deposited IN (1, 2, 4)
-                 OR ao.order_amount_deposited > 0
-                 OR ao.order_amount_refunded > 0)";
+                 OR (ao.status_deposited NOT IN (0, 6)
+                     AND (ao.order_amount_deposited > 0
+                          OR ao.order_amount_refunded > 0)))";
         $paid_total = $this->db->query("SELECT COUNT(*) AS total
             FROM `" . DB_PREFIX . "alfabank_order` ao
             LEFT JOIN `" . DB_PREFIX . "odoo_order_map` oom
@@ -309,7 +310,11 @@ class ModelExtensionPaymentAlfabank extends Model
             'status_reversed' => $gateway_status === 3 ? 1 : 0,
         );
 
-        if (isset($response['paymentAmountInfo']['approvedAmount'])) {
+        // Registered and declined are definitive no-payment states. Clear any
+        // nominal order amount previously stored as a deposited amount.
+        if (in_array($gateway_status, array(0, 6), true)) {
+            $data['order_amount_deposited'] = 0;
+        } elseif (isset($response['paymentAmountInfo']['approvedAmount'])) {
             $data['order_amount_deposited'] = (float)$response['paymentAmountInfo']['approvedAmount'];
         } elseif ($gateway_status === 2 && isset($response['amount'])) {
             $data['order_amount_deposited'] = (float)$response['amount'];

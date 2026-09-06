@@ -118,6 +118,24 @@ class AlfabankPaymentAttemptsTest extends TestCase
         $this->assertSame('0', $reopened->row['status']);
     }
 
+    public function testDeclinedStatusDoesNotStoreNominalAmountAsDeposited(): void
+    {
+        $this->model->storeGatewayOrder($this->attemptData('declined-attempt', '1001_1'));
+
+        $this->model->update_alfabank_order(array(
+            'orderId' => 'declined-attempt',
+            'orderStatus' => 6,
+            'amount' => 100000,
+        ));
+
+        $attempt = $this->db->query("SELECT `status_deposited`, `order_amount_deposited`
+            FROM `" . DB_PREFIX . "alfabank_order`
+            WHERE `gateway_order_reference` = 'declined-attempt'")->row;
+
+        $this->assertSame('6', $attempt['status_deposited']);
+        $this->assertSame('0.0000', $attempt['order_amount_deposited']);
+    }
+
     private function attemptData($gateway_reference, $order_number)
     {
         return array(

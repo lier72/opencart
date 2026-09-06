@@ -177,7 +177,16 @@ class ModelExtensionPaymentAlfabank extends Model
             $sql .= ", `status` = IF(`status` = 2, 0, `status`)";
         }
 
-        if (isset($data['amount'])) {
+        $gateway_status = (int)$data['orderStatus'];
+
+        if (in_array($gateway_status, array(0, 6), true)) {
+            // `amount` is the nominal order amount for these states, not an
+            // approved payment amount.
+            $sql .= ", `order_amount_deposited` = 0";
+        } elseif (isset($data['paymentAmountInfo']['approvedAmount'])) {
+            $sql .= ", `order_amount_deposited` = " .
+                (float)$data['paymentAmountInfo']['approvedAmount'];
+        } elseif (in_array($gateway_status, array(1, 2), true) && isset($data['amount'])) {
             $sql .= ", `order_amount_deposited` = " . (float)$data['amount'];
         }
 

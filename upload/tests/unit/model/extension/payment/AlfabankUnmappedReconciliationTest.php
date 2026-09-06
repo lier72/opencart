@@ -84,6 +84,8 @@ class AlfabankUnmappedReconciliationTest extends TestCase
         $this->insertAttempt(1007, 'held-locally', 1);
         $this->insertAttempt(1008, 'recent', 0, true);
         $this->insertAttempt(1009, 'mapped', 0);
+        $this->insertAttempt(1010, 'recent-declined-with-stale-amount', 6, true, 0, 100000);
+        $this->setDepositedAmount('declined', 100000);
         $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order`
             SET `date_updated` = NOW()
             WHERE `gateway_order_reference` IN ('registered', 'declined')");
@@ -92,7 +94,9 @@ class AlfabankUnmappedReconciliationTest extends TestCase
 
         $this->model->responses = array(
             'registered' => $this->gatewayResponse(0, 0, 0),
-            'declined' => $this->gatewayResponse(6),
+            // Some gateway responses include the nominal amount here even
+            // though status 6 is declined and no payment was approved.
+            'declined' => $this->gatewayResponse(6, 100000, 0),
             'reversed-zero' => $this->gatewayResponse(3, 0, 0),
             'paid' => $this->gatewayResponse(2, 159900, 0),
             'uncertain' => $this->gatewayResponse(5, 0, 0),
@@ -109,6 +113,7 @@ class AlfabankUnmappedReconciliationTest extends TestCase
         $this->assertCount(2, $result['paid_attempts']);
         $this->assertSame(2, (int)$this->getAttempt('registered')['status']);
         $this->assertSame(2, (int)$this->getAttempt('declined')['status']);
+        $this->assertSame(0.0, (float)$this->getAttempt('declined')['order_amount_deposited']);
         $this->assertSame(2, (int)$this->getAttempt('reversed-zero')['status']);
         $this->assertSame(0, (int)$this->getAttempt('paid')['status']);
         $this->assertSame(2, (int)$this->getAttempt('paid')['status_deposited']);
@@ -118,6 +123,8 @@ class AlfabankUnmappedReconciliationTest extends TestCase
         $this->assertSame(0, (int)$this->getAttempt('held-locally')['status']);
         $this->assertSame(0, (int)$this->getAttempt('recent')['status']);
         $this->assertSame(0, (int)$this->getAttempt('mapped')['status']);
+        $this->assertSame(0, (int)$this->getAttempt('recent-declined-with-stale-amount')['status']);
+        $this->assertNotContains('recent-declined-with-stale-amount', $this->model->calls);
         $this->assertNotContains('held-locally', $this->model->calls);
         $this->assertNotContains('recent', $this->model->calls);
         $this->assertNotContains('mapped', $this->model->calls);
@@ -139,7 +146,14 @@ class AlfabankUnmappedReconciliationTest extends TestCase
         $this->assertSame(50000.0, (float)$attempt['order_amount_deposited']);
     }
 
-    private function insertAttempt($order_id, $reference, $gateway_status, $recent = false, $export_status = 0): void
+    private function insertAttempt(
+        $order_id,
+        $reference,
+        $gateway_status,
+        $recent = false,
+        $export_status = 0,
+        $deposited_amount = 0
+    ): void
     {
         $date = $recent ? 'NOW()' : "DATE_SUB(NOW(), INTERVAL 10 DAY)";
         $this->db->query("INSERT INTO `" . DB_PREFIX . "alfabank_order` SET
@@ -147,10 +161,18 @@ class AlfabankUnmappedReconciliationTest extends TestCase
             `order_id` = " . (int)$order_id . ",
             `order_number` = '" . (int)$order_id . "_1',
             `order_amount` = 159900,
+            `order_amount_deposited` = " . (float)$deposited_amount . ",
             `status_deposited` = " . (int)$gateway_status . ",
             `status` = " . (int)$export_status . ",
             `date_added` = " . $date . ",
             `date_updated` = " . $date);
+    }
+
+    private function setDepositedAmount($reference, $amount): void
+    {
+        $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order`
+            SET `order_amount_deposited` = " . (float)$amount . "
+            WHERE `gateway_order_reference` = '" . $this->db->escape($reference) . "'");
     }
 
     private function gatewayResponse($status, $approved_amount = null, $refunded_amount = null): array
