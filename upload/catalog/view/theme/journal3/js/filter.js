@@ -1,3 +1,15 @@
+if (typeof Journal['filterSortExplicit'] === 'undefined') {
+	try {
+		var initialFilterUrl = new URL(window.location.href);
+		var initialSort = initialFilterUrl.searchParams.get('sort');
+		var initialOrder = initialFilterUrl.searchParams.get('order');
+
+		Journal['filterSortExplicit'] = initialFilterUrl.searchParams.has('sort') && !(initialSort === 'p.sort_order' && initialOrder === 'ASC');
+	} catch (e) {
+		Journal['filterSortExplicit'] = false;
+	}
+}
+
 function journal_filter_url() {
 	var f = {};
 
@@ -26,7 +38,7 @@ function journal_filter_url() {
 	var sort = $('#input-sort').data('filter-sort');
 	var order = $('#input-sort').data('filter-order');
 
-	if (sort && order) {
+	if (Journal['filterSortExplicit'] && sort && order) {
 		f['sort'] = [sort];
 		f['order'] = [order];
 	}
@@ -153,6 +165,20 @@ function journal_filter(url, opts) {
 				var prettyUrl = $('.module-filter').data('pretty-url');
 
 				if (prettyUrl) {
+					try {
+						var requestedUrl = new URL(url, window.location.href);
+						var prettyHistoryUrl = new URL(prettyUrl, window.location.href);
+
+						['sort', 'order', 'limit'].forEach(function (key) {
+							if (requestedUrl.searchParams.has(key) && (key === 'limit' || Journal['filterSortExplicit'])) {
+								prettyHistoryUrl.searchParams.set(key, requestedUrl.searchParams.get(key));
+							}
+						});
+
+						prettyUrl = prettyHistoryUrl.toString();
+					} catch (e) {
+					}
+
 					window.history.replaceState({ Title: document.title, Url: prettyUrl }, document.title, prettyUrl);
 				}
 			}
@@ -221,6 +247,23 @@ function journal_filter(url, opts) {
 
 			if (Journal['infiniteScrollInstance']) {
 				$('.ias-trigger').remove();
+
+				// The IAS instance survives AJAX filter/sort changes. Its paging
+				// extension otherwise keeps page 1 from the URL that existed when
+				// the document first loaded, so returning to the top can discard a
+				// later SEO filter path or an explicitly selected sort.
+				$.each(Journal['infiniteScrollInstance'].extensions || [], function (index, extension) {
+					if ($.isArray(extension.pagebreaks)) {
+						extension.pagebreaks = [[0, window.location.toString()]];
+						extension.lastPageNum = 1;
+						extension.enabled = true;
+					}
+
+					if (typeof extension.getPrevUrl === 'function') {
+						extension.prevUrl = extension.getPrevUrl();
+					}
+				});
+
 				setTimeout(function () {
 					Journal['infiniteScrollInstance'].reinitialize();
 				}, 100);
@@ -270,6 +313,21 @@ jQuery(function ($) {
 	$('#input-sort, #input-limit').removeAttr('onchange');
 
 	$(document).delegate('#input-sort, #input-limit', 'change', function () {
+		if (this.id === 'input-sort') {
+			try {
+				var selectedSortUrl = new URL($(this).val(), window.location.href);
+				var selectedSort = selectedSortUrl.searchParams.get('sort');
+				var selectedOrder = selectedSortUrl.searchParams.get('order');
+
+				// The first dropdown option is the clean, canonical category
+				// order. Selecting it clears an explicit sort from browser
+				// history even though the AJAX request still names the values.
+				Journal['filterSortExplicit'] = !(selectedSort === 'p.sort_order' && selectedOrder === 'ASC');
+			} catch (e) {
+				Journal['filterSortExplicit'] = true;
+			}
+		}
+
 		journal_filter($(this).val());
 
 		return false;

@@ -1,4 +1,55 @@
 (function ($) {
+	if (typeof Journal['filterSortExplicit'] === 'undefined') {
+		try {
+			var initialProductsUrl = new URL(window.location.href);
+			var initialSort = initialProductsUrl.searchParams.get('sort');
+			var initialOrder = initialProductsUrl.searchParams.get('order');
+
+			Journal['filterSortExplicit'] = initialProductsUrl.searchParams.has('sort') && !(initialSort === 'p.sort_order' && initialOrder === 'ASC');
+		} catch (e) {
+			Journal['filterSortExplicit'] = false;
+		}
+	}
+
+	function infiniteScrollHistoryUrl(url) {
+		var prettyUrl = $('.module-filter').attr('data-pretty-url');
+
+		try {
+			var requestUrl = new URL(url, window.location.href);
+
+			requestUrl.host = window.location.host;
+			requestUrl.hostname = window.location.hostname;
+			requestUrl.protocol = window.location.protocol;
+
+			if (!prettyUrl) {
+				return requestUrl.toString();
+			}
+
+			var historyUrl = new URL(prettyUrl, window.location.href);
+			var copiedParams = {};
+
+			// fa/fo/ff and fm are represented by path segments in prettyUrl.
+			// Keep every other pagination/sort/filter parameter from the URL
+			// used for the AJAX request, without putting the raw SEO filters
+			// back into the address bar.
+			requestUrl.searchParams.forEach(function (value, key) {
+				if (copiedParams[key] || key === 'route' || key === 'path' || key === '_route_' || key === 'fm' || /^(fa|fo|ff)\d+$/.test(key) || ((key === 'sort' || key === 'order') && !Journal['filterSortExplicit'])) {
+					return;
+				}
+
+				copiedParams[key] = true;
+				historyUrl.searchParams.delete(key);
+				requestUrl.searchParams.getAll(key).forEach(function (item) {
+					historyUrl.searchParams.append(key, item);
+				});
+			});
+
+			return historyUrl.toString();
+		} catch (e) {
+			return url;
+		}
+	}
+
 	// Grid / List toggle
 	$(document).on('click', '.grid-list .view-btn', function () {
 		const $this = $(this);
@@ -67,6 +118,24 @@
 			Journal['infiniteScrollInstance'].extension(new IASHistoryExtension({
 				prev: '.pagination a.prev'
 			}));
+
+			// IASHistoryExtension writes the raw pagination request URL (for
+			// example ?page=2&fo11=52) into history. Replace it with the same
+			// page represented on the filter's SEO path so scrolling back to
+			// page 1, and reloading at any page, retain the active filters.
+			Journal['infiniteScrollInstance'].on('pageChange', function (page, scrollOffset, url) {
+				if (!window.history || !window.history.replaceState) {
+					return;
+				}
+
+				var historyUrl = infiniteScrollHistoryUrl(url);
+				var state = $.extend({}, window.history.state || {}, {
+					Title: document.title,
+					Url: historyUrl
+				});
+
+				window.history.replaceState(state, document.title, historyUrl);
+			}, -100);
 
 			Journal['infiniteScrollInstance'].on('load', function (event) {
 				try {
