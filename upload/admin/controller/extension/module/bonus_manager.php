@@ -257,7 +257,14 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		if (isset($this->request->post['module_bonus_manager_email_expiring_body'])) {
 			$data['module_bonus_manager_email_expiring_body'] = $this->request->post['module_bonus_manager_email_expiring_body'];
 		} else {
-			$data['module_bonus_manager_email_expiring_body'] = $this->config->get('module_bonus_manager_email_expiring_body') ?: $this->getDefaultExpiringTemplate();
+			$configured_expiring_body = $this->config->get('module_bonus_manager_email_expiring_body');
+			$is_legacy_default = $configured_expiring_body
+				&& strpos($configured_expiring_body, 'product_suggestions') === false
+				&& strpos($configured_expiring_body, 'Не теряйте свои бонусы! Используйте их для оплаты следующего заказа.') !== false;
+
+			$data['module_bonus_manager_email_expiring_body'] = (!$configured_expiring_body || $is_legacy_default)
+				? $this->getDefaultExpiringTemplate()
+				: $configured_expiring_body;
 		}
 
 		// Notification settings - Loyalty Level Upgrade
@@ -1376,8 +1383,29 @@ class ControllerExtensionModuleBonusManager extends Controller {
 		</div>
 
 		<p style="font-size: 16px; color: #374151; line-height: 1.6;">
-			Не теряйте свои бонусы! Используйте их для оплаты следующего заказа.
+			Не теряйте свои бонусы! Ими можно оплатить до <strong>{max_usage_percent}%</strong> следующего заказа.
 		</p>
+
+		{% if product_suggestions %}
+		<div style="margin: 26px 0;">
+			<h2 style="margin: 0 0 8px; color: #111827; font-size: 21px;">Подобрали идеи специально для вас</h2>
+			<p style="margin: 0 0 16px; color: #6b7280; font-size: 14px; line-height: 1.5;">Вы сможете выгодно применить бонусы к каждому из этих товаров:</p>
+			{% for product in product_suggestions %}
+			<a href="{{ product.url }}" style="display: block; background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; margin: 0 0 12px; color: #111827; text-decoration: none;">
+				<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+					<tr>
+						{% if product.image %}<td width="86" valign="middle" style="padding-right: 14px;"><img src="{{ product.image }}" alt="" width="72" height="72" style="display: block; width: 72px; height: 72px; object-fit: contain; border-radius: 6px;"></td>{% endif %}
+						<td valign="middle">
+							<div style="color: #6b7280; font-size: 12px; margin-bottom: 4px;">{{ product.category }}</div>
+							<div style="font-size: 16px; font-weight: bold; line-height: 1.35;">{{ product.name }}</div>
+							<div style="color: #374151; font-size: 14px; margin-top: 7px;">Цена: <strong>{{ product.price }}</strong> &middot; можно списать до <strong style="color: #dc2626;">{{ product.bonus_payment }} бонусов</strong></div>
+						</td>
+					</tr>
+				</table>
+			</a>
+			{% endfor %}
+		</div>
+		{% endif %}
 
 		<div style="text-align: center; margin: 30px 0;">
 			<a href="{store_url}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">

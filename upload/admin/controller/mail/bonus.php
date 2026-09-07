@@ -145,10 +145,34 @@ class ControllerMailBonus extends Controller {
 		// Get current bonus balance (excluding expired)
 		$this->load->model('customer/customer');
 		$current_balance = $this->model_customer_customer->getRewardTotal($customer_info['customer_id']);
+		$max_usage_percent = (float)$this->config->get('module_bonus_manager_max_usage_percent') ?: 30;
 
 		// Get store info
 		$store_name = $this->config->get('config_name') ?: 'UniqSport';
 		$store_url = defined('HTTP_CATALOG') ? HTTP_CATALOG : HTTP_SERVER;
+
+		// Offer two practical ways to use the balance, always from different categories.
+		$this->load->model('extension/module/bonus_manager');
+		$product_suggestions = array();
+		$suggestion_rows = $this->model_extension_module_bonus_manager->getExpiringProductSuggestions(
+			$customer_info['customer_id'],
+			$current_balance,
+			$max_usage_percent,
+			2
+		);
+
+		foreach ($suggestion_rows as $suggestion) {
+			$product_suggestions[] = array(
+				// Mail HTML is entity-decoded once before sending, so escape dynamic
+				// catalogue text twice to keep it encoded in the final document.
+				'name' => $this->escapeEmailHtml($suggestion['name']),
+				'category' => $this->escapeEmailHtml($suggestion['category_name']),
+				'price' => $this->currency->format($suggestion['effective_price'], $this->config->get('config_currency')),
+				'bonus_payment' => number_format($suggestion['bonus_payment'], 0, '.', ' '),
+				'url' => $store_url . 'index.php?route=product/product&product_id=' . (int)$suggestion['product_id'],
+				'image' => $suggestion['image'] ? $store_url . 'image/' . str_replace('%2F', '/', rawurlencode(ltrim($suggestion['image'], '/'))) : ''
+			);
+		}
 
 		// Prepare data for template
 		$data = array(
@@ -158,6 +182,8 @@ class ControllerMailBonus extends Controller {
 			'days_left' => $customer_data['days_left'],
 			'expiration_date' => $customer_data['expiration_date'],
 			'current_balance' => number_format($current_balance, 0, '.', ' '),
+			'max_usage_percent' => $max_usage_percent,
+			'product_suggestions' => $product_suggestions,
 			'store_name' => $store_name,
 			'store_url' => $store_url,
 			'account_url' => $store_url . 'index.php?route=account/account'
@@ -170,7 +196,11 @@ class ControllerMailBonus extends Controller {
 		}
 
 		$body_template = $this->config->get('module_bonus_manager_email_expiring_body');
-		if (!$body_template) {
+		$is_legacy_default = $body_template
+			&& strpos($body_template, 'product_suggestions') === false
+			&& strpos($body_template, 'Не теряйте свои бонусы! Используйте их для оплаты следующего заказа.') !== false;
+
+		if (!$body_template || $is_legacy_default) {
 			// Get default template from bonus_manager controller (single source of truth)
 			$body_template = $this->load->controller('extension/module/bonus_manager/getDefaultExpiringTemplate');
 		}
@@ -339,9 +369,21 @@ class ControllerMailBonus extends Controller {
 	 */
 	private function replacePlaceholders($template, $data) {
 		foreach ($data as $key => $value) {
-			$template = str_replace('{' . $key . '}', $value, $template);
+			if (is_scalar($value) || $value === null) {
+				$template = str_replace('{' . $key . '}', $value, $template);
+			}
 		}
 		return $template;
+	}
+
+	/**
+	 * Escape untrusted text so it remains escaped after the final mail-body decode.
+	 *
+	 * @param string $value
+	 * @return string
+	 */
+	private function escapeEmailHtml($value) {
+		return htmlspecialchars(htmlspecialchars($value, ENT_QUOTES, 'UTF-8'), ENT_QUOTES, 'UTF-8');
 	}
 
 	/**

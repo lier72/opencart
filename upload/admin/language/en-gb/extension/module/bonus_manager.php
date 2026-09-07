@@ -96,7 +96,7 @@ $_['help_email_spent_subject']  = 'Available placeholders: {customer_firstname},
 $_['help_email_spent_body']     = 'Available placeholders: {customer_firstname}, {customer_lastname}, {order_id}, {points_spent}, {current_balance}, {store_name}, {date_spent}, {account_url}, {order_url}, {store_url}. HTML is supported.';
 $_['help_email_expiring_status'] = 'Send email notification when bonuses are about to expire';
 $_['help_email_expiring_subject'] = 'Available placeholders: {customer_firstname}, {customer_lastname}, {expiring_points}, {days_left}, {expiration_date}, {current_balance}, {store_name}';
-$_['help_email_expiring_body']   = 'Available placeholders: {customer_firstname}, {customer_lastname}, {expiring_points}, {days_left}, {expiration_date}, {current_balance}, {store_name}, {account_url}, {store_url}. Supports Twig syntax for logic ({% if %}, {% for %}, etc). HTML is supported.';
+$_['help_email_expiring_body']   = 'Available placeholders: {customer_firstname}, {customer_lastname}, {expiring_points}, {days_left}, {expiration_date}, {current_balance}, {max_usage_percent}, {store_name}, {account_url}, {store_url}, plus the product_suggestions array for Twig. Supports Twig syntax for logic ({% if %}, {% for %}, etc). HTML is supported.';
 $_['help_expiration_warning_days'] = 'Send warning emails X days before expiration (e.g., "90,30,7" for warnings at 90, 30, and 7 days before expiration)';
 $_['help_register_widget'] = 'Configure the registration widget shown to guests in the cart. Encourages visitors to register and earn bonus points.';
 $_['help_register_widget_icon'] = 'Font Awesome icon class (e.g., fa-gift, fa-star, fa-trophy). See <a href="https://fontawesome.com/v4.7.0/icons/" target="_blank">Font Awesome Icons</a>';

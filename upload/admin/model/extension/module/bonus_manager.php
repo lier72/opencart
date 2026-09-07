@@ -1370,6 +1370,115 @@ class ModelExtensionModuleBonusManager extends Model {
 	}
 
 	/**
+	 * Find products on which a customer can use most of their available bonuses.
+	 *
+	 * The ideal product price is the point at which the configured maximum bonus
+	 * share equals the customer's balance. Accessories closest to that price are
+	 * preferred, and results always come from different categories.
+	 *
+	 * @param int   $customer_id      Customer whose group pricing should be used
+	 * @param float $current_balance  Available bonus balance
+	 * @param float $max_usage_percent Maximum percentage of a product paid by bonuses
+	 * @param int   $limit            Number of different-category suggestions
+	 * @return array
+	 */
+	public function getExpiringProductSuggestions($customer_id, $current_balance, $max_usage_percent, $limit = 2) {
+		$current_balance = max(0, (float)$current_balance);
+		$max_usage_percent = max(0, (float)$max_usage_percent);
+		$limit = max(1, (int)$limit);
+
+		if ($current_balance <= 0 || $max_usage_percent <= 0) {
+			return array();
+		}
+
+		$customer_query = $this->db->query("SELECT customer_group_id FROM " . DB_PREFIX . "customer WHERE customer_id = '" . (int)$customer_id . "'");
+		$customer_group_id = $customer_query->num_rows
+			? (int)$customer_query->row['customer_group_id']
+			: (int)$this->config->get('config_customer_group_id');
+
+		$store_id = (int)$this->config->get('config_store_id');
+		$language_id = (int)$this->config->get('config_language_id');
+		$target_product_price = $current_balance * 100 / $max_usage_percent;
+
+		// Keep the candidate set deliberately small; PHP then guarantees that the
+		// final products and their categories are unique.
+		$query = $this->db->query("SELECT
+			p.product_id,
+			pd.name,
+			p.image,
+			p.tax_class_id,
+			p2c.category_id,
+			cd.name AS category_name,
+			CASE
+				WHEN LOWER(cd.name) REGEXP 'волан|shuttlecock' THEN 100
+				WHEN LOWER(cd.name) REGEXP 'сумк|рюкзак|bag|backpack' THEN 90
+				WHEN LOWER(cd.name) REGEXP 'носк|sock' THEN 80
+				WHEN LOWER(cd.name) REGEXP 'напульс|повяз|кепк|грип|обмот|чехол|accessor|аксессуар' THEN 70
+				ELSE 0
+			END AS accessory_rank,
+			COALESCE((
+				SELECT ps.price
+				FROM " . DB_PREFIX . "product_special ps
+				WHERE ps.product_id = p.product_id
+				AND ps.customer_group_id = '" . $customer_group_id . "'
+				AND (ps.date_start IS NULL OR CAST(ps.date_start AS CHAR) = '0000-00-00' OR ps.date_start <= NOW())
+				AND (ps.date_end IS NULL OR CAST(ps.date_end AS CHAR) = '0000-00-00' OR ps.date_end >= NOW())
+				ORDER BY ps.priority ASC, ps.price ASC
+				LIMIT 1
+			), p.price) AS effective_price
+		FROM " . DB_PREFIX . "product p
+		INNER JOIN " . DB_PREFIX . "product_description pd ON (pd.product_id = p.product_id AND pd.language_id = '" . $language_id . "')
+		INNER JOIN " . DB_PREFIX . "product_to_store p2s ON (p2s.product_id = p.product_id AND p2s.store_id = '" . $store_id . "')
+		INNER JOIN " . DB_PREFIX . "product_to_category p2c ON (p2c.product_id = p.product_id)
+		INNER JOIN " . DB_PREFIX . "category c ON (c.category_id = p2c.category_id AND c.status = '1')
+		INNER JOIN " . DB_PREFIX . "category_description cd ON (cd.category_id = p2c.category_id AND cd.language_id = '" . $language_id . "')
+		WHERE p.status = '1'
+		AND p.quantity > 0
+		AND p.date_available <= NOW()
+		HAVING effective_price > 0
+		ORDER BY accessory_rank DESC,
+			ABS(effective_price - '" . (float)$target_product_price . "') ASC,
+			p.sort_order ASC,
+			p.product_id DESC
+		LIMIT 100");
+
+		$suggestions = array();
+		$used_products = array();
+		$used_categories = array();
+		$used_category_names = array();
+
+		foreach ($query->rows as $row) {
+			$product_id = (int)$row['product_id'];
+			$category_id = (int)$row['category_id'];
+			$category_name_key = strtolower(trim($row['category_name']));
+
+			if (isset($used_products[$product_id]) || isset($used_categories[$category_id]) || isset($used_category_names[$category_name_key])) {
+				continue;
+			}
+
+			$price = (float)$row['effective_price'];
+			$bonus_payment = min($current_balance, floor($price * $max_usage_percent / 100));
+
+			if ($bonus_payment <= 0) {
+				continue;
+			}
+
+			$row['effective_price'] = $price;
+			$row['bonus_payment'] = $bonus_payment;
+			$suggestions[] = $row;
+			$used_products[$product_id] = true;
+			$used_categories[$category_id] = true;
+			$used_category_names[$category_name_key] = true;
+
+			if (count($suggestions) >= $limit) {
+				break;
+			}
+		}
+
+		return $suggestions;
+	}
+
+	/**
 	 * Get bonuses expiring within specified days for warning emails
 	 *
 	 * Finds all bonus award entries that will expire within the given number of days
