@@ -1,4 +1,6 @@
 <?php
+require_once(DIR_SYSTEM . 'library/ycp_basket_cache.php');
+
 /**
  * Yandex Commerce Protocol (YCP) API Controller
  *
@@ -82,7 +84,7 @@ class ControllerApiYcp extends Controller {
     /**
      * Appends a timestamped line to DIR_LOGS/ycp.log, keeping only the last 100 entries.
      */
-    private function log($message) {
+    protected function log($message) {
         $file  = DIR_LOGS . 'ycp.log';
         $lines = file_exists($file)
             ? file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)
@@ -92,6 +94,10 @@ class ControllerApiYcp extends Controller {
             $lines = array_slice($lines, -500);
         }
         file_put_contents($file, implode(PHP_EOL, $lines) . PHP_EOL, LOCK_EX);
+    }
+
+    protected function readHealthSnapshot(array $input) {
+        return YcpBasketCache::read($input);
     }
 
     /**
@@ -164,7 +170,7 @@ class ControllerApiYcp extends Controller {
     private function sendJson($http_code, $data) {
         $texts = [200 => 'OK', 201 => 'Created', 400 => 'Bad Request',
                   401 => 'Unauthorized', 404 => 'Not Found',
-                  409 => 'Conflict', 500 => 'Internal Server Error'];
+                  409 => 'Conflict', 500 => 'Internal Server Error', 503 => 'Service Unavailable'];
         $text = isset($texts[$http_code]) ? $texts[$http_code] : '';
         $this->log("← [{$this->ycpEndpoint}] {$http_code} " . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $this->response->addHeader('Content-Type: application/json');
@@ -197,15 +203,13 @@ class ControllerApiYcp extends Controller {
      * Returns enriched product info: prices (kopecks), images, URLs, dimensions,
      * size and color characteristics, warehouse availability.
      *
-     * When is_health_check = true, Yandex only checks endpoint availability —
-     * respond quickly with the same structure but skip heavy DB work.
-     *
      * Request fields:
-     *   items[].id                        — offer ID from YML feed ("{product_id}" or "{product_id}:{option_value_id}")
+     *   items[].id                        — offer ID from YML feed ("{product_id}" or "{product_id}-{option_value_id}")
      *   items[].quantity                  — requested quantity
      *   offers_id_from_merchant_center    — true: IDs are YML offer IDs; false: product IDs
      *   locality                          — region string (used for warehouse filtering — ignored for MVP)
-     *   is_health_check                   — if true, return immediately without DB validation
+     *   is_health_check                   — excludes the request from checkout-transition
+     *                                       accounting; it does not change the response
      */
     public function basketCheck() {
         $this->ycpEndpoint = 'basketCheck';
@@ -220,9 +224,13 @@ class ControllerApiYcp extends Controller {
             return;
         }
 
-        // Health check: respond immediately to confirm the endpoint is alive
         if (!empty($input['is_health_check'])) {
-            $this->sendJson(200, ['items' => []]);
+            $cached_response = $this->readHealthSnapshot($input);
+            if ($cached_response === null) {
+                $this->sendError(503, 'Health-check snapshot is unavailable');
+                return;
+            }
+            $this->sendJson(200, $cached_response);
             return;
         }
 

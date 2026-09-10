@@ -22,6 +22,9 @@
  */
 class ModelApiYcp extends Model {
 
+    private $weightUnitCache = [];
+    private $lengthUnitCache = [];
+
     // ─── Private helpers ────────────────────────────────────────────────────
 
     /**
@@ -47,14 +50,20 @@ class ModelApiYcp extends Model {
     private function convertWeightToGrams($weight, $weight_class_id) {
         if ((float)$weight <= 0) return 500;
 
-        $query = $this->db->query("
-            SELECT unit FROM `" . DB_PREFIX . "weight_class_description`
-            WHERE weight_class_id = '" . (int)$weight_class_id . "'
-            AND language_id = '" . (int)$this->config->get('config_language_id') . "'
-            LIMIT 1
-        ");
+        $weight_class_id = (int)$weight_class_id;
 
-        $unit = $query->num_rows ? strtolower(trim($query->row['unit'])) : 'g';
+        if (!isset($this->weightUnitCache[$weight_class_id])) {
+            $query = $this->db->query("
+                SELECT unit FROM `" . DB_PREFIX . "weight_class_description`
+                WHERE weight_class_id = '" . $weight_class_id . "'
+                AND language_id = '" . (int)$this->config->get('config_language_id') . "'
+                LIMIT 1
+            ");
+            $this->weightUnitCache[$weight_class_id] = $query->num_rows
+                ? strtolower(trim($query->row['unit'])) : 'g';
+        }
+
+        $unit = $this->weightUnitCache[$weight_class_id];
         $w    = (float)$weight;
 
         if ($unit === 'kg' || $unit === 'кг') return (int)round($w * 1000);
@@ -72,14 +81,20 @@ class ModelApiYcp extends Model {
     private function convertDimensionToMm($value, $length_class_id, $default_mm = 100) {
         if ((float)$value <= 0) return $default_mm;
 
-        $query = $this->db->query("
-            SELECT unit FROM `" . DB_PREFIX . "length_class_description`
-            WHERE length_class_id = '" . (int)$length_class_id . "'
-            AND language_id = '" . (int)$this->config->get('config_language_id') . "'
-            LIMIT 1
-        ");
+        $length_class_id = (int)$length_class_id;
 
-        $unit = $query->num_rows ? strtolower(trim($query->row['unit'])) : 'mm';
+        if (!isset($this->lengthUnitCache[$length_class_id])) {
+            $query = $this->db->query("
+                SELECT unit FROM `" . DB_PREFIX . "length_class_description`
+                WHERE length_class_id = '" . $length_class_id . "'
+                AND language_id = '" . (int)$this->config->get('config_language_id') . "'
+                LIMIT 1
+            ");
+            $this->lengthUnitCache[$length_class_id] = $query->num_rows
+                ? strtolower(trim($query->row['unit'])) : 'mm';
+        }
+
+        $unit = $this->lengthUnitCache[$length_class_id];
         $v    = (float)$value;
 
         if ($unit === 'cm' || $unit === 'см') return (int)round($v * 10);
@@ -383,6 +398,152 @@ class ModelApiYcp extends Model {
         }
 
         return $result;
+    }
+
+    /**
+     * Builds a complete offer snapshot for zero-SQL health-check responses.
+     *
+     * Product rows, attributes and size variants are loaded in three bulk
+     * queries. The result is keyed by the exact offer IDs used in the YML feed
+     * and is intended to be written to YcpBasketCache once per day.
+     */
+    public function buildHealthSnapshot() {
+        $allowed_categories = $this->config->get('feed_yandex_market_categories');
+
+        if (!$allowed_categories) {
+            return [];
+        }
+
+        $category_ids = array_values(array_filter(array_map('intval', explode(',', $allowed_categories))));
+
+        if (!$category_ids) {
+            return [];
+        }
+
+        $this->load->model('tool/image');
+        $this->load->model('extension/feed/yandex_market');
+        $this->load->model('extension/feed/google_base');
+
+        $language_id = (int)$this->config->get('config_language_id');
+        $store_id = (int)$this->config->get('config_store_id');
+        $customer_group_id = (int)$this->config->get('config_customer_group_id');
+        $out_of_stock_id = (int)$this->config->get('feed_yandex_market_out_of_stock');
+        $categories_sql = implode(',', $category_ids);
+
+        $query = $this->db->query("
+            SELECT p.product_id, pd.name, p.image, p.price, p.quantity,
+                   p.weight, p.weight_class_id, p.length, p.width, p.height,
+                   p.length_class_id, wcd.unit AS weight_unit, lcd.unit AS length_unit,
+                   (SELECT pd2.price
+                    FROM `" . DB_PREFIX . "product_discount` pd2
+                    WHERE pd2.product_id = p.product_id
+                      AND pd2.customer_group_id = '" . $customer_group_id . "'
+                      AND pd2.quantity = '1'
+                      AND (pd2.date_start = '0000-00-00' OR pd2.date_start < NOW())
+                      AND (pd2.date_end = '0000-00-00' OR pd2.date_end > NOW())
+                    ORDER BY pd2.priority ASC, pd2.price ASC LIMIT 1) AS discount,
+                   (SELECT ps.price
+                    FROM `" . DB_PREFIX . "product_special` ps
+                    WHERE ps.product_id = p.product_id
+                      AND ps.customer_group_id = '" . $customer_group_id . "'
+                      AND (ps.date_start = '0000-00-00' OR ps.date_start < NOW())
+                      AND (ps.date_end = '0000-00-00' OR ps.date_end > NOW())
+                    ORDER BY ps.priority ASC, ps.price ASC LIMIT 1) AS special
+            FROM `" . DB_PREFIX . "product` p
+            JOIN `" . DB_PREFIX . "product_description` pd
+              ON pd.product_id = p.product_id AND pd.language_id = '" . $language_id . "'
+            JOIN `" . DB_PREFIX . "product_to_store` p2s
+              ON p2s.product_id = p.product_id AND p2s.store_id = '" . $store_id . "'
+            LEFT JOIN `" . DB_PREFIX . "weight_class_description` wcd
+              ON wcd.weight_class_id = p.weight_class_id AND wcd.language_id = '" . $language_id . "'
+            LEFT JOIN `" . DB_PREFIX . "length_class_description` lcd
+              ON lcd.length_class_id = p.length_class_id AND lcd.language_id = '" . $language_id . "'
+            WHERE p.status = '1'
+              AND p.date_available <= NOW()
+              AND (p.quantity > 0 OR p.stock_status_id != '" . $out_of_stock_id . "')
+              AND EXISTS (
+                  SELECT 1 FROM `" . DB_PREFIX . "product_to_category` p2c
+                  WHERE p2c.product_id = p.product_id
+                    AND p2c.category_id IN (" . $categories_sql . ")
+              )
+            ORDER BY p.product_id ASC
+        ");
+
+        $products = $query->rows;
+        $product_ids = array_map('intval', array_column($products, 'product_id'));
+        $attributes_map = $this->model_extension_feed_google_base->getAttributesMap($product_ids);
+        $variants_map = $this->model_extension_feed_google_base->getSizeVariantsMap($product_ids);
+        $offers = [];
+
+        foreach ($products as $product) {
+            $product_id = (int)$product['product_id'];
+            $product['price'] = $product['discount'] ? $product['discount'] : $product['price'];
+            $this->weightUnitCache[(int)$product['weight_class_id']] = $product['weight_unit']
+                ? strtolower(trim($product['weight_unit'])) : 'g';
+            $this->lengthUnitCache[(int)$product['length_class_id']] = $product['length_unit']
+                ? strtolower(trim($product['length_unit'])) : 'mm';
+            $attributes = isset($attributes_map[$product_id]) ? $attributes_map[$product_id] : [];
+            $variants = isset($variants_map[$product_id]) ? $variants_map[$product_id] : [];
+            $base = $this->buildProductBase($product);
+
+            if (!$variants) {
+                $id = (string)$product_id;
+                $offers[$id] = array_merge($base, [
+                    'id' => $id,
+                    'characteristics' => $this->buildSnapshotCharacteristics(null, $attributes)
+                ]);
+                continue;
+            }
+
+            foreach ($variants as $variant) {
+                $id = $product_id . '-' . (int)$variant['option_value_id'];
+                $available_quantity = $variant['subtract']
+                    ? max(0, (int)$variant['quantity'])
+                    : max(0, (int)$product['quantity']);
+                $item = array_merge($base, [
+                    'id' => $id,
+                    '_group' => (string)$product_id,
+                    'characteristics' => $this->buildSnapshotCharacteristics($variant, $attributes),
+                    'warehouses' => [['id' => 'main', 'available_quantity' => $available_quantity]]
+                ]);
+
+                $offers[$id] = $item;
+            }
+        }
+
+        return $offers;
+    }
+
+    private function buildSnapshotCharacteristics($variant, array $attrs) {
+        $characteristics = [];
+
+        if ($variant) {
+            $characteristics[] = [
+                'display_type' => 'text',
+                'code' => $this->model_extension_feed_yandex_market->getSizeCode($variant['option_name']),
+                'name' => 'Размер',
+                'properties' => ['value' => $variant['size_display']]
+            ];
+        }
+
+        if (!empty($attrs['Цвет'])) {
+            $color_name = $this->stripColorHex($attrs['Цвет']);
+            $color_hex = $this->extractColorHex($attrs['Цвет']);
+            $color = [
+                'display_type' => $color_hex ? 'color' : 'text',
+                'code' => 'COLOR_REF',
+                'name' => 'Цвет',
+                'properties' => ['value' => $color_name]
+            ];
+
+            if ($color_hex) {
+                $color['properties']['hex'] = $color_hex;
+            }
+
+            $characteristics[] = $color;
+        }
+
+        return $characteristics;
     }
 
     /**
