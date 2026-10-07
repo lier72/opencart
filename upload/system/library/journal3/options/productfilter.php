@@ -73,6 +73,11 @@ class ProductFilter extends Option {
 				break;
 
 			case 'advanced':
+				// Opt-in for generated technology blocks; ordinary attribute rules stay unchanged.
+				if (Arr::get($value, 'attribute_values_separator') === ',') {
+					$result['attribute_values_separator'] = ',';
+				}
+
 				if (is_array($categories = Arr::get($value, 'categories', array()))) {
 					$categories = Arr::trim($categories);
 

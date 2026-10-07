@@ -19,6 +19,12 @@
  *   php generate_filter_seo_urls.php --store-id=0 --language-id=1
  */
 
+// Match admin/index.php: Journal's database wrapper needs the OpenCart version
+// before startup loads modified classes, including the database query wrapper.
+if (!defined('VERSION')) {
+	define('VERSION', '3.0.3.6');
+}
+
 $admin_dir = dirname(__FILE__) . '/../admin/';
 if (file_exists($admin_dir . 'config.php')) {
 	require_once($admin_dir . 'config.php');

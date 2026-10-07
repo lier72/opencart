@@ -1152,6 +1152,11 @@ class ModelJournal3Filter extends Model {
 
 		if ($query !== 'attribute' && Arr::get($filter_data, 'attributes')) {
 			$attribute_table = $this->journal3->get('filterAttributeValuesSeparator') ? 'journal3_product_attribute' : 'product_attribute';
+			$technology_values = Arr::get($filter_data, 'attribute_values_separator') === ',';
+			if ($technology_values) {
+				// Read the source attribute even when Journal's split-value index is enabled.
+				$attribute_table = 'product_attribute';
+			}
 
 			foreach ($filter_data['attributes'] as $attribute_id => $attribute_values) {
 				$temp = array();
@@ -1162,7 +1167,13 @@ class ModelJournal3Filter extends Model {
 
 				foreach ($attribute_values as $key => $value) {
 					// For attributes with comma-separated values, use LIKE to match individual values
-					if (in_array($attribute_id, $comma_separated_attribute_ids)) {
+					if ($technology_values) {
+						// Escape regex metacharacters: BOOM must not match SUPER BOOM;
+						// names such as BOUNSE+ must be treated literally.
+						$literal = preg_replace('/([.\\\\+*?\\[\\]\\^$(){}|])/', '\\\\$1', $value);
+						$pattern = '(^|,)[[:space:]]*' . $literal . '[[:space:]]*(,|$)';
+						$temp[] = "pai.text REGEXP '" . $this->db->escape($pattern) . "'";
+					} elseif (in_array($attribute_id, $comma_separated_attribute_ids)) {
 						$temp[] = "TRIM(pai.text) LIKE '%" . $this->db->escape($value) . "%'";
 					} else {
 						// For regular attributes, use exact match
