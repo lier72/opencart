@@ -301,9 +301,77 @@ $this->generatePositionsDiscount();
 $this->recountReceiptAmount();
 $this->finalCheck();
 }
-public function calculateDiscount($amount, $discount)
+/**
+ * reset
+ *
+ * Clears all accumulated instance state back to its constructor defaults so a single AlfabankDiscount
+ * object can process many orders in sequence (the catalog payment controller and OrangeDataService both
+ * reuse one helper instance). Without this, addProduct() keeps appending to $cashBasket and the running
+ * sums in $arrRecountSumm carry over between orders.
+ *
+ * Scope: internal; distribute() calls it automatically at the start of every run. Call it manually only
+ * if you drive the lower-level discoverDiscount()/normalizeItems() sequence directly on a reused instance.
+ */
+private function reset()
 {
-$result = $this->transformNumber($discount * $amount / 100, 0);
+$this->cashBasket = array();
+$this->equalPosition = -1;
+$this->faultPrice = null;
+$this->arrOrder = array(
+'order_id' => null,
+'amount' => null,
+'discount' => null,
+'basket' => array()
+);
+$this->arrRecountSumm = array(
+'priceAmount' => 0,
+'priceDiscount' => 0,
+'discount' => 0,
+);
+}
+
+/**
+ * distribute
+ *
+ * Single entry point for spreading an order-level discount across the receipt positions while keeping
+ * chosen service lines (delivery, cash-on-delivery fee) at full price. The whole-order discount is derived
+ * as (Σ goods itemAmount) − goodsTarget, where goodsTarget is the amount actually paid minus the full-price
+ * lines; this folds coupons / rewards / redeemed vouchers into one amount that lands only on the goods.
+ * finalCheck()/equalizePositionDiscount() reconcile rounding to the kopeck, so Σ(returned positions) ==
+ * $amountKop exactly (Σ distributed goods + Σ full-price lines).
+ *
+ * Scope: call from the Alfabank payment controller (payment()/repay()) AND from
+ * OrangeDataService::fiscalizeOrder() with the SAME goods/full-price split, so the prepayment check
+ * (Alfabank) and the зачёт аванса check (OrangeData) match position-for-position. Replaces the manual
+ * discoverDiscount()->setOrderDiscount()->normalizeItems() sequence, which used to spread the discount
+ * over delivery as well.
+ *
+ * @param array $goods     Positions eligible for discount (products + purchased gift certificates), in
+ *                         gateway shape: itemPrice & itemAmount in kopecks, quantity.value = count.
+ * @param array $fullPrice Service positions kept at full price (shipping, COD fee), same gateway shape.
+ * @param int   $amountKop The amount actually paid, in kopecks (order.total * currency_value * 100).
+ * @return array Merged positions (distributed goods followed by untouched full-price lines); positionId is
+ *               re-sequenced 1..N only when a discount was applied (no discount → goods returned as-is).
+ */
+public function distribute($goods, $fullPrice, $amountKop)
+{
+$this->reset();
+$fullPriceSum = 0;
+foreach ($fullPrice as $item) {
+$fullPriceSum += isset($item['itemAmount']) ? $item['itemAmount'] : 0;
+}
+$goodsTarget = $amountKop - $fullPriceSum;
+$discount = $this->discoverDiscount($goodsTarget, $goods);
+if ($discount > 0) {
+$this->setOrderDiscount($discount);
+$goods = $this->normalizeItems($goods);
+}
+$result = array_merge(array_values($goods), array_values($fullPrice));
+if ($discount > 0) {
+for ($i = 0, $n = count($result); $i < $n; $i++) {
+$result[$i]['positionId'] = $i + 1;
+}
+}
 return $result;
 }
 public function normalizeItems($gatePositions)

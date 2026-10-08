@@ -73,6 +73,11 @@ class ControllerExtensionPaymentAlfabank extends Controller
 				$orderBundle['customerDetails']['phone'] = $this->cleanPhoneNumber($order_info['telephone']);
 			}
 			#BLOCK_PHONE_TRANSFER_END
+			// Split positions into two groups for AlfabankDiscount::distribute(): $goods receive the
+			// whole-order discount; $fullPrice (delivery / COD fee) stay at full price so returns are not
+			// over-refunded. Both the Alfabank check and the OrangeData зачёт-аванса check use this split.
+			$goods = array();
+			$fullPrice = array();
 			foreach ($this->cart->getProducts() as $product) {
 				$product_taxSum = $this->tax->getTax($product['price'], $product['tax_class_id']);
 				$product_amount = (round($product['price'] + $product_taxSum, 2)) * $product['quantity'];
@@ -108,7 +113,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 					"value" => $this->method_library->getPaymentObjectType()
 				);
 				$product_data['itemAttributes']['attributes'] = $attributes;
-				$orderBundle['cartItems']['items'][] = $product_data;
+				$goods[] = $product_data;
 			}
 			if (isset($this->session->data['shipping_method']['cost']) && $this->session->data['shipping_method']['cost'] > 0) {
 				$delivery['positionId'] = 'delivery';
@@ -129,7 +134,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 					"value" => 4
 				);
 				$delivery['itemAttributes']['attributes'] = $attributes;
-				$orderBundle['cartItems']['items'][] = $delivery;
+				$fullPrice[] = $delivery;
 			}
 			if (isset($this->session->data['vouchers']) && count($this->session->data['vouchers']) > 0) {
 				foreach ($this->session->data['vouchers'] as $key => $voucher) {
@@ -157,17 +162,13 @@ class ControllerExtensionPaymentAlfabank extends Controller
 						"value" => 1
 					);
 					$itemVoucher['itemAttributes']['attributes'] = $attributes;
-					$orderBundle['cartItems']['items'][] = $itemVoucher;
+					$goods[] = $itemVoucher;
 				}
 			}
 
-			$discount = $this->method_library->discountHelper->discoverDiscount($amount, $orderBundle['cartItems']['items']);
-			if ($discount > 0) {
-				$this->method_library->discountHelper->setOrderDiscount($discount);
-				$recalculatedPositions = $this->method_library->discountHelper->normalizeItems($orderBundle['cartItems']['items']);
-				$recalculatedAmount = $this->method_library->discountHelper->getResultAmount();
-				$orderBundle['cartItems']['items'] = $recalculatedPositions;
-			}
+			// Spread the whole-order discount across $goods only, keeping $fullPrice (delivery) at full
+			// value. distribute() returns the merged, reconciled positions (Σ == $amount to the kopeck).
+			$orderBundle['cartItems']['items'] = $this->method_library->discountHelper->distribute($goods, $fullPrice, $amount);
 		}
 
 		$filePath = DIR_SYSTEM . 'library/alfabank/CRBHandler.php';
@@ -681,6 +682,12 @@ class ControllerExtensionPaymentAlfabank extends Controller
 				$orderBundle['customerDetails']['phone'] = $this->cleanPhoneNumber($order_info['telephone']);
 			}
 
+			// Split positions into two groups for AlfabankDiscount::distribute(): $goods receive the
+			// whole-order discount; $fullPrice (delivery / COD fee) stay at full price so returns are not
+			// over-refunded. Must mirror the OrangeData зачёт-аванса check built in OrangeDataService.
+			$goods = array();
+			$fullPrice = array();
+
 			// Get order products from database
 			$order_products = $this->model_checkout_order->getOrderProducts($order_id);
 
@@ -725,10 +732,12 @@ class ControllerExtensionPaymentAlfabank extends Controller
 				);
 
 				$product_data['itemAttributes']['attributes'] = $attributes;
-				$orderBundle['cartItems']['items'][] = $product_data;
+				$goods[] = $product_data;
 			}
 
-			// Get shipping cost from order totals
+			// Shipping kept at full price (never discounted). The CDEK cash-on-delivery fee cannot occur on
+			// an Alfabank (card-prepaid) order, so only 'shipping' is handled here; OrangeDataService adds the
+			// COD fee for the paths where it applies.
 			$order_totals = $this->model_checkout_order->getOrderTotals($order_id);
 			foreach ($order_totals as $total) {
 				if ($total['code'] == 'shipping' && $total['value'] > 0) {
@@ -758,7 +767,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 					);
 
 					$delivery['itemAttributes']['attributes'] = $attributes;
-					$orderBundle['cartItems']['items'][] = $delivery;
+					$fullPrice[] = $delivery;
 					break;
 				}
 			}
@@ -792,17 +801,13 @@ class ControllerExtensionPaymentAlfabank extends Controller
 				);
 
 				$itemVoucher['itemAttributes']['attributes'] = $attributes;
-				$orderBundle['cartItems']['items'][] = $itemVoucher;
+				$goods[] = $itemVoucher;
 			}
 
-			// Handle discount
-			if (isset($orderBundle['cartItems']['items'])) {
-				$discount = $this->method_library->discountHelper->discoverDiscount($amount, $orderBundle['cartItems']['items']);
-				if ($discount > 0) {
-					$this->method_library->discountHelper->setOrderDiscount($discount);
-					$recalculatedPositions = $this->method_library->discountHelper->normalizeItems($orderBundle['cartItems']['items']);
-					$orderBundle['cartItems']['items'] = $recalculatedPositions;
-				}
+			// Spread the whole-order discount across $goods only, keeping $fullPrice (delivery / COD fee)
+			// at full value. distribute() returns the merged, reconciled positions (Σ == $amount).
+			if ($goods) {
+				$orderBundle['cartItems']['items'] = $this->method_library->discountHelper->distribute($goods, $fullPrice, $amount);
 			}
 		}
 
