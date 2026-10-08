@@ -74,7 +74,7 @@ class ControllerJournal3Journal3 extends Controller {
 			$this->document->addStyle('view/javascript/journal3/dist/style.css?t=' . time());
 		} else {
 			$this->document->addScript('view/javascript/journal3/dist/vendor.js?v=' . (defined('JOURNAL3_BUILD') ? JOURNAL3_BUILD : JOURNAL3_VERSION));
-			$this->document->addScript('view/javascript/journal3/dist/main.js?v=' . (defined('JOURNAL3_BUILD') ? JOURNAL3_BUILD : JOURNAL3_VERSION));
+			$this->document->addScript('view/javascript/journal3/dist/main.js?v=' . (defined('JOURNAL3_BUILD') ? JOURNAL3_BUILD : JOURNAL3_VERSION) . '&attribute_value_order=1');
 
 			$this->document->addStyle('view/javascript/journal3/dist/vendor.css?v=' . (defined('JOURNAL3_BUILD') ? JOURNAL3_BUILD : JOURNAL3_VERSION));
 			$this->document->addStyle('view/javascript/journal3/dist/style.css?v=' . (defined('JOURNAL3_BUILD') ? JOURNAL3_BUILD : JOURNAL3_VERSION));

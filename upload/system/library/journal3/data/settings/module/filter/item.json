@@ -48,6 +48,11 @@
     "value": "100",
     "php": true
   },
+  "attributeValueOrder": {
+    "type": "Text",
+    "value": "",
+    "php": true
+  },
   "sectionCustomHeight": {
     "type": "InputNumber",
     "rules": {

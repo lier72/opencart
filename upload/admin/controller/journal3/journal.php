@@ -148,7 +148,7 @@ class ControllerJournal3Journal extends Controller {
 
 		// journal3 assets
 		$this->document->addStyle('view/javascript/journal3/dist/journal.css?v=' . (JOURNAL3_DEBUG ? time() : JOURNAL3_BUILD));
-		$this->document->addScript('view/javascript/journal3/dist/journal.js?v=' . (JOURNAL3_DEBUG ? time() : JOURNAL3_BUILD));
+		$this->document->addScript('view/javascript/journal3/dist/journal.js?v=' . (JOURNAL3_DEBUG ? time() : JOURNAL3_BUILD) . '&attribute_value_order=1');
 
 		// version
 		$data['j3v'] = JOURNAL3_VERSION;

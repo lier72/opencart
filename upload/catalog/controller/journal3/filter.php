@@ -225,6 +225,31 @@ class ControllerJournal3Filter extends ModuleController {
 		return array();
 	}
 
+	private function sortAttributeValues($values, $order) {
+		// Compare displayed labels, preserving the original values used by filter URLs.
+		$normalize = function ($value) {
+			return trim(html_entity_decode($value, ENT_QUOTES, 'UTF-8'));
+		};
+		$ranks = array();
+
+		foreach (preg_split('/\r\n|\r|\n/', (string)$order) as $value) {
+			$value = $normalize($value);
+
+			if ($value !== '' && !isset($ranks[$value])) {
+				$ranks[$value] = count($ranks);
+			}
+		}
+
+		usort($values, function ($a, $b) use ($ranks, $normalize) {
+			$a_rank = $ranks[$normalize($a['value'])] ?? PHP_INT_MAX;
+			$b_rank = $ranks[$normalize($b['value'])] ?? PHP_INT_MAX;
+
+			return $a_rank === $b_rank ? strnatcmp($a['value'], $b['value']) : $a_rank <=> $b_rank;
+		});
+
+		return $values;
+	}
+
 	protected function beforeRender() {
 		$items = array();
 
@@ -333,9 +358,7 @@ class ControllerJournal3Filter extends ModuleController {
 						$attribute['id'] = rawurlencode(htmlspecialchars_decode($attribute['id']));
 					}
 
-					usort($attributes['values'], function ($a, $b) {
-						return strnatcmp($a['value'], $b['value']);
-					});
+					$attributes['values'] = $this->sortAttributeValues($attributes['values'], Arr::get($item, 'attributeValueOrder', ''));
 
 					$item['key'] .= $attributes['attribute_id'];
 					$item['items'] = $attributes['values'];
