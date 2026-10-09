@@ -1,0 +1,329 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="pull-right">
+        <button type="submit" form="form-orangedata" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+        <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+        <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+    <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+    <div class="panel panel-default">
+      <div class="panel-heading"><h3 class="panel-title"><i class="fa fa-pencil"></i> {{ heading_title }}</h3></div>
+      <div class="panel-body">
+        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-orangedata" class="form-horizontal">
+
+          <h4>{{ text_group_general }}</h4>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_status }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_status" class="form-control">
+              <option value="1"{% if module_orangedata_piot_status %} selected{% endif %}>{{ text_enabled }}</option>
+              <option value="0"{% if not module_orangedata_piot_status %} selected{% endif %}>{{ text_disabled }}</option>
+            </select></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_base_url }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_base_url" value="{{ module_orangedata_piot_base_url }}" placeholder="https://apip.orangedata.ru:12001/api/v2/" class="form-control"/>
+              <div class="help-block">{{ help_base_url }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_inn }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_inn" value="{{ module_orangedata_piot_inn }}" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_key }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_key" value="{{ module_orangedata_piot_key }}" class="form-control"/>
+              <div class="help-block">{{ help_key }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_group }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_group" value="{{ module_orangedata_piot_group }}" placeholder="main_2" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_verify_peer }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_verify_peer" class="form-control">
+              <option value="1"{% if module_orangedata_piot_verify_peer %} selected{% endif %}>{{ text_yes }}</option>
+              <option value="0"{% if not module_orangedata_piot_verify_peer %} selected{% endif %}>{{ text_no }}</option>
+            </select><div class="help-block">{{ help_verify_peer }}</div></div>
+          </div>
+
+          <hr><h4>{{ text_group_certs }}</h4>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_ssl_cert_path }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_ssl_cert_path" value="{{ module_orangedata_piot_ssl_cert_path }}" placeholder="/Users/max/Sites/storage/orangedata/client.crt" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_ssl_key_path }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_ssl_key_path" value="{{ module_orangedata_piot_ssl_key_path }}" placeholder="/Users/max/Sites/storage/orangedata/client.key" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_ssl_key_pass }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_ssl_key_pass" value="{{ module_orangedata_piot_ssl_key_pass }}" autocomplete="off" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_sign_key_path }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_sign_key_path" value="{{ module_orangedata_piot_sign_key_path }}" placeholder="/Users/max/Sites/storage/orangedata/private_key_test.xml" class="form-control"/>
+              <div class="help-block">{{ help_sign_key_path }}</div></div>
+          </div>
+
+          <hr><h4>{{ text_group_pmsr }}</h4>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_client_name }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_client_name" value="{{ module_orangedata_piot_client_name }}" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_client_version }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_client_version" value="{{ module_orangedata_piot_client_version }}" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_client_id }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_client_id" value="{{ module_orangedata_piot_client_id }}" class="form-control"/></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_client_token }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_client_token" value="{{ module_orangedata_piot_client_token }}" class="form-control"/>
+              <div class="help-block">{{ help_client_info }}</div></div>
+          </div>
+
+          <hr><h4>{{ text_group_receipt }}</h4>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_taxation_system }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_taxation_system" class="form-control">
+              {% for ts in taxation_systems %}
+              <option value="{{ ts.id }}"{% if module_orangedata_piot_taxation_system is not empty and module_orangedata_piot_taxation_system == ts.id %} selected{% elseif module_orangedata_piot_taxation_system is empty and ts.id == 1 %} selected{% endif %}>{{ ts.name }}</option>
+              {% endfor %}
+            </select><div class="help-block">{{ help_taxation_ausn }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_tax }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_tax" value="{{ module_orangedata_piot_tax|default(6) }}" class="form-control"/>
+              <div class="help-block">{{ help_tax }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_marked_subject_type }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_marked_subject_type" class="form-control">
+              {% for st in marked_subject_types %}
+              <option value="{{ st.id }}"{% if module_orangedata_piot_marked_subject_type == st.id %} selected{% endif %}>{{ st.name }}</option>
+              {% endfor %}
+            </select></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_marked_categories }}</label>
+            <div class="col-sm-9">
+              <input type="text" id="od-cat-input" class="form-control" placeholder="{{ text_add_category }}" autocomplete="off"/>
+              <table class="table table-bordered" style="margin-top:10px;margin-bottom:5px;">
+                <thead><tr><td>{{ column_category }}</td><td style="width:280px;">{{ column_group }}</td><td style="width:40px;"></td></tr></thead>
+                <tbody id="od-cat-body">
+                {% for row in marked_categories %}
+                <tr>
+                  <td>{{ row.name }}<input type="hidden" name="module_orangedata_piot_marked_categories[{{ loop.index0 }}][category_id]" value="{{ row.category_id }}"/></td>
+                  <td><select name="module_orangedata_piot_marked_categories[{{ loop.index0 }}][group_id]" class="form-control">
+                    {% for gid, gname in marking_groups %}<option value="{{ gid }}"{% if row.group_id == gid %} selected{% endif %}>{{ gid }} — {{ gname }}</option>{% endfor %}
+                  </select></td>
+                  <td class="text-center"><button type="button" class="btn btn-danger btn-xs od-cat-remove"><i class="fa fa-minus-circle"></i></button></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+              <div class="help-block">{{ help_marked_categories }}</div>
+            </div>
+          </div>
+          <script type="text/javascript"><!--
+          (function(){
+            var idx = {{ marked_categories|length }};
+            var groupOpts = '{% for gid, gname in marking_groups %}<option value="{{ gid }}">{{ gid }} — {{ gname|e('js') }}</option>{% endfor %}';
+            $('#od-cat-input').autocomplete({
+              'source': function(request, response) {
+                $.ajax({ url: 'index.php?route=catalog/category/autocomplete&user_token={{ user_token }}&filter_name=' + encodeURIComponent(request), dataType: 'json',
+                  success: function(json){ response($.map(json, function(item){ return { label: item['name'], value: item['category_id'] }; })); } });
+              },
+              'select': function(item) {
+                $('#od-cat-input').val('');
+                if ($('#od-cat-body input[value="' + item['value'] + '"]').length) return; // no duplicates
+                var name = 'module_orangedata_piot_marked_categories[' + idx + ']';
+                $('#od-cat-body').append(
+                  '<tr><td>' + item['label'] + '<input type="hidden" name="' + name + '[category_id]" value="' + item['value'] + '"/></td>' +
+                  '<td><select name="' + name + '[group_id]" class="form-control">' + groupOpts + '</select></td>' +
+                  '<td class="text-center"><button type="button" class="btn btn-danger btn-xs od-cat-remove"><i class="fa fa-minus-circle"></i></button></td></tr>');
+                idx++;
+              }
+            });
+            $('#od-cat-body').on('click', '.od-cat-remove', function(){ $(this).closest('tr').remove(); });
+          })();
+          //--></script>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_payment_type }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_payment_type" class="form-control">
+              <option value="14"{% if module_orangedata_piot_payment_type is empty or module_orangedata_piot_payment_type == 14 %} selected{% endif %}>{{ text_pay_prepaid }}</option>
+              <option value="2"{% if module_orangedata_piot_payment_type == 2 %} selected{% endif %}>{{ text_pay_cashless }}</option>
+              <option value="1"{% if module_orangedata_piot_payment_type == 1 %} selected{% endif %}>{{ text_pay_cash }}</option>
+            </select><div class="help-block">{{ help_payment_type }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_payment_type_map }}</label>
+            <div class="col-sm-9">
+              <textarea name="module_orangedata_piot_payment_type_map" rows="8" class="form-control" placeholder="rbs:14">{{ module_orangedata_piot_payment_type_map }}</textarea>
+              <div class="help-block">{{ help_payment_type_map }}</div></div>
+          </div>
+
+          <hr><h4>{{ text_group_check }}</h4>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_check_backend }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_check_backend" class="form-control">
+              {% for b in check_backends %}
+              <option value="{{ b.id }}"{% if module_orangedata_piot_check_backend == b.id or (module_orangedata_piot_check_backend is empty and b.id == 'orangedata') %} selected{% endif %}>{{ b.name }}</option>
+              {% endfor %}
+            </select><div class="help-block">{{ help_check_backend }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_trueapi_env }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_trueapi_env" class="form-control">
+              <option value="prod"{% if module_orangedata_piot_trueapi_env != 'sandbox' %} selected{% endif %}>{{ text_trueapi_prod }}</option>
+              <option value="sandbox"{% if module_orangedata_piot_trueapi_env == 'sandbox' %} selected{% endif %}>{{ text_trueapi_sandbox }}</option>
+            </select></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_trueapi_key }}</label>
+            <div class="col-sm-9"><input type="password" name="module_orangedata_piot_trueapi_key" value="{{ module_orangedata_piot_trueapi_key }}" autocomplete="new-password" class="form-control"/>
+              <div class="help-block">{{ help_trueapi_key }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_trueapi_fn }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_trueapi_fn" value="{{ module_orangedata_piot_trueapi_fn }}" class="form-control"/>
+              <div class="help-block">{{ help_trueapi_fn }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_trueapi_proxy }}</label>
+            <div class="col-sm-9"><input type="text" name="module_orangedata_piot_trueapi_proxy" value="{{ module_orangedata_piot_trueapi_proxy }}" placeholder="socks5h://127.0.0.1:1080" class="form-control"/>
+              <div class="help-block">{{ help_trueapi_proxy }}</div></div>
+          </div>
+          <div class="form-group">
+            <div class="col-sm-offset-3 col-sm-9">
+              <button type="button" id="btn-test-trueapi" class="btn btn-info"><i class="fa fa-plug"></i> {{ button_test_trueapi }}</button>
+              <span id="test-trueapi-result" style="margin-left:10px;"></span>
+            </div>
+          </div>
+
+          <hr><h4>{{ text_group_scanner }}</h4>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_scan_test }}</label>
+            <div class="col-sm-9">
+              <input type="text" id="od-scan-test" class="form-control" autocomplete="off" placeholder="{{ text_scan_placeholder }}"/>
+              <div class="help-block">{{ help_scan_test }}</div>
+              <div id="od-scan-test-result"></div>
+            </div>
+          </div>
+
+          <hr><h4>{{ text_group_automation }}</h4>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_trigger_status }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_trigger_status_id" class="form-control">
+              <option value="0">{{ text_none }}</option>
+              {% for order_status in order_statuses %}
+              <option value="{{ order_status.order_status_id }}"{% if module_orangedata_piot_trigger_status_id == order_status.order_status_id %} selected{% endif %}>{{ order_status.name }}</option>
+              {% endfor %}
+            </select></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_auto_fiscalize }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_auto_fiscalize" class="form-control">
+              <option value="0"{% if not module_orangedata_piot_auto_fiscalize %} selected{% endif %}>{{ text_disabled }}</option>
+              <option value="1"{% if module_orangedata_piot_auto_fiscalize %} selected{% endif %}>{{ text_enabled }}</option>
+            </select><div class="help-block">{{ help_auto_fiscalize }}</div></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label">{{ entry_ignore_item_code }}</label>
+            <div class="col-sm-9"><select name="module_orangedata_piot_ignore_item_code_check" class="form-control">
+              <option value="0"{% if not module_orangedata_piot_ignore_item_code_check %} selected{% endif %}>{{ text_no }}</option>
+              <option value="1"{% if module_orangedata_piot_ignore_item_code_check %} selected{% endif %}>{{ text_yes }}</option>
+            </select><div class="help-block">{{ help_ignore_item_code }}</div></div>
+          </div>
+
+          <hr>
+          <div class="form-group">
+            <div class="col-sm-offset-3 col-sm-9">
+              <button type="button" id="btn-test" class="btn btn-info"><i class="fa fa-plug"></i> {{ button_test }}</button>
+              <span id="test-result" style="margin-left:10px;"></span>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript"><!--
+$('#btn-test').on('click', function() {
+  var btn = $(this);
+  btn.button('loading');
+  $('#test-result').removeClass('text-danger text-success').html('...');
+  $.ajax({
+    url: '{{ test_connection }}',
+    type: 'post',
+    data: $('#form-orangedata select, #form-orangedata input'),
+    dataType: 'json',
+    complete: function() { btn.button('reset'); },
+    success: function(json) {
+      if (json.error) { $('#test-result').addClass('text-danger').html(json.error); }
+      else { $('#test-result').addClass('text-success').html(json.success); }
+    },
+    error: function(xhr) { $('#test-result').addClass('text-danger').html(xhr.status + ' ' + xhr.statusText); }
+  });
+});
+// Scanner test: same key handling as the order panel (Enter = done, Ctrl+] / F8 = GS), nothing is stored.
+$('#od-scan-test').on('keydown', function(e) {
+  if ((e.ctrlKey && (e.which === 221 || e.key === ']')) || e.which === 119) {
+    e.preventDefault();
+    var s = this.selectionStart, t = this.selectionEnd;
+    this.value = this.value.slice(0, s) + '<GS>' + this.value.slice(t);
+    this.selectionStart = this.selectionEnd = s + 4;
+    return;
+  }
+  if (e.which !== 13) return;
+  e.preventDefault();
+  var field = $(this), out = $('#od-scan-test-result');
+  if (!field.val()) return;
+  $.ajax({
+    url: '{{ scan_test }}', type: 'post', dataType: 'json', data: {km: field.val()},
+    success: function(j) {
+      if (j.error) { out.html($('<div class="alert alert-danger"/>').text(j.error)); return; }
+      var cls = !j.has_gs ? 'alert-danger' : (j.restored ? 'alert-warning' : 'alert-success');
+      out.html($('<div class="alert ' + cls + '"/>')
+        .append($('<div/>').text(j.verdict))
+        .append($('<code style="word-break:break-all"/>').text(j.code))
+        .append($('<div class="text-muted"/>').text('{{ text_scan_length }}: ' + j.length)));
+      field.val('').focus();
+    },
+    error: function(x) { out.html($('<div class="alert alert-danger"/>').text(x.status + ' ' + x.statusText)); }
+  });
+});
+$('#btn-test-trueapi').on('click', function() {
+  var btn = $(this);
+  btn.button('loading');
+  $('#test-trueapi-result').removeClass('text-danger text-success').html('...');
+  $.ajax({
+    url: '{{ test_trueapi }}',
+    type: 'post',
+    data: $('#form-orangedata select, #form-orangedata input'),
+    dataType: 'json',
+    complete: function() { btn.button('reset'); },
+    success: function(json) {
+      if (json.error) { $('#test-trueapi-result').addClass('text-danger').text(json.error); }
+      else { $('#test-trueapi-result').addClass('text-success').text(json.success); }
+    },
+    error: function(xhr) { $('#test-trueapi-result').addClass('text-danger').text(xhr.status + ' ' + xhr.statusText); }
+  });
+});
+//--></script>
+{{ footer }}

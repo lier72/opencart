@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>OrangeData ТС ПИоТ (разрешительный режим)</name>
+    <code>orangedata_piot</code>
+    <version>1.1</version>
+    <author>UniqSport</author>
+    <link>https://orangedata.ru</link>
+
+    <!-- NB: OpenCart OCMOD matches the <search> text against ONE line at a time (stripos per line), so every
+         search below is a single line. -->
+
+    <!-- 1) Inject the ТС ПИоТ marking panel into the order info screen, INSIDE div#content (right after the
+         main container, before the page's first script) so it sits in the content column, not under the
+         left menu. index="0" = only that first script line. -->
+    <file path="admin/view/template/sale/order_info.twig">
+        <operation>
+            <search index="0"><![CDATA[<script type="text/javascript"><!--]]></search>
+            <add position="before"><![CDATA[  <div class="container-fluid"><div class="row"><div class="col-sm-12"><div id="orangedata-piot-container"></div></div></div></div>
+  <script type="text/javascript"><!--
+  $(document).ready(function(){ $('#orangedata-piot-container').load('index.php?route=extension/module/orangedata_piot/order&user_token={{ user_token }}&order_id={{ order_id }}'); });
+  //--></script>]]></add>
+        </operation>
+    </file>
+
+    <!-- 2) Add the marked-goods flag + товарная группа to the product Data tab, above Status: match the Status
+         label line and insert one line higher (offset 1 = before its <div class="form-group">).
+         The current value is loaded via AJAX (no core controller edit) and saved via admin events. -->
+    <file path="admin/view/template/catalog/product_form.twig">
+        <operation>
+            <search><![CDATA[for="input-status"]]></search>
+            <add position="before" offset="1"><![CDATA[              <div class="form-group">
+                <label class="col-sm-2 control-label">ТС ПИоТ: маркировка</label>
+                <div class="col-sm-10">
+                  <select name="orangedata_marking_mode" id="orangedata-marking-mode" class="form-control" style="display:inline-block;width:auto;">
+                    <option value="auto">Авто (по категории)</option>
+                    <option value="yes">Да — маркируемый</option>
+                    <option value="no">Нет — не маркируется</option>
+                  </select>
+                  &nbsp;&nbsp;
+                  <select name="orangedata_marking_group_id" id="orangedata-marking-group" class="form-control" style="display:inline-block;width:auto;">
+                    <option value="0">— товарная группа —</option>
+                    <option value="2">Обувь</option>
+                    <option value="1">Одежда</option>
+                  </select>
+                  <span class="help-block" style="display:inline-block;margin-left:8px;">«Авто» берёт признак из карты категорий модуля.</span>
+                </div>
+              </div>
+              <script type="text/javascript"><!--
+              (function(){
+                var pid = (location.search.match(/[?&]product_id=(\d+)/) || [])[1];
+                if (!pid) return;
+                $.ajax({ url: 'index.php?route=extension/module/orangedata_piot/productMarking&user_token={{ user_token }}&product_id=' + pid, dataType: 'json',
+                  success: function(j){ if(!j) return; if(j.mode) $('#orangedata-marking-mode').val(j.mode); if(j.marking_group_id) $('#orangedata-marking-group').val(j.marking_group_id); } });
+              })();
+              //--></script>
+]]></add>
+        </operation>
+    </file>
+</modification>

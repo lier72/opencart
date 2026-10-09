@@ -1,0 +1,246 @@
+<style>
+#orangedata-piot-panel .od-active > td { background:#fff3cd; }
+#orangedata-piot-panel .od-km:focus { border-color:#f0ad4e; box-shadow:0 0 6px rgba(240,173,78,.7); background:#fffdf5; }
+#orangedata-piot-panel #od-ean { max-width:360px; font-weight:bold; }
+#orangedata-piot-panel #od-ean:focus { border-color:#5bc0de; box-shadow:0 0 6px rgba(91,192,222,.7); }
+</style>
+<div class="panel panel-default" id="orangedata-piot-panel">
+  <div class="panel-heading"><h3 class="panel-title"><i class="fa fa-barcode"></i> {{ text_panel_title }}</h3></div>
+  <div class="panel-body">
+    <div id="od-result"></div>
+    {% if lines is empty %}
+      <p class="text-muted">{{ text_no_lines }}</p>
+    {% else %}
+    <div class="form-group" style="margin-bottom:12px;">
+      <label for="od-ean" style="display:block;"><i class="fa fa-shopping-basket"></i> {{ entry_scan_ean }}</label>
+      <input type="text" id="od-ean" class="form-control input-sm" autocomplete="off" placeholder="{{ text_scan_ean_placeholder }}"/>
+      <span class="help-block" style="margin:4px 0 0;font-size:11px;">{{ help_scan_ean }}</span>
+    </div>
+    <table class="table table-bordered">
+      <thead><tr>
+        <td>{{ column_product }}</td>
+        <td class="text-center">{{ column_unit }}</td>
+        <td>{{ column_code }}</td>
+        <td class="text-center">{{ column_status }}</td>
+        <td></td>
+      </tr></thead>
+      <tbody>
+      {% for line in lines %}
+        {% for unit in line.units %}
+        {% set c = unit.code %}
+        <tr>
+          {% if unit.unit_index == 0 %}<td rowspan="{{ line.quantity }}">{{ line.name }}{% if line.options %}<br><span class="text-muted" style="font-size:11px;">{{ line.options }}</span>{% endif %}{% if line.is_marked %}<br><span class="label label-info">{{ text_marked }} (гр. {{ line.group_id }})</span>{% endif %}{% if line.eans is empty and line.is_marked %}<br><span class="label label-warning" title="{{ help_no_ean }}">{{ text_no_ean }}</span>{% endif %}</td>{% endif %}
+          <td class="text-center">{{ unit.unit_index + 1 }}</td>
+          <td>
+            <input type="text" class="form-control input-sm od-km" value="{{ c.km_raw|default('')|e }}" data-saved="{{ c.km_raw|default('')|e }}" autocomplete="off"
+                   data-order-product-id="{{ line.order_product_id }}" data-product-id="{{ line.product_id }}" data-ean="{{ line.eans|join(',')|e }}"
+                   data-unit-index="{{ unit.unit_index }}" {% if c and c.fiscalized %}readonly{% endif %} placeholder="{{ text_scan_placeholder }}"/>
+            {% if c and c.km_raw and not unit.has_gs %}<div class="text-danger" style="font-size:11px;"><i class="fa fa-warning"></i> {{ text_no_gs }}</div>{% endif %}
+          </td>
+          <td class="text-center">
+            {% if c and c.is_sale_allowed is not null %}
+              {% if c.is_sale_allowed %}<span class="label label-success">{{ text_allowed }}</span>
+              {% elseif c.status_code == -1 or c.status_code == 514 %}<span class="label label-warning">{{ text_not_checked }}</span>
+              {% else %}<span class="label label-danger">{{ text_denied }}</span>{% endif %}
+              {% if not c.is_sale_allowed and c.reason_text %}<div class="text-{{ c.status_code == -1 or c.status_code == 514 ? 'warning' : 'danger' }}" style="font-size:11px;max-width:260px;margin:3px auto 0;">{% if c.reason_code is not null %}[{{ c.reason_code }}] {% endif %}{{ c.reason_text|e }}</div>{% endif %}
+              {% if c.status_code == 203 %}<span class="label label-warning">203</span>{% endif %}
+              {% if c.check_backend == 'trueapi' %}<br><span class="label label-default">{{ text_via_trueapi }}{% if c.is_checked_offline %}, {{ text_offline }}{% endif %}</span>{% endif %}
+              {% if c.fiscalized %}<br><span class="label label-primary">{{ text_fiscalized }}</span>{% endif %}
+            {% elseif c and c.km_raw %}<span class="label label-default">{{ text_scanned }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-center">
+            {% if c and not c.fiscalized %}<button class="btn btn-xs btn-danger od-remove" data-id="{{ c.marking_code_id }}"><i class="fa fa-trash"></i></button>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" id="od-check" class="btn btn-info"><i class="fa fa-search"></i> {{ button_check }}</button>
+    <button type="button" id="od-fiscalize" class="btn btn-primary"><i class="fa fa-file-text-o"></i> {{ button_fiscalize }}</button>
+    {% if has_document %}<button type="button" id="od-verify" class="btn btn-default"><i class="fa fa-check-square-o"></i> {{ button_verify_receipt }}</button>{% endif %}
+    <div id="od-verify-result" style="margin-top:10px;"></div>
+    {% endif %}
+  </div>
+</div>
+<script type="text/javascript"><!--
+(function() {
+  var container = '#orangedata-piot-container';
+  // Localised UI messages (kept here so the routing JS stays declarative).
+  var L = {
+    ean_not_found:  {{ text_ean_not_found|json_encode|raw }},
+    all_scanned:    {{ text_all_units_scanned|json_encode|raw }},
+    scan_ean_first: {{ text_scan_ean_first|json_encode|raw }},
+    gtin_mismatch:  {{ text_gtin_mismatch|json_encode|raw }}
+  };
+  // An EAN barcode is 8/12/13/14 pure digits. A DataMatrix КМ is much longer and carries GS / letters, so it
+  // never matches this — that is how one input tells "which product" (EAN) from "the code" (DataMatrix) apart.
+  var EAN_RE = /^(\d{8}|\d{12,14})$/;
+  function isEan(v) { return EAN_RE.test(v); }
+
+  // Pull the 14-digit GTIN out of a GS1 DataMatrix (AI 01). Returns '' when absent.
+  function dmGtin(v) { var m = v.match(/^01(\d{14})/); return m ? m[1] : ''; }
+  // EAN-13 printed on the box equals GTIN-14 with a leading zero; normalise both to 14 digits to compare.
+  function toGtin14(ean) { ean = String(ean); return ean.length >= 14 ? ean.slice(-14) : ('00000000000000' + ean).slice(-14); }
+
+  function msg(cls, html) { $('#od-result').html('<div class="alert ' + cls + '">' + html + '</div>'); }
+
+  // Reload the panel; `after` runs once the new markup is in place (messages must be shown AFTER the reload,
+  // because the message area is part of the panel and would otherwise be wiped). When focusNext is true, the
+  // cursor goes to the next empty unit of `preferOpid`'s line (so multi-quantity lines are scanned back to
+  // back), else to the EAN box — i.e. "line finished, waiting for the next product's EAN".
+  function reload(focusNext, after, preferOpid) {
+    $(container).load('index.php?route=extension/module/orangedata_piot/order&user_token={{ user_token }}&order_id={{ order_id }}', function() {
+      if (typeof after === 'function') { after(); }
+      if (focusNext === true) {
+        var next = $();
+        // 1) next empty unit of the same line (scan a multi-quantity line back to back);
+        if (preferOpid) {
+          next = $(container).find('.od-km:not([readonly])[data-order-product-id="' + preferOpid + '"]').filter(function() { return !this.value; }).first();
+        }
+        // 2) else an empty unit that has NO EAN (unroutable via the box) so it is still reachable by cursor;
+        if (!next.length) {
+          next = $(container).find('.od-km:not([readonly])').filter(function() { return !this.value && !$.trim(this.getAttribute('data-ean') || ''); }).first();
+        }
+        // 3) else park on the EAN box and wait for the next product's barcode.
+        if (!next.length) { focusEan(); return; }
+        next.focus();
+      }
+    });
+  }
+
+  // Park the cursor in the EAN box so the operator scans a product barcode next. preventScroll keeps an admin
+  // who merely opened the order from being yanked down to the panel on load (ignored by older browsers).
+  function focusEan() {
+    var b = $(container).find('#od-ean');
+    if (!b.length) return;
+    b.val('');
+    try { b[0].focus({ preventScroll: true }); } catch (e) { b.focus(); }
+  }
+
+  // Route an EAN scan: focus (and highlight, via the focus handler) the first empty unit of the line whose
+  // barcode matches. Returns true when a field was focused; otherwise reports why and keeps the cursor on EAN.
+  function selectByEan(ean) {
+    var matched = false, target = null;
+    $(container).find('.od-km:not([readonly])').each(function() {
+      var list = ($(this).attr('data-ean') || '').split(',');
+      for (var i = 0; i < list.length; i++) {
+        if ($.trim(list[i]) === ean) { matched = true; if (!this.value && !target) { target = this; } }
+      }
+    });
+    if (target) { $(target).focus(); return true; }
+    msg('alert-warning', matched ? L.all_scanned : L.ean_not_found);
+    focusEan();
+    return false;
+  }
+
+  // Save one unit's code. Guarded so Enter followed by blur/change does not post twice. On success the panel
+  // reloads and the cursor advances within the same line (preferOpid), falling back to the EAN box.
+  function save(el) {
+    var v = el.val();
+    if (!v || el.data('sending') || v === el.attr('data-saved')) return;
+    el.data('sending', true);
+    // Non-blocking safety: warn when the scanned DataMatrix's GTIN does not match the line's expected EAN
+    // (the usual symptom of scanning the wrong product). The code is still stored.
+    var expected = ($.trim(el.attr('data-ean') || '')).split(',').filter(function(e){ return e; }),
+        gtin = dmGtin(v), warn = '';
+    if (gtin && expected.length) {
+      var ok = false;
+      for (var i = 0; i < expected.length; i++) { if (toGtin14($.trim(expected[i])) === gtin) { ok = true; break; } }
+      if (!ok) { warn = L.gtin_mismatch; }
+    }
+    var opid = el.attr('data-order-product-id');
+    $.ajax({url: '{{ scan_url }}', type: 'post', dataType: 'json',
+      data: {order_id: '{{ order_id }}', order_product_id: opid, product_id: el.data('product-id'), unit_index: el.data('unit-index'), km: v},
+      complete: function() { el.data('sending', false); },
+      success: function(j) { if (j.error) { msg('alert-danger', j.error); } else { reload(true, warn ? function(){ msg('alert-warning', warn); } : null, opid); } },
+      error: function(x){ msg('alert-danger', x.status + ' ' + x.statusText); }});
+  }
+
+  // Delegated so bindings survive panel reloads.
+  $(container).off('keydown.od', '.od-km').on('keydown.od', '.od-km', function(e) {
+    if (e.which === 13) {
+      e.preventDefault();
+      var val = $.trim(this.value);
+      // An EAN scanned into a unit field means "switch to this product" — reroute instead of saving a code.
+      if (isEan(val) && (!this.getAttribute('data-saved') || this.value === this.getAttribute('data-saved'))) {
+        this.value = this.getAttribute('data-saved') || '';
+        selectByEan(val);
+        return;
+      }
+      save($(this));
+      return;
+    }
+    // GS (0x1D) cannot be typed into a browser field. Scanners can be set to send Ctrl+] or F8 instead —
+    // insert the <GS> token, which the server turns back into the real separator.
+    if ((e.ctrlKey && (e.which === 221 || e.key === ']')) || e.which === 119) {
+      e.preventDefault();
+      var el = this, s = el.selectionStart, t = el.selectionEnd;
+      el.value = el.value.slice(0, s) + '<GS>' + el.value.slice(t);
+      el.selectionStart = el.selectionEnd = s + 4;
+    }
+  });
+  $(container).off('change.od', '.od-km').on('change.od', '.od-km', function() { save($(this)); });
+
+  // Highlight the selected field's row so the operator sees where the next DataMatrix will land.
+  $(container).off('focus.od blur.od', '.od-km').on('focus.od', '.od-km', function() { $(this).closest('tr').addClass('od-active'); })
+                                                 .on('blur.od',  '.od-km', function() { $(this).closest('tr').removeClass('od-active'); });
+
+  // The EAN box: scan a product barcode here to jump to its line. A DataMatrix scanned here is rejected with
+  // a hint, so a mis-ordered scan never gets stored against the wrong unit.
+  $(container).off('keydown.odean', '#od-ean').on('keydown.odean', '#od-ean', function(e) {
+    if (e.which !== 13) return;
+    e.preventDefault();
+    var v = $.trim(this.value); this.value = '';
+    if (!v) return;
+    if (isEan(v)) { selectByEan(v); } else { msg('alert-warning', L.scan_ean_first); }
+  });
+
+  $(container).off('click.od', '.od-remove').on('click.od', '.od-remove', function() {
+    $.ajax({url: '{{ remove_url }}', type: 'post', dataType: 'json', data: {marking_code_id: $(this).data('id')}, success: reload});
+  });
+  $(container).off('click.od', '#od-check').on('click.od', '#od-check', function() {
+    var b = $(this).button('loading');
+    $.ajax({url: '{{ check_url }}', type: 'post', dataType: 'json', complete: function(){ b.button('reset'); },
+      success: function(j) { if (j.error) { msg('alert-danger', j.error); } else { reload(false, function() { msg('alert-info', j.summary); }); } },
+      error: function(x){ msg('alert-danger', x.status + ' ' + x.statusText); }});
+  });
+  // «Сверить чек»: show the receipt as registered in OrangeData, position by position (tag 1163 / 1260 / 1265).
+  $(container).off('click.od', '#od-verify').on('click.od', '#od-verify', function() {
+    var b = $(this).button('loading'), out = $('#od-verify-result').empty();
+    $.ajax({url: '{{ verify_url }}', dataType: 'json', complete: function(){ b.button('reset'); },
+      success: function(j) {
+        if (j.error || !j.ok) { out.append($('<div class="alert alert-warning"/>').text(j.error || j.message)); return; }
+        var head = $('<div/>').text('{{ text_verify_doc }}: ' + j.document_id + ' · ФП ' + j.fp + ' · № ' + j.document_number + ' · ' + j.processed_at
+          + ' · {{ text_verify_payments }}: ' + $.map(j.payments, function(p){ return p.type + '=' + p.amount; }).join(', ')
+          + (j.ignore_item_code_check ? ' · ignoreItemCodeCheck' : ''));
+        var t = $('<table class="table table-bordered table-condensed" style="margin:8px 0 0;font-size:12px"/>');
+        t.append('<thead><tr><td>#</td><td>{{ column_product }}</td><td>1212</td><td>1163 itemCode</td><td>1260 / 1265</td><td></td></tr></thead>');
+        $.each(j.positions, function(i, p) {
+          var attr = p.has_1260 ? (p.attr.foivId + ' · ' + p.attr.causeDocumentDate + ' · ' + p.attr.causeDocumentNumber + ' · ' + p.tag1265) : '—';
+          var mark = p.match === null ? '' : (p.match ? '✔' : '✘ ' + '{{ text_verify_expected }}: ' + (p.expected || '—'));
+          $('<tr/>').append($('<td/>').text(p.n), $('<td/>').text(p.text), $('<td/>').text(p.subject),
+            $('<td style="word-break:break-all"/>').text(p.item_code || '—'), $('<td style="word-break:break-all"/>').text(attr),
+            $('<td/>').addClass(p.match === false ? 'text-danger' : 'text-success').text(mark)).appendTo(t);
+        });
+        var ok = j.all_match;
+        out.append($('<div class="alert ' + (ok ? 'alert-success' : 'alert-danger') + '"/>')
+          .append($('<strong/>').text(ok ? '{{ text_verify_ok }}' : '{{ text_verify_mismatch }}')).append(head).append(t));
+      },
+      error: function(x){ out.append($('<div class="alert alert-danger"/>').text(x.status + ' ' + x.statusText)); }});
+  });
+  $(container).off('click.od', '#od-fiscalize').on('click.od', '#od-fiscalize', function() {
+    var b = $(this).button('loading');
+    $.ajax({url: '{{ fiscalize_url }}', type: 'post', dataType: 'json', complete: function(){ b.button('reset'); },
+      success: function(j) {
+        if (j.error) { msg('alert-danger', j.error); }
+        else { reload(false, function() { msg(j.pending ? 'alert-warning' : 'alert-success', j.success + (j.cheque_url ? ' — <a href="' + j.cheque_url + '" target="_blank">' + j.document_id + '</a>' : '')); }); }
+      },
+      error: function(x){ msg('alert-danger', x.status + ' ' + x.statusText); }});
+  });
+
+  // On first render, park the cursor in the EAN box: the workflow always starts by scanning a product barcode.
+  focusEan();
+})();
+//--></script>
