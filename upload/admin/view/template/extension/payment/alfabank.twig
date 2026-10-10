@@ -167,13 +167,14 @@
                             </div>
 
                             {% if (enable_refund_options) %}
+                                <div class="alert alert-info">{{ help_order_status_reversed }}</div>
                                 <div class="form-group">
-                                    <label class="col-sm-3 control-label" for="input-order-status-reversed">{{ entry_order_status_reversed }}</label>
+                                    <label class="col-sm-3 control-label" for="input-order-status-partially-refunded">{{ entry_order_status_partially_refunded }}</label>
                                     <div class="col-sm-9">
-                                        <select name="payment_alfabank_order_status_reversed_id" id="input-order-status-reversed" class="form-control">
+                                        <select name="payment_alfabank_order_status_partially_refunded_id" id="input-order-status-partially-refunded" class="form-control">
                                             {% for order_status in order_statuses %}
 
-                                                {% if order_status.order_status_id == payment_alfabank_order_status_reversed_id %}
+                                                {% if order_status.order_status_id == payment_alfabank_order_status_partially_refunded_id %}
                                                     <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
                                                 {% else %}
                                                     <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>

@@ -136,6 +136,39 @@ class AlfabankPaymentAttemptsTest extends TestCase
         $this->assertSame('0.0000', $attempt['order_amount_deposited']);
     }
 
+    public function testCronSelectsOnlyUnfinishedAttemptsInBoundedBatches(): void
+    {
+        foreach (array(-1,0,1,2,3,4,5,6) as $status) {
+            $data = $this->attemptData('state-' . $status, '1001_' . $status);
+            $data['status_deposited'] = $status;
+            $this->model->storeGatewayOrder($data);
+        }
+        $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order` SET date_updated = DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
+        $selected = array_map('intval', array_column($this->model->getPaymentsForReconciliation(), 'status_deposited'));
+        sort($selected);
+        $this->assertSame(array(-1,0,1,5), $selected);
+        for ($i = 0; $i < 60; $i++) {
+            $this->model->storeGatewayOrder($this->attemptData('pending-' . $i, '1001_' . $i));
+        }
+        $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order` SET date_updated = DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
+        $this->assertCount(50, $this->model->getPaymentsForReconciliation());
+    }
+
+    public function testRefundSnapshotSurvivesFailedPollAndOnlyUpdatesItsAttempt(): void
+    {
+        $this->model->storeGatewayOrder($this->attemptData('refund', '1001_1'));
+        $this->model->storeGatewayOrder($this->attemptData('sibling', '1001_2'));
+        $this->model->update_alfabank_order(array('orderId' => 'refund', 'orderStatus' => 4,
+            'paymentAmountInfo' => array('approvedAmount' => 10000, 'refundedAmount' => 2000)));
+        $this->model->update_alfabank_order(array('orderId' => 'refund', 'orderStatus' => -1, 'errorCode' => 5));
+        $rows = $this->getAttempts();
+        $this->assertSame('4', $rows[0]['status_deposited']);
+        $this->assertSame('10000.0000', $rows[0]['order_amount_deposited']);
+        $this->assertSame('2000.0000', $rows[0]['order_amount_refunded']);
+        $this->assertSame('1', $rows[0]['status_refunded']);
+        $this->assertSame('0', $rows[1]['status_deposited']);
+    }
+
     private function attemptData($gateway_reference, $order_number)
     {
         return array(

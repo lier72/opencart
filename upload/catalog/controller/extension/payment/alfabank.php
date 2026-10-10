@@ -283,7 +283,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
 	/**
 	 * Init Library
 	 */
-	private function initializeGatewayLibrary()
+	protected function initializeGatewayLibrary()
 	{
 		$this->library('alfabank/Alfabank');
 		$this->method_library = new Alfabank();
@@ -326,87 +326,42 @@ class ControllerExtensionPaymentAlfabank extends Controller
 	}
 	public function callback()
 	{
-		if (isset($this->request->get['mdOrder'])) {
-			$order_id = $this->request->get['mdOrder'];
-		} else {
-			die('Illegal Access');
-		}
-		$this->initializeGatewayLibrary();
-		$response = $this->method_library->_getGatewayOrderStatus($order_id);
-		$response = json_decode($response, true);
-
-		$ex = explode("_", $response['orderNumber']);
-		$order_number = $ex[0];
-		$this->load->model('checkout/order');
-		$this->load->model('extension/payment/alfabank');
-		$order_info = $this->model_checkout_order->getOrder($order_number);
-		if ($order_info) {
-			if (($response['errorCode'] == 0) && (($response['orderStatus'] == 1) || ($response['orderStatus'] == 2))) {
-				// Check if this order has already been marked as paid to prevent duplicate history entries
-				$completed_status_id = $this->config->get('payment_alfabank_order_status_completed_id');
-				$already_paid = $this->model_extension_payment_alfabank->get_oc_paid_status($order_number, array($completed_status_id));
-				$this->_storeGatewayOrderData($order_id, $order_info, $response);
-
-				if (!$already_paid) {
-					$payment_type = $response['orderStatus'] == 2
-						? 'Полная авторизация'
-						: 'Предавторизация (Двухстадийный платеж)';
-
-					$comment = sprintf(
-						"Платеж подтвержден через callback\n" .
-						"ID транзакции в шлюзе: %s\n" .
-						"Тип платежа: %s\n" .
-						"Сумма оплаты: %s\n" .
-						"Код действия: %s - %s\n" .
-						"Дата обработки: %s",
-						$response['orderId'],
-						$payment_type,
-						number_format($response['amount'] / 100, 2, '.', ' '),
-						$response['actionCode'] ?? 'N/A',
-						$response['actionCodeDescription'] ?? 'Успешно',
-						date('Y-m-d H:i:s')
-					);
-
-					// Add card info if available (masked)
-					if (isset($response['cardAuthInfo']['pan'])) {
-						$comment .= "\nКарта: " . $response['cardAuthInfo']['pan'];
-					}
-
-					$this->model_checkout_order->addOrderHistory($order_number, $completed_status_id, $comment, false);
-				}
-				$this->response->redirect($this->url->link('checkout/success', '', true));
-			} elseif ($response['errorCode'] == 0 && $response['orderStatus'] == 4) {
-				$is_part_refunted = $response['paymentAmountInfo']['approvedAmount'] === $response['amount'] && $response['paymentAmountInfo']['refundedAmount'] != 0;
-				$is_full_refunded = $response['paymentAmountInfo']['approvedAmount'] === $response['paymentAmountInfo']['refundedAmount'];
-				if ($is_full_refunded) {
-					$refund_amount = $response['amount'] / 100;
-					$refund_massage = 'REFUNDED_FULL_MESSAGE ' . $refund_amount;
-				} else if ($is_part_refunted) {
-					$refund_amount = $response['paymentAmountInfo']['refundedAmount'] / 100;
-					$refund_massage = 'REFUNDED_MESSAGE ' . $refund_amount;
-				}
-				$refunded_state = $this->config->get('payment_alfabank_order_status_refunded_id') ?? 11;
-
-				$this->model_checkout_order->addOrderHistory($order_number, $refunded_state, $refund_massage, false);
-			} elseif ($response['errorCode'] == 0 && $response['orderStatus'] == 3) {
-				$is_part_cancel = $response['paymentAmountInfo']['approvedAmount'] > 0 && $response['paymentAmountInfo']['approvedAmount'] < $response['amount'];
-				$is_full_cancel = $response['paymentAmountInfo']['approvedAmount'] === 0;
-				if ($is_full_cancel) {
-					$cancel_amount = '';
-					$cancel_massage = 'CANCEL_FULL_MESSAGE ' . $cancel_amount;
-				} else if ($is_part_cancel) {
-					$cancel_amount = $response['amount'] - $response['paymentAmountInfo']['approvedAmount'];
-					$cancel_massage = 'CANCEL_MESSAGE ' . ($cancel_amount / 100);
-				}
-				$reversed_state = $this->config->get('payment_alfabank_order_status_reversed_id') ?? 12;
-				$this->model_checkout_order->addOrderHistory($order_number, $reversed_state, $cancel_massage, false);
-			} elseif ($response['errorCode'] == 0 && $response['orderStatus'] == 6) {
-				$comment = "Incoming callback declinedByTimeOut";
-				$this->model_checkout_order->addOrderHistory($order_number, 14, $comment, false); //14 system status CMS
-			} else {
-				$this->response->redirect($this->url->link('checkout/failure', '', true));
-			}
-		}
+        $reference = $this->request->get['mdOrder'] ?? '';
+        if (!is_string($reference) || $reference === '') {
+            $this->response->addHeader('HTTP/1.1 400 Bad Request');
+            return;
+        }
+        try {
+            $this->initializeGatewayLibrary();
+            // Never trust callback operation/amount parameters: read the gateway itself.
+            $response = json_decode($this->method_library->_getGatewayOrderStatus($reference), true);
+            require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+            if (!isset($response['errorCode']) || !AlfabankGatewayState::normalize($response) || empty($response['orderNumber'])) {
+                $this->response->addHeader('HTTP/1.1 503 Service Unavailable');
+                return;
+            }
+            $response['orderId'] = $reference;
+            $order_number = (int)explode('_', $response['orderNumber'])[0];
+            $this->load->model('checkout/order');
+            $this->load->model('extension/payment/alfabank');
+            $order = $this->model_checkout_order->getOrder($order_number);
+            if ($order) {
+                if (in_array((int)$response['orderStatus'], array(1, 2), true)) {
+                    $this->_storeGatewayOrderData($reference, $order, $response);
+                    $this->model_extension_payment_alfabank->update_opencart_order_history($order_number, $response);
+                } else {
+                    $this->model_extension_payment_alfabank->update_alfabank_order($response);
+                    $this->model_extension_payment_alfabank->syncAdjustmentHistory($order_number, $response);
+                }
+            } else {
+                // Retain financial evidence even if the OpenCart order was removed.
+                $this->model_extension_payment_alfabank->update_alfabank_order($response);
+            }
+            $this->response->setOutput('OK');
+        } catch (Exception $e) {
+            $this->log->write('AlfaBank callback processing failed: ' . $e->getMessage());
+            $this->response->addHeader('HTTP/1.1 503 Service Unavailable');
+        }
 	}
 	public function comeback()
 	{
@@ -418,6 +373,11 @@ class ControllerExtensionPaymentAlfabank extends Controller
 		$this->initializeGatewayLibrary();
 		$response = $this->method_library->_getGatewayOrderStatus($order_id);
 		$response = json_decode($response, true);
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+        if (!isset($response['errorCode']) || !AlfabankGatewayState::normalize($response) || empty($response['orderNumber'])) {
+            $this->response->redirect($this->url->link('checkout/failure', '', true));
+            return;
+        }
 		$ex = explode("_", $response['orderNumber']);
 		$order_number = $ex[0];
 		$this->load->model('checkout/order');
@@ -427,30 +387,8 @@ class ControllerExtensionPaymentAlfabank extends Controller
 			if (($response['errorCode'] == 0) && (($response['orderStatus'] == 1) || ($response['orderStatus'] == 2))) {
 				$this->_storeGatewayOrderData($order_id, $order_info, $response);
 
-				if ($this->method_library->allowCallbacks == false) {
-					// Check if this order has already been marked as paid to prevent duplicate history entries
-					$completed_status_id = $this->config->get('payment_alfabank_order_status_completed_id');
-					$already_paid = $this->model_extension_payment_alfabank->get_oc_paid_status($order_number, array($completed_status_id));
-
-					if (!$already_paid) {
-						$payment_status = $response['orderStatus'] == 2
-							? 'Полная авторизация'
-							: 'Предавторизация';
-
-						$comment = sprintf(
-							"Платеж подтвержден через return URL\n" .
-							"ID транзакции в шлюзе: %s\n" .
-							"Статус платежа: %s\n" .
-							"Сумма: %s\n" .
-							"Покупатель вернулся в магазин",
-							$order_id,
-							$payment_status,
-							number_format($response['amount'] / 100, 2, '.', ' ')
-						);
-
-						$this->model_checkout_order->addOrderHistory($order_number, $completed_status_id, $comment, false);
-					}
-				}
+                $response['orderId'] = $order_id;
+                $this->model_extension_payment_alfabank->update_opencart_order_history($order_number, $response);
 				$this->response->redirect($this->url->link('checkout/success', '', true));
 			} else {
 				$this->response->redirect($this->url->link('checkout/failure', '', true));
@@ -480,11 +418,13 @@ class ControllerExtensionPaymentAlfabank extends Controller
 			'payment_way' => $payment_way,
 			'payment_system' => $payment_system,
 			'order_amount' => $response['amount'],
-			'order_amount_deposited' => $response['amount'],
+			'order_amount_deposited' => $response['paymentAmountInfo']['approvedAmount'] ?? ($response['orderStatus'] == 2 ? $response['amount'] : 0),
 			// Store the AlfaBank orderStatus code (-1..6), never a local boolean.
 			'status_deposited' => isset($response['orderStatus']) ? (int)$response['orderStatus'] : 0,
 		);
 		$this->model_extension_payment_alfabank->storeGatewayOrder($data);
+        $response['orderId'] = $order_id;
+        $this->model_extension_payment_alfabank->update_alfabank_order($response);
 	}
 
 	private function _storeInitialGatewayOrderData($order_info, $response, $order_number, $amount)
@@ -904,156 +844,25 @@ class ControllerExtensionPaymentAlfabank extends Controller
 
 	public function cron()
 	{
-		$debug = $this->config->get('payment_alfabank_logging');
-		// orderStatus - По значению этого параметра определяется состояние заказа в платёжной системе.
-		// Список возможных значений:
-		// 0 - Заказ зарегистрирован, но не оплачен;
-		// 1 - Предавторизованная сумма захолдирована (для двухстадийных платежей);
-		// 2 - Проведена полная авторизация суммы заказа;
-		// 3 - Авторизация отменена;
-		// 4 - По транзакции была проведена операция возврата;
-		// 5 - Инициирована авторизация через ACS банка-эмитента;
-		// 6 - Авторизация отклонена.
-		// -1 - There was an Error Status that has been set to eliminate the necessity to check errorCode once more
-
-		// Check payments in these states: error, not paid, pre-authorized (held), ACS authorization
-		$order_in_payment_states = array(-1, 0, 1, 5);
-		$this->load->model('extension/payment/alfabank');
-
-		// Timeout for stuck payments
-		$stuck_timeout = 3600; // 1 hour - payment stuck in processing
-
-		// Get the list of all payments
-		$result = $this->model_extension_payment_alfabank->get_alfabank_current_payment_list($order_in_payment_states);
-
-		if ($debug && count($result) > 0) {
-			$this->log->write(sprintf("Alfabank cron: Processing %d payment records", count($result)));
-		}
-
-		foreach ($result as $item) {
-			// Use Unix timestamp from database to avoid timezone issues
-			$time_since_update = time() - (int)$item['date_updated_timestamp'];
-
-			if ($debug) {
-				$this->log->write(sprintf(
-					"Alfabank cron: Order #%s | Current time: %d | Last update: %d | Time since update: %d seconds",
-					$item['order_id'],
-					time(),
-					(int)$item['date_updated_timestamp'],
-					$time_since_update
-				));
-			}
-
-			if (in_array($item['status_deposited'], $order_in_payment_states)) {
-				$check = $this->model_extension_payment_alfabank->check_payment_status($item['gateway_order_reference']);
-
-				switch ($check['orderStatus']) {
-					case 1: // Предавторизованная сумма захолдирована (для двухстадийных платежей)
-					case 2: // Проведена полная авторизация суммы заказа
-						$this->model_extension_payment_alfabank->update_opencart_order_history($item['order_id'], $check);
-						if ($debug) {
-							$this->log->write(sprintf(
-								"Alfabank cron: Order #%s | Gateway: %s | Status: %s (%s) | Amount: %s | Action: %s - %s",
-								$item['order_id'],
-								$item['gateway_order_reference'],
-								$check['orderStatus'],
-								$this->getStatusName($check['orderStatus']),
-								number_format($check['amount'] / 100, 2),
-								$check['actionCode'] ?? 'N/A',
-								$check['actionCodeDescription'] ?? 'Success'
-							));
-						}
-						break;
-
-					case 0: // Заказ зарегистрирован, но не оплачен
-						// Check if payment is stuck (no activity for over 1 hour)
-						if ($time_since_update > $stuck_timeout) {
-							if ($debug) {
-								$this->log->write(sprintf(
-									"Alfabank cron: Order #%s payment timeout (>1h) | Gateway: %s | Status: Abandoned - no payment received",
-									$item['order_id'],
-									$item['gateway_order_reference']
-								));
-							}
-						}
-						break;
-
-					case 5: // Инициирована авторизация через ACS банка-эмитента
-						// Check if ACS authorization is stuck
-						if ($time_since_update > $stuck_timeout) {
-							if ($debug) {
-								$this->log->write(sprintf(
-									"Alfabank cron: Order #%s ACS authorization stuck (>1h) | Gateway: %s | Possible 3DS timeout",
-									$item['order_id'],
-									$item['gateway_order_reference']
-								));
-							}
-						}
-						break;
-
-					case 3: // Авторизация отменена
-						if ($debug) {
-							$this->log->write(sprintf(
-								"Alfabank cron: Order #%s payment cancelled | Gateway: %s | Reason: %s",
-								$item['order_id'],
-								$item['gateway_order_reference'],
-								$check['actionCodeDescription'] ?? 'Authorization cancelled'
-							));
-						}
-						break;
-
-					case 6: // Авторизация отклонена
-						if ($debug) {
-							$this->log->write(sprintf(
-								"Alfabank cron: Order #%s payment declined | Gateway: %s | Status: %s | Reason: %s",
-								$item['order_id'],
-								$item['gateway_order_reference'],
-								$this->getStatusName($check['orderStatus']),
-								$check['actionCodeDescription'] ?? 'Payment declined'
-							));
-						}
-						break;
-
-					case 4: // По транзакции была проведена операция возврата
-						if ($debug) {
-							$this->log->write(sprintf(
-								"Alfabank cron: Order #%s refunded | Gateway: %s | Amount: %s",
-								$item['order_id'],
-								$item['gateway_order_reference'],
-								number_format($check['amount'] / 100, 2)
-							));
-						}
-						break;
-
-					case -1: // Error status
-						if ($debug) {
-							$this->log->write(sprintf(
-								"Alfabank cron: Order #%s error checking status | Gateway: %s | Error: Gateway communication failed",
-								$item['order_id'],
-								$item['gateway_order_reference']
-							));
-						}
-						break;
-				}
-
-				// Always update the alfabank_order record with latest status
-				$this->model_extension_payment_alfabank->update_alfabank_order($check);
-			} else {
-				// Payment is in completed state (2) or other final state - no action needed
-				// Keep the record for payment history tracking
-				if ($debug) {
-					$this->log->write(sprintf(
-						"Alfabank cron: Order #%s in final state (%s) | Time since update: %d seconds | Record preserved for history",
-						$item['order_id'],
-						$this->getStatusName($item['status_deposited']),
-						$time_since_update
-					));
-				}
-			}
-		}
-
-		if ($debug) {
-			$this->log->write("Alfabank cron: Processing completed");
-		}
+        $this->load->model('extension/payment/alfabank');
+        foreach ($this->model_extension_payment_alfabank->getPaymentsForReconciliation() as $attempt) {
+            try {
+                $response = $this->model_extension_payment_alfabank->check_payment_status($attempt['gateway_order_reference']);
+                if ((int)$response['orderStatus'] >= 0 &&
+                    (!isset($response['orderNumber']) || (int)explode('_', $response['orderNumber'])[0] !== (int)$attempt['order_id'])) {
+                    $this->log->write('AlfaBank reconciliation: gateway order mismatch for attempt ' . (int)$attempt['gateway_order_id']);
+                    $this->model_extension_payment_alfabank->update_alfabank_order(array('orderId' => $attempt['gateway_order_reference'], 'orderStatus' => -1));
+                    continue;
+                }
+                if (in_array((int)$response['orderStatus'], array(1,2), true)) {
+                    $this->model_extension_payment_alfabank->update_opencart_order_history($attempt['order_id'], $response);
+                } elseif (in_array((int)$response['orderStatus'], array(3,4), true)) {
+                    $this->model_extension_payment_alfabank->syncAdjustmentHistory($attempt['order_id'], $response);
+                }
+                $this->model_extension_payment_alfabank->update_alfabank_order($response);
+            } catch (Exception $e) {
+                $this->log->write('AlfaBank reconciliation failed for attempt ' . (int)$attempt['gateway_order_id'] . ': ' . $e->getMessage());
+            }
+        }
 	}
 }

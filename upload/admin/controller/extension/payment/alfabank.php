@@ -97,18 +97,17 @@ class ControllerExtensionPaymentAlfabank extends Controller
         } else {
             $data['payment_alfabank_order_status_before_id'] = $this->config->get('payment_alfabank_order_status_before_id');
         }
-        $data['entry_order_status_reversed'] = $this->language->get('entry_order_status_reversed');
-        if (isset($this->request->post['payment_alfabank_order_status_reversed_id'])) {
-            $data['payment_alfabank_order_status_reversed_id'] = $this->request->post['payment_alfabank_order_status_reversed_id'];
-        } else {
-            $data['payment_alfabank_order_status_reversed_id'] = $this->config->get('payment_alfabank_order_status_reversed_id');
-        }
+        $data['help_order_status_reversed'] = $this->language->get('help_order_status_reversed');
         $data['entry_order_status_refunded'] = $this->language->get('entry_order_status_refunded');
         if (isset($this->request->post['payment_alfabank_order_status_refunded_id'])) {
             $data['payment_alfabank_order_status_refunded_id'] = $this->request->post['payment_alfabank_order_status_refunded_id'];
         } else {
-            $data['payment_alfabank_order_status_refunded_id'] = $this->config->get('payment_alfabank_order_status_refunded_id');
+            $data['payment_alfabank_order_status_refunded_id'] = $this->config->get('payment_alfabank_order_status_refunded_id') ?: 13;
         }
+        $data['entry_order_status_partially_refunded'] = $this->language->get('entry_order_status_partially_refunded');
+        $data['payment_alfabank_order_status_partially_refunded_id'] = isset($this->request->post['payment_alfabank_order_status_partially_refunded_id'])
+            ? $this->request->post['payment_alfabank_order_status_partially_refunded_id']
+            : ($this->config->get('payment_alfabank_order_status_partially_refunded_id') ?: 8);
         $this->load->model('localisation/order_status');
         $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
 
@@ -629,36 +628,15 @@ class ControllerExtensionPaymentAlfabank extends Controller
             is_array($response) &&
             !empty($response['orderNumber']) &&
             isset($response['orderStatus']) &&
+            (!isset($response['errorCode']) || (string)$response['errorCode'] === '0') &&
             (int)$order_info['order_id'] === (int)explode('_', $response['orderNumber'])[0]
         );
     }
 
     private function getGatewayOrderUpdateData($response)
     {
-        $data = array();
-
-        if (!is_array($response) || !isset($response['orderStatus'])) {
-            return $data;
-        }
-
-        $gateway_status = (int)$response['orderStatus'];
-        $data['status_deposited'] = $gateway_status;
-        $data['status_reversed'] = $gateway_status === 3 ? 1 : 0;
-
-        if (isset($response['paymentAmountInfo']['approvedAmount'])) {
-            $data['order_amount_deposited'] = (float)$response['paymentAmountInfo']['approvedAmount'];
-        } elseif ($gateway_status === 2 && isset($response['amount'])) {
-            $data['order_amount_deposited'] = (float)$response['amount'];
-        }
-
-        if (isset($response['paymentAmountInfo']['refundedAmount'])) {
-            $data['order_amount_refunded'] = (float)$response['paymentAmountInfo']['refundedAmount'];
-            $data['status_refunded'] = (float)$response['paymentAmountInfo']['refundedAmount'] > 0 ? 1 : 0;
-        } else {
-            $data['status_refunded'] = $gateway_status === 4 ? 1 : 0;
-        }
-
-        return $data;
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+        return AlfabankGatewayState::normalize($response);
     }
 
     public function gatewayOrderAction()
@@ -800,8 +778,9 @@ class ControllerExtensionPaymentAlfabank extends Controller
                             $sql_data = array_merge($sql_data, $this->getGatewayOrderUpdateData($status_response));
                         }
                         $this->model_extension_payment_alfabank->updateGatewayOrder($gateway_order['gateway_order_reference'], $sql_data);
+                        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
                         $json['history'] = array(
-                            'order_status_id' => $this->config->get('payment_alfabank_order_status_completed_id'),
+                            'order_status_id' => AlfabankGatewayState::paidOrderStatus($this->config, $order_info, $sql_data['order_amount_deposited']),
                             'comment' => sprintf($this->language->get('text_success_deposit_amount'), number_format(($order_action == 'payment_deposit_partial' ? $user_amount : $gateway_order['order_amount']) / 100, 2)),
                             'notify' => 0,
                         );
@@ -840,11 +819,19 @@ class ControllerExtensionPaymentAlfabank extends Controller
                             $sql_data = array_merge($sql_data, $this->getGatewayOrderUpdateData($status_response));
                         }
                         $this->model_extension_payment_alfabank->updateGatewayOrder($gateway_order['gateway_order_reference'], $sql_data);
-                        $json['history'] = array(
-                            'order_status_id' => $this->config->get('payment_alfabank_order_status_refunded_id'),
-                            'comment' => sprintf($this->language->get('text_success_refund_amount'), number_format($user_amount / 100, 2)),
-                            'notify' => 0,
+                        require_once DIR_SYSTEM . 'library/alfabank/AlfabankRefundStatus.php';
+                        $refund_status = AlfabankRefundStatus::resolve(
+                            $this->config,
+                            $sql_data['order_amount_deposited'] ?? $gateway_order['order_amount_deposited'],
+                            $sql_data['order_amount_refunded']
                         );
+                        if ($refund_status !== null) {
+                            $json['history'] = array(
+                                'order_status_id' => $refund_status,
+                                'comment' => AlfabankRefundStatus::comment($gateway_order['gateway_order_reference'], $sql_data['order_amount_deposited'] ?? $gateway_order['order_amount_deposited'], $sql_data['order_amount_refunded']),
+                                'notify' => 0,
+                            );
+                        }
                     } else {
                         $json['error'] = $response['errorMessage'];
                     }
@@ -868,8 +855,8 @@ class ControllerExtensionPaymentAlfabank extends Controller
                         }
                         $this->model_extension_payment_alfabank->updateGatewayOrder($gateway_order['gateway_order_reference'], $sql_data);
                         $json['history'] = array(
-                            'order_status_id' => $this->config->get('payment_alfabank_order_status_reversed_id'),
-                            'comment' => $this->language->get('text_success_reverse'),
+                            'order_status_id' => (int)$order_info['order_status_id'],
+                            'comment' => 'AlfaBank: авторизация отменена (ID: ' . $gateway_order['gateway_order_reference'] . ')',
                             'notify' => 0,
                         );
                     } else {

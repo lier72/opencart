@@ -304,30 +304,8 @@ class ModelExtensionPaymentAlfabank extends Model
 
     private function getGatewayUpdateData(array $response)
     {
-        $gateway_status = (int)$response['orderStatus'];
-        $data = array(
-            'status_deposited' => $gateway_status,
-            'status_reversed' => $gateway_status === 3 ? 1 : 0,
-        );
-
-        // Registered and declined are definitive no-payment states. Clear any
-        // nominal order amount previously stored as a deposited amount.
-        if (in_array($gateway_status, array(0, 6), true)) {
-            $data['order_amount_deposited'] = 0;
-        } elseif (isset($response['paymentAmountInfo']['approvedAmount'])) {
-            $data['order_amount_deposited'] = (float)$response['paymentAmountInfo']['approvedAmount'];
-        } elseif ($gateway_status === 2 && isset($response['amount'])) {
-            $data['order_amount_deposited'] = (float)$response['amount'];
-        }
-
-        if (isset($response['paymentAmountInfo']['refundedAmount'])) {
-            $data['order_amount_refunded'] = (float)$response['paymentAmountInfo']['refundedAmount'];
-            $data['status_refunded'] = (float)$response['paymentAmountInfo']['refundedAmount'] > 0 ? 1 : 0;
-        } else {
-            $data['status_refunded'] = $gateway_status === 4 ? 1 : 0;
-        }
-
-        return $data;
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+        return AlfabankGatewayState::normalize($response);
     }
 
     private function hasFinancialGatewayData(array $data)
@@ -365,7 +343,7 @@ class ModelExtensionPaymentAlfabank extends Model
     private function markGatewayOrderCheckError($gateway_order_reference)
     {
         $this->db->query("UPDATE `" . DB_PREFIX . "alfabank_order`
-            SET `status_deposited` = -1, `date_updated` = NOW()
+            SET `date_updated` = NOW()
             WHERE `gateway_order_reference` = '" . $this->db->escape($gateway_order_reference) . "'");
     }
 

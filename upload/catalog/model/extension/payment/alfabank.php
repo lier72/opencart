@@ -123,32 +123,72 @@ class ModelExtensionPaymentAlfabank extends Model
         return $res->rows;
     }
 
+    /** Poll only unfinished attempts; terminal changes arrive through callbacks. */
+    public function getPaymentsForReconciliation()
+    {
+        return $this->db->query("SELECT *, UNIX_TIMESTAMP(date_updated) AS date_updated_timestamp
+            FROM `" . DB_PREFIX . "alfabank_order`
+            WHERE status_deposited IN (-1,0,1,5)
+              AND date_updated <= DATE_SUB(NOW(), INTERVAL 1 MINUTE)
+            ORDER BY date_updated ASC, gateway_order_id ASC LIMIT 50")->rows;
+    }
+
+    /** Retryable history projection: saving a snapshot never consumes the history event. */
+    public function syncAdjustmentHistory($order_id, array $response)
+    {
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankRefundStatus.php';
+        $fields = AlfabankGatewayState::normalize($response);
+        if (!$fields || empty($response['orderId']) || !in_array($fields['status_deposited'], array(3,4), true)) {
+            return;
+        }
+        $this->load->model('checkout/order');
+        // Serialize duplicate callback/cron history writes for this order.
+        $lock = 'alfa-history-' . sha1(DB_PREFIX . ':' . (int)$order_id);
+        $locked = $this->db->query("SELECT GET_LOCK('" . $lock . "', 5) AS acquired")->row;
+        if (empty($locked['acquired'])) {
+            throw new RuntimeException('AlfaBank order history is busy; retry reconciliation.');
+        }
+        try {
+            $order = $this->model_checkout_order->getOrder($order_id);
+            if (!$order) return;
+            if ($fields['status_deposited'] === 4) {
+                $captured = $response['paymentAmountInfo']['approvedAmount'] ?? null;
+                $refunded = $response['paymentAmountInfo']['refundedAmount'] ?? null;
+                $status = AlfabankRefundStatus::resolve($this->config, $captured, $refunded);
+                if ($status === null) return;
+                $comment = AlfabankRefundStatus::comment($response['orderId'], $captured, $refunded);
+            } else {
+                // Releasing a payment authorization does not select cash on delivery
+                // or cancel fulfilment. Record the event without changing the order state.
+                $status = (int)$order['order_status_id'];
+                $comment = 'AlfaBank: авторизация отменена (ID: ' . $response['orderId'] . ')';
+            }
+            $exists = $this->db->query("SELECT order_history_id FROM `" . DB_PREFIX . "order_history`
+                WHERE order_id = " . (int)$order_id . " AND comment = '" . $this->db->escape($comment) . "' LIMIT 1");
+            if (!$exists->num_rows) {
+                $this->model_checkout_order->addOrderHistory($order_id, $status, $comment, false);
+            }
+        } finally {
+            $this->db->query("SELECT RELEASE_LOCK('" . $lock . "')");
+        }
+    }
+
     public function check_payment_status($orderId)
     {
         $order_number = $this->get_opencart_order_id($orderId);
         $this->initializeAlfabank();
         $response = $this->alfabank->_getGatewayOrderStatus($orderId);
         $response = json_decode($response, true);
+        $response = is_array($response) ? $response : array();
         $response['orderId'] = $orderId;
 
-        if (($response['errorCode'] == 0)) {
-            if ($this->config->get('payment_alfabank_logging'))
-                $this->log->write(sprintf(
-                    "Alfabank check_payment_status: Order # %s payment status: %s ActionStatus %s - ",
-                    $order_number,
-                    $response['orderStatus'],
-                    $response['actionCode'],
-                    $response['actionCodeDescription']
-                ));
-        } else {
-            if ($this->config->get('payment_alfabank_logging'))
-                $this->log->write(sprintf(
-                    "Alfabank check_payment_status: Order # %s, Error %s, Description: %s",
-                    $order_number,
-                    $response['errorCode'],
-                    $response['errorMessage']
-                ));
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+        if (!isset($response['errorCode']) || !AlfabankGatewayState::normalize($response)) {
             $response['orderStatus'] = -1;
+            if ($this->config->get('payment_alfabank_logging')) {
+                $this->log->write('Alfabank status check failed for order ' . (int)$order_number);
+            }
         }
         return $response;
     }
@@ -156,39 +196,26 @@ class ModelExtensionPaymentAlfabank extends Model
     public function get_opencart_order_id($orderId)
     {
         $res = $this->db->query("SELECT `order_id` FROM " . DB_PREFIX . "alfabank_order WHERE `gateway_order_reference` = '" . $this->db->escape($orderId) . "'");
-        return $res->row['order_id'];
+        return isset($res->row['order_id']) ? (int)$res->row['order_id'] : 0;
     }
 
     public function update_alfabank_order($data)
     {
-        // if ($this->config->get('payment_alfabank_logging'))
-        //     $this->log->write("Alfabank update_alfabank_order: was called with data: " . print_r($data, true));
-
-        // Extract payment way and payment system if available
-        $payment_way = isset($data['paymentWay']) ? $data['paymentWay'] : null;
-        $payment_system = isset($data['cardAuthInfo']['paymentSystem']) ? $data['cardAuthInfo']['paymentSystem'] : null;
-
-        $sql = "UPDATE " . DB_PREFIX . "alfabank_order SET
-            `date_updated` = NOW(),
-            `status_deposited` = " . (int)$data['orderStatus'];
-
-        if (in_array((int)$data['orderStatus'], array(1, 2, 4), true)) {
-            // Reopen an attempt that was ignored as old/unpaid but was paid later.
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+        $fields = AlfabankGatewayState::normalize($data);
+        if (empty($data['orderId'])) {
+            return;
+        }
+        // A failed poll must not replace the last known financial state with -1.
+        $sql = "UPDATE " . DB_PREFIX . "alfabank_order SET `date_updated` = NOW()";
+        foreach ($fields as $field => $value) {
+            $sql .= ", `" . $field . "` = " . (float)$value;
+        }
+        if ($fields && in_array($fields['status_deposited'], array(1, 2, 4), true)) {
             $sql .= ", `status` = IF(`status` = 2, 0, `status`)";
         }
-
-        $gateway_status = (int)$data['orderStatus'];
-
-        if (in_array($gateway_status, array(0, 6), true)) {
-            // `amount` is the nominal order amount for these states, not an
-            // approved payment amount.
-            $sql .= ", `order_amount_deposited` = 0";
-        } elseif (isset($data['paymentAmountInfo']['approvedAmount'])) {
-            $sql .= ", `order_amount_deposited` = " .
-                (float)$data['paymentAmountInfo']['approvedAmount'];
-        } elseif (in_array($gateway_status, array(1, 2), true) && isset($data['amount'])) {
-            $sql .= ", `order_amount_deposited` = " . (float)$data['amount'];
-        }
+        $payment_way = $fields && isset($data['paymentWay']) ? $data['paymentWay'] : null;
+        $payment_system = $fields && isset($data['cardAuthInfo']['paymentSystem']) ? $data['cardAuthInfo']['paymentSystem'] : null;
 
         if ($payment_way !== null) {
             $sql .= ", `payment_way` = '" . $this->db->escape($payment_way) . "'";
@@ -212,77 +239,44 @@ class ModelExtensionPaymentAlfabank extends Model
         }
     }
 
-    public function update_opencart_order_history($order_id, $alfabank_response)
+    public function update_opencart_order_history($order_id, $response)
     {
-        if ($this->config->get('payment_alfabank_logging'))
-            $this->log->write("Alfabank update_opencart_order_history: was called");
+        $lock = 'alfa-history-' . sha1(DB_PREFIX . ':' . (int)$order_id);
+        $locked = $this->db->query("SELECT GET_LOCK('" . $lock . "', 5) AS acquired")->row;
+        if (empty($locked['acquired'])) {
+            throw new RuntimeException('AlfaBank order history is busy; retry reconciliation.');
+        }
+        try {
+            $this->syncCapturedHistory($order_id, $response);
+        } finally {
+            $this->db->query("SELECT RELEASE_LOCK('" . $lock . "')");
+        }
+    }
+
+    private function syncCapturedHistory($order_id, $response)
+    {
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankGatewayState.php';
+        $fields = AlfabankGatewayState::normalize($response);
+        // A hold is not captured money. Wait for status 2 before marking paid.
+        if (!$fields || $fields['status_deposited'] !== 2 ||
+            !isset($fields['order_amount_deposited']) || empty($response['orderId'])) {
+            return;
+        }
         $this->load->model('checkout/order');
-        $order_info = $this->model_checkout_order->getOrder($order_id);
-        $order_paid = $this->get_oc_paid_status($order_id);
-
-        if ($this->config->get('payment_alfabank_logging'))
-            $this->log->write(sprintf(
-                "Alfabank update_opencart_order_history: Order # %s payed in order history is : %s",
-                $order_id,
-                $order_paid ? 'true' : 'false'
-            ));
-
-        if ($order_info && !$order_paid) {
-            $payment_amount = (float)($alfabank_response['amount']) / 100;
-            $order_amount = $order_info['total'] * $order_info['currency_value'];
-            $amount_difference = $payment_amount - $order_amount;
-
-            // Determine payment completeness
-            if (abs($amount_difference) < 0.01) {
-                $payment_status = 'полностью';
-            } elseif ($amount_difference < 0) {
-                $payment_status = 'НЕ ПОЛНОСТЬЮ';
-            } else {
-                $payment_status = 'с переплатой';
-            }
-
-            // Determine payment type
-            $payment_type = $alfabank_response['orderStatus'] == 2
-                ? 'Полная авторизация'
-                : 'Предавторизация (Двухстадийный платеж)';
-
-            $comment = sprintf(
-                "Заказ № %s Оплачен %s\n" .
-                    "Тип платежа: %s\n" .
-                    "Сумма платежа: %s руб. (Заказ: %s руб.)\n" .
-                    "ID транзакции: %s\n" .
-                    "Код действия: %s - %s\n" .
-                    "Дата обработки: %s",
-                $order_id,
-                $payment_status,
-                $payment_type,
-                number_format($payment_amount, 2, '.', ' '),
-                number_format($order_amount, 2, '.', ' '),
-                $alfabank_response['orderId'],
-                isset($alfabank_response['actionCode']) ? $alfabank_response['actionCode'] : 'N/A',
-                isset($alfabank_response['actionCodeDescription']) ? $alfabank_response['actionCodeDescription'] : 'Успешно',
-                date('Y-m-d H:i:s')
-            );
-
-            // Add warning if amounts don't match
-            if (abs($amount_difference) >= 0.01) {
-                $comment .= sprintf(
-                    "\n⚠️ ВНИМАНИЕ: Разница в сумме: %s руб.",
-                    number_format($amount_difference, 2, '.', ' ')
-                );
-            }
-
-            // Add card info if available
-            if (isset($alfabank_response['cardAuthInfo']['pan'])) {
-                $comment .= "\nКарта: " . $alfabank_response['cardAuthInfo']['pan'];
-            }
-
-            // Add binding info if available
-            if (isset($alfabank_response['bindingId'])) {
-                $comment .= "\nBinding ID: " . $alfabank_response['bindingId'];
-            }
-
-            $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_alfabank_order_status_completed_id'), $comment);
+        $order = $this->model_checkout_order->getOrder($order_id);
+        if (!$order) return;
+        $captured = $fields['order_amount_deposited'];
+        $status = AlfabankGatewayState::paidOrderStatus($this->config, $order, $captured);
+        $expected = (int)round(round((float)$order['total'] * (float)$order['currency_value'], 2) * 100);
+        $comment = 'AlfaBank: списано ' . number_format($captured / 100, 2, '.', '') .
+            ' (ID: ' . $response['orderId'] . ')';
+        if ((int)round($captured) !== $expected) {
+            $comment .= '; сумма не совпадает с заказом: ' . number_format($expected / 100, 2, '.', '');
+        }
+        $exists = $this->db->query("SELECT order_history_id FROM `" . DB_PREFIX . "order_history`
+            WHERE order_id = " . (int)$order_id . " AND comment = '" . $this->db->escape($comment) . "' LIMIT 1");
+        if (!$exists->num_rows) {
+            $this->model_checkout_order->addOrderHistory($order_id, $status, $comment, false);
         }
     }
 

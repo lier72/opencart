@@ -30,7 +30,8 @@ $_['entry_ofd_disabled']   = 'Не передавать данные корзи�
 $_['entry_order_status_before'] = 'Первичный статус заказа в CMS';
 $_['entry_order_status_completed'] = 'Статус заказа по завершении платежа';
 $_['entry_order_status_reversed'] = "Статус заказа (payment reverse)";
-$_['entry_order_status_refunded'] = "Статус заказа (payment refund)";
+$_['entry_order_status_refunded'] = 'Статус заказа: полный возврат оплаты';
+$_['entry_order_status_partially_refunded'] = 'Статус заказа: частичный возврат оплаты';
 $_['text_payment_attempts'] = 'Попытки оплаты';
 $_['text_confirm_reverse_title'] = 'Подтверждение отмены платежа';
 $_['text_confirm_reverse'] = 'Будет отправлен запрос на отмену платежа в платёжный шлюз. Альфа-Банк допускает только одну попытку отмены, даже если она завершится ошибкой. Для продолжения введите текущий пароль администратора.';
@@ -116,3 +117,5 @@ $_['entry_enable_cacert_enable'] = 'Проверять';
 $_['entry_enable_cacert_disable'] = 'Не проверять';
 $_['entry_backToShopURL'] = 'Back to shop URL';
 $_['entry_backToShopURL_description'] = 'adds URL for checkout page button that will take a cardholder back to the assigned merchant web-site URL';
+
+$_['help_order_status_reversed'] = 'Отмена авторизации записывается в историю без изменения текущего статуса заказа.';

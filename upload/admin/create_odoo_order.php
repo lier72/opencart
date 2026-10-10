@@ -6,6 +6,17 @@
  * Date: 07.06.2023
  * Time: 11:06
  */
+
+/* ---------------------------------------------------------------------------------------------------------
+ *  Alfabank fiscalization audit (ExportOpenCartOdooOrder::checkAlfabankFiscalization, runner ?f=fisc / "fisc")
+ * ------------------------------------------------------------------------------------------------------- */
+// EDIT THIS before the first run: production go-live date of separate OrangeData fiscalization (YYYY-MM-DD).
+// Alfabank orders placed BEFORE this date were not fiscalized by us and are skipped by the audit.
+define('FISCALIZATION_SINCE', '2026-10-14');
+// Order statuses that mean the order is shipped-or-later and therefore SHOULD already carry a shipment receipt
+// (ids from the order_status table — see the status comment block in ExportOpenCartOdooOrder). Tune to taste.
+define('FISCALIZATION_DUE_STATUSES', '2,3,5,8,13,18,19,20,24,25');
+
 class ExportOpenCartOdoo
 {
     /**
@@ -921,6 +932,241 @@ class ExportOpenCartOdooOrder extends ExportOpenCartOdoo
         return $delivered;
     }
 
+    /**
+     * checkAlfabankFiscalization
+     *
+     * Audit pass (reporting): finds Alfabank-paid orders placed on/after FISCALIZATION_SINCE that have already
+     * reached a shipment-or-later status (FISCALIZATION_DUE_STATUSES) and therefore SHOULD carry an OrangeData
+     * shipment receipt, then reports which ones are NOT fiscalized. For each unfiscalized order mapped to Odoo
+     * it also writes a one-time chatter note on the Odoo sale.order.
+     *
+     * Fiscalization is judged first from the local order_marking_code table (marked orders with every unit
+     * fiscalized → no API call), and when that is inconclusive (no rows / unfiscalized, e.g. NON-marked orders)
+     * by querying OrangeData for the deterministic receipt id oc-<order_id>-ship (+ the -2/-3 retry ids) — the
+     * only reliable signal for orders that keep no local marking rows.
+     *
+     * Scope: cron runner via ?f=fisc (or the "fisc" CLI argument). Read-only against OpenCart; the only writes
+     * are optional Odoo chatter notes.
+     *
+     * @param bool $debug echo the per-order report table
+     * @return array summary counters
+     */
+    function checkAlfabankFiscalization($debug = true)
+    {
+        // Build the OrangeData client from the module's per-environment settings (test vs prod contour + cert
+        // paths — never hardcode). getDocumentStatus is an unsigned mTLS GET, so no signing key is needed.
+        $cfg = array();
+        $res = $this->db->query("SELECT `key`,`value` FROM " . DB_PREFIX . "setting WHERE store_id = 0 AND `key` IN (
+            'module_orangedata_piot_status','module_orangedata_piot_base_url','module_orangedata_piot_inn',
+            'module_orangedata_piot_ssl_cert_path','module_orangedata_piot_ssl_key_path',
+            'module_orangedata_piot_ssl_key_pass','module_orangedata_piot_verify_peer')")
+            or die("checkAlfabankFiscalization: settings query failed. " . mysqli_error($this->db));
+        while ($row = $res->fetch_assoc()) { $cfg[$row['key']] = $row['value']; }
+
+        if (empty($cfg['module_orangedata_piot_status']) || empty($cfg['module_orangedata_piot_base_url'])) {
+            echo "OrangeData module disabled or not configured — fiscalization audit skipped.<br/>\n";
+            return array();
+        }
+
+        require_once DIR_SYSTEM . 'library/orangedata/OrangeDataClient.php';
+        $client = new OrangeDataClient(array(
+            'base_url'      => $cfg['module_orangedata_piot_base_url'],
+            'inn'           => isset($cfg['module_orangedata_piot_inn']) ? $cfg['module_orangedata_piot_inn'] : '',
+            'ssl_cert_path' => isset($cfg['module_orangedata_piot_ssl_cert_path']) ? $cfg['module_orangedata_piot_ssl_cert_path'] : '',
+            'ssl_key_path'  => isset($cfg['module_orangedata_piot_ssl_key_path']) ? $cfg['module_orangedata_piot_ssl_key_path'] : '',
+            'ssl_key_pass'  => isset($cfg['module_orangedata_piot_ssl_key_pass']) ? $cfg['module_orangedata_piot_ssl_key_pass'] : '',
+            'verify_peer'   => !empty($cfg['module_orangedata_piot_verify_peer']),
+            'timeout'       => 20,
+        ));
+
+        // Population: Alfabank orders since the cutoff that have reached a shipment-or-later status.
+        $since = FISCALIZATION_SINCE;
+        $due   = implode(',', array_map('intval', explode(',', FISCALIZATION_DUE_STATUSES)));
+        $sql = "SELECT o.order_id, o.date_added, o.order_status_id
+                FROM " . DB_PREFIX . "order o
+                WHERE o.payment_code = 'alfabank'
+                  AND o.date_added >= '" . $this->db->real_escape_string($since) . " 00:00:00'
+                  AND EXISTS (SELECT 1 FROM " . DB_PREFIX . "order_history h
+                              WHERE h.order_id = o.order_id AND h.order_status_id IN (" . $due . "))
+                ORDER BY o.order_id";
+        $res = $this->db->query($sql) or die("checkAlfabankFiscalization: population query failed. " . mysqli_error($this->db));
+        $orders = array();
+        while ($row = $res->fetch_assoc()) { $orders[(int)$row['order_id']] = $row; }
+
+        if (!$orders) {
+            echo "No Alfabank orders since " . htmlspecialchars($since) . " in a shipped-or-later status.<br/>\n";
+            return array('checked' => 0);
+        }
+
+        // Fast path: local fiscalization state — an order whose marking rows are ALL fiscalized needs no API call.
+        $ids = implode(',', array_keys($orders));
+        $local = array(); // order_id => ['rows','min_f','doc']
+        $res = $this->db->query("SELECT order_id, COUNT(*) rows_, MIN(fiscalized) min_f, MAX(document_id) doc
+                                 FROM " . DB_PREFIX . "order_marking_code WHERE order_id IN (" . $ids . ") GROUP BY order_id");
+        while ($row = $res->fetch_assoc()) {
+            $local[(int)$row['order_id']] = array('rows' => (int)$row['rows_'], 'min_f' => (int)$row['min_f'], 'doc' => $row['doc']);
+        }
+
+        // Safety guard: a wrong cert / INN / contour quirk could make EVERY status probe look like a negative,
+        // which would false-flag every order and spam Odoo notes. Probe one KNOWN-fiscalized receipt first; if
+        // it does not come back confirmed, don't trust the API — report everything unresolved as UNKNOWN and
+        // write no notes. If nothing is fiscalized yet there is no canary, so probing proceeds best-effort.
+        $apiTrusted = true; $guardNote = '';
+        $canary = $this->db->query("SELECT document_id FROM " . DB_PREFIX . "order_marking_code
+                                    WHERE fiscalized = 1 AND document_id <> '' ORDER BY marking_code_id DESC LIMIT 1");
+        if ($canary && ($crow = $canary->fetch_assoc())) {
+            $cresp = $client->getDocumentStatus($crow['document_id']);
+            if (!((int)$cresp['http_code'] === 200 && !empty($cresp['body']['fp']))) {
+                $apiTrusted = false;
+                $guardNote  = 'OrangeData sanity check FAILED: a known receipt (' . htmlspecialchars($crow['document_id']) .
+                    ') did not confirm (HTTP ' . (int)$cresp['http_code'] . (!empty($cresp['error']) ? ', ' . htmlspecialchars($cresp['error']) : '') .
+                    '). Check cert / INN / contour. API probes skipped, no Odoo notes written.';
+            }
+        } else {
+            $guardNote = 'No known-fiscalized receipt to validate the OrangeData connection — API verdicts are best-effort.';
+        }
+
+        $sum = array('checked' => 0, 'fiscalized' => 0, 'not_fiscalized' => 0, 'pending' => 0, 'unknown' => 0,
+                     'noted' => 0, 'note_exists' => 0, 'note_unmapped' => 0, 'note_fault' => 0);
+        if ($debug) {
+            echo "<h3>Alfabank fiscalization audit — since " . htmlspecialchars($since) . "</h3>\n";
+            if ($guardNote) { echo "<p style='color:" . ($apiTrusted ? '#8a6d3b' : '#a94442') . "'>" . $guardNote . "</p>\n"; }
+            echo "<table border='1' cellpadding='3'><tr><th>Order</th><th>Date</th><th>Status</th><th>Marked</th><th>Local fisc.</th><th>OrangeData doc / ФП</th><th>Verdict</th></tr>\n";
+        }
+
+        foreach ($orders as $oid => $o) {
+            $sum['checked']++;
+            $marked    = isset($local[$oid]) && $local[$oid]['rows'] > 0;
+            $localFisc = $marked && $local[$oid]['min_f'] === 1;
+
+            if ($localFisc) {
+                $verdict = 'FISCALIZED';
+                $docInfo = $local[$oid]['doc'];
+                $sum['fiscalized']++;
+            } elseif (!$apiTrusted) {
+                // Can't trust the API this run — never flag/notify on an unverified connection.
+                $verdict = 'UNKNOWN';
+                $docInfo = 'API not trusted';
+                $sum['unknown']++;
+            } else {
+                $probe   = $this->probeOrangeDataReceipt($client, $oid);
+                $verdict = $probe['verdict'];
+                $docInfo = $probe['info'];
+                if ($verdict === 'FISCALIZED') {
+                    $sum['fiscalized']++;
+                } elseif ($verdict === 'PENDING') {
+                    $sum['pending']++;
+                } elseif ($verdict === 'UNKNOWN') {
+                    $sum['unknown']++;
+                } else { // NOT FISCALIZED
+                    $sum['not_fiscalized']++;
+                    switch ($this->noteUnfiscalizedOrder($oid, $o)) {
+                        case 'written': $sum['noted']++;         break;
+                        case 'exists':  $sum['note_exists']++;   break;
+                        case 'unmapped':$sum['note_unmapped']++; break;
+                        default:        $sum['note_fault']++;    break; // 'fault'
+                    }
+                }
+            }
+
+            if ($debug) {
+                $style = $verdict === 'NOT FISCALIZED' ? " style='background:#f2dede'" : ($verdict === 'FISCALIZED' ? " style='background:#dff0d8'" : '');
+                echo "<tr$style><td>$oid</td><td>" . htmlspecialchars($o['date_added']) . "</td><td>" . (int)$o['order_status_id'] .
+                     "</td><td>" . ($marked ? 'yes' : 'no') . "</td><td>" . ($localFisc ? 'yes' : ($marked ? 'partial' : '&mdash;')) .
+                     "</td><td>" . htmlspecialchars($docInfo) . "</td><td><b>$verdict</b></td></tr>\n";
+            }
+        }
+        if ($debug) { echo "</table>\n"; }
+
+        echo "<p>Alfabank fiscalization audit: checked {$sum['checked']}, fiscalized {$sum['fiscalized']}, " .
+             "NOT fiscalized {$sum['not_fiscalized']}, pending {$sum['pending']}, unknown {$sum['unknown']}. " .
+             "Odoo notes — written {$sum['noted']}, already present {$sum['note_exists']}, no Odoo order {$sum['note_unmapped']}, failed {$sum['note_fault']}.</p>\n";
+        return $sum;
+    }
+
+    /**
+     * probeOrangeDataReceipt
+     *
+     * Asks OrangeData whether an order's shipment receipt exists and is confirmed, trying the base id
+     * oc-<order_id>-ship and the retry ids OrangeDataService uses on rejection (…-ship-2, -3). A document is
+     * "fiscalized" only when its status returns a fiscal sign (fp). Scope: checkAlfabankFiscalization only.
+     *
+     * @param object $client OrangeDataClient
+     * @param int    $order_id
+     * @return array ['verdict' => 'FISCALIZED'|'PENDING'|'NOT FISCALIZED'|'UNKNOWN', 'info' => string]
+     */
+    private function probeOrangeDataReceipt($client, $order_id)
+    {
+        // Empirical status-endpoint codes (verified against the contour): 200+fp = confirmed receipt;
+        // 202 = still queued; 422 = created but КМ rejected (no receipt at this id — a retry id may exist);
+        // 400/404 = that id was never created; 200 without fp = processed, no receipt. Only genuine transport
+        // or auth failures (401/403/5xx) are "unknown" — everything else is a definitive negative.
+        $base = 'oc-' . (int)$order_id . '-ship';
+        $pending = false; $sawNegative = false; $sawError = false; $lastErr = '';
+        foreach (array('', '-2', '-3') as $suffix) {
+            $id   = $base . $suffix;
+            $resp = $client->getDocumentStatus($id);
+            if (!empty($resp['error'])) { $sawError = true; $lastErr = $resp['error']; continue; }
+            $code = (int)$resp['http_code'];
+            if ($code === 200 && !empty($resp['body']['fp'])) {
+                return array('verdict' => 'FISCALIZED', 'info' => $id . ' / ФП ' . $resp['body']['fp']);
+            }
+            if ($code === 202) { $pending = true; continue; } // queued, not yet confirmed
+            if ($code === 400 || $code === 404) {
+                $sawNegative = true;
+                if ($suffix === '') { break; } // base id never created → no retry ids can exist either
+                continue;
+            }
+            if ($code === 422 || $code === 200) { $sawNegative = true; continue; } // created but rejected / no fp
+            $sawError = true; $lastErr = 'HTTP ' . $code;                           // 401/403/5xx etc.
+        }
+        if ($pending)                   { return array('verdict' => 'PENDING', 'info' => $base . ' queued (202)'); }
+        if ($sawNegative && !$sawError) { return array('verdict' => 'NOT FISCALIZED', 'info' => 'no receipt for ' . $base); }
+        return array('verdict' => 'UNKNOWN', 'info' => $lastErr !== '' ? $lastErr : 'inconclusive');
+    }
+
+    /**
+     * noteUnfiscalizedOrder
+     *
+     * Writes a one-time chatter note on the mapped Odoo sale.order flagging a missing Alfabank shipment receipt.
+     * Skips orders not present in odoo_order_map (nothing to note) and orders already carrying the marker note
+     * (idempotent — safe to run every cron). Scope: checkAlfabankFiscalization.
+     *
+     * @param int   $order_id
+     * @param array $order     the order row (date_added, order_status_id)
+     * @return string 'written' | 'exists' | 'unmapped' (no Odoo order) | 'fault' (connection/search/create error)
+     */
+    private function noteUnfiscalizedOrder($order_id, $order)
+    {
+        $odoo_order_id = $this->checkOdooOrder($order_id);
+        if (!$odoo_order_id) { return 'unmapped'; } // not synced to Odoo — nothing to note
+
+        $odoo_connect = $this->connection;
+        if (empty($odoo_connect['status'])) { return 'fault'; }
+        $models = $odoo_connect['client']; $db_name = $odoo_connect['db']; $uid = $odoo_connect['userId']; $password = $odoo_connect['pwd'];
+
+        $marker = '[OrangeData] Чек отгрузки НЕ пробит';
+        // Idempotency: skip if the marker note already exists on this order. If the search itself faults, skip
+        // writing (better a missed note than duplicates every run).
+        $existing = $models->execute_kw($db_name, $uid, $password,
+            'mail.message', 'search_count',
+            array(array(array('model', '=', 'sale.order'), array('res_id', '=', (int)$odoo_order_id), array('body', 'like', '%' . $marker . '%'))));
+        if (!is_int($existing)) {
+            if (is_array($existing) && isset($existing['faultCode'])) { print_r($existing['faultString']); }
+            return 'fault';
+        }
+        if ($existing > 0) { return 'exists'; }
+
+        $body = $marker . ' (OpenCart заказ #' . (int)$order_id . ', статус ' . (int)$order['order_status_id'] .
+                '). Проверьте и пробейте чек отгрузки в OrangeData.';
+        $res = $models->execute_kw($db_name, $uid, $password,
+            'mail.message', 'create',
+            array(array('create_uid' => 43, 'res_id' => (int)$odoo_order_id, 'model' => 'sale.order',
+                        'message_type' => 'notification', 'subtype_id' => 2, 'body' => $body)));
+        if (isset($res['faultCode'])) { print_r($res['faultString']); return 'fault'; }
+        return 'written';
+    }
+
 }
 
 /**
@@ -1401,10 +1647,16 @@ $tm->sendActivty(293,3149, " This is a test message!");*/
 }*/
 
 if (isset($argc)) {
-    for ($i = 1; $i < $argc; $i++) {
-        print_r($argv[$i]);
-        echo "\n";
-        $eo->createOdooOrder($argv[$i]);
+    // CLI: `php create_odoo_order.php fisc` runs the Alfabank fiscalization audit; otherwise each argument is
+    // treated as an order id to export to Odoo (unchanged behaviour).
+    if ($argc > 1 && $argv[1] === 'fisc') {
+        $eo->checkAlfabankFiscalization();
+    } else {
+        for ($i = 1; $i < $argc; $i++) {
+            print_r($argv[$i]);
+            echo "\n";
+            $eo->createOdooOrder($argv[$i]);
+        }
     }
 }
 if (isset($_GET['orderId'])) {
@@ -1412,6 +1664,9 @@ if (isset($_GET['orderId'])) {
 }
 if (isset($_GET['f']) && $_GET['f'] == 'sync') {
     $eo->syncOpenCartOrderState();
+}
+if (isset($_GET['f']) && $_GET['f'] == 'fisc') {
+    $eo->checkAlfabankFiscalization();
 }
 if (isset($_GET['nl'])) {
     $nl->syncOpencartOdooNewslist($_GET['nl']);

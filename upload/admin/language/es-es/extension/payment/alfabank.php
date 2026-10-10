@@ -46,3 +46,8 @@ $_['error_payment_action_permission'] = 'No tiene permiso para modificar el pago
 $_['error_invalid_payment_action'] = 'Acción de pago no válida.';
 $_['error_payment_reverse_status'] = 'Esta transacción no se puede cancelar. La cancelación solo está disponible para pagos preautorizados o autorizados completamente.';
 $_['error_payment_operation_status'] = 'Esta operación no está disponible para el estado actual de la transacción o el importe restante.';
+
+$_['entry_order_status_refunded'] = 'Estado del pedido: reembolso completo';
+$_['entry_order_status_partially_refunded'] = 'Estado del pedido: reembolso parcial';
+
+$_['help_order_status_reversed'] = 'Las anulaciones de autorización se registran en el historial sin cambiar el estado actual del pedido.';

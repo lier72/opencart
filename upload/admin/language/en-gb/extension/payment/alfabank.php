@@ -35,7 +35,8 @@ $_['tab_cart']  = 'Send Cart';
 $_['entry_order_status_before'] = 'Order status before payment';
 $_['entry_order_status_completed'] = 'Payed order status';
 $_['entry_order_status_reversed'] = "Order status Reversed";
-$_['entry_order_status_refunded'] = "Order status Refunded";
+$_['entry_order_status_refunded'] = 'Order status: full refund';
+$_['entry_order_status_partially_refunded'] = 'Order status: partial refund';
 $_['text_success_deposit'] = "The amount was deposited successfully!";
 $_['text_success_deposit_amount'] = "%s was deposited successfully";
 $_['error_invalid_refund_amount'] = "The amount must be more than 0.00 and less than or equal to %s";
@@ -128,3 +129,5 @@ $_['entry_enable_cacert_enable'] = 'Enabled';
 $_['entry_enable_cacert_disable'] = 'Disabled';
 $_['entry_backToShopURL'] = 'Back to shop URL';
 $_['entry_backToShopURL_description'] = 'adds URL for checkout page button that will take a cardholder back to the assigned merchant web-site URL';
+
+$_['help_order_status_reversed'] = 'Authorization reversals are recorded in order history without changing the current order status.';
