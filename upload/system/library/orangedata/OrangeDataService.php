@@ -546,6 +546,215 @@ class OrangeDataService {
     }
 
     /**
+     * getSaleReceipt
+     *
+     * Fetches the order's REGISTERED sale receipt from OrangeData — the authoritative source of each position's
+     * price (post discount/voucher/coupon), itemCode (КМ) and paymentSubjectType, echoed back under
+     * content.positions by getDocumentStatus (API §2.2). Finds the doc id from the stored marking codes, else
+     * derives oc-<order>-ship (+ -2/-3 retries). Scope: fiscalizeReturn / getReturnView.
+     *
+     * @param int $order_id
+     * @return array ['ok'=>bool,'doc_id'=>string,'body'=>array|null,'positions'=>array,'message'=>string]
+     */
+    private function getSaleReceipt($order_id) {
+        $repo = $this->repo();
+        $client = $this->getClient();
+        $stored = '';
+        foreach ($repo->getOrderMarkingCodes($order_id) as $c) { if ($c['document_id'] !== '') { $stored = $c['document_id']; break; } }
+        $candidates = $stored !== ''
+            ? array($stored)
+            : array('oc-' . (int) $order_id . '-ship', 'oc-' . (int) $order_id . '-ship-2', 'oc-' . (int) $order_id . '-ship-3');
+        foreach ($candidates as $id) {
+            $s = $client->getDocumentStatus($id);
+            if ((int) $s['http_code'] === 200 && !empty($s['body']['fp']) && !empty($s['body']['content']['positions'])) {
+                return array('ok' => true, 'doc_id' => $id, 'body' => $s['body'], 'positions' => $s['body']['content']['positions'], 'message' => '');
+            }
+        }
+        return array('ok' => false, 'doc_id' => $stored, 'body' => null, 'positions' => array(), 'message' => 'Чек продажи не найден или не подтверждён в OrangeData — возврат невозможен.');
+    }
+
+    /**
+     * posRef
+     *
+     * Stable reference for a sale-receipt position: 'km:<sha1(itemCode)>' for a marked unit (unique КМ) or
+     * 'pos:<index>' for a non-marked line. Used to match a return selection to the sale receipt and to guard
+     * against returning the same unit/quantity twice. Scope: getReturnView / fiscalizeReturn.
+     */
+    private static function posRef($itemCode, $index) {
+        return $itemCode !== '' ? 'km:' . sha1($itemCode) : 'pos:' . (int) $index;
+    }
+
+    /**
+     * getReturnView
+     *
+     * Builds the data for the return panel: the registered sale receipt's positions annotated with their stable
+     * pos_ref, marked flag, sold quantity, already-returned quantity and remaining returnable quantity, plus a
+     * summary of return legs already issued. Read-only. Scope: ControllerExtensionModuleOrangedataPiot::returnPanel.
+     *
+     * @param int $order_id
+     * @return array ['ok'=>bool,'message'=>string,'sale_document_id'=>string,'positions'=>array,'legs'=>array]
+     */
+    public function getReturnView($order_id) {
+        $repo = $this->repo();
+        $sale = $this->getSaleReceipt($order_id);
+        if (!$sale['ok']) {
+            return array('ok' => false, 'message' => $sale['message'], 'sale_document_id' => '', 'positions' => array(), 'legs' => array());
+        }
+        $rows = $repo->getReturnCodes($order_id);
+        $returned = array(); $legs = array();
+        foreach ($rows as $r) {
+            if ($r['fiscalized']) {
+                $returned[$r['pos_ref']] = (isset($returned[$r['pos_ref']]) ? $returned[$r['pos_ref']] : 0) + (float) $r['quantity'];
+                $legs[(int) $r['return_leg']] = array('document_id' => $r['document_id'], 'fp' => $r['fp'], 'pending' => false);
+            } elseif ($r['document_id'] !== '' && !isset($legs[(int) $r['return_leg']])) {
+                // Created but not yet confirmed (202 after the poll window): tell the operator to wait, not re-press.
+                $legs[(int) $r['return_leg']] = array('document_id' => $r['document_id'], 'fp' => '', 'pending' => true);
+            }
+        }
+        $positions = array();
+        foreach ($sale['positions'] as $i => $p) {
+            $itemCode = isset($p['itemCode']) ? (string) $p['itemCode'] : '';
+            $ref      = self::posRef($itemCode, $i);
+            $soldQty  = isset($p['quantity']) ? (float) $p['quantity'] : 1;
+            $ret      = isset($returned[$ref]) ? $returned[$ref] : 0;
+            $subject  = isset($p['paymentSubjectType']) ? (int) $p['paymentSubjectType'] : null;
+            $positions[] = array(
+                'index' => $i, 'pos_ref' => $ref, 'marked' => $itemCode !== '',
+                // A service line (shipping/COD, paymentSubjectType 4) is not individually returnable — it is
+                // refunded only as part of a full return ("Выбрать всё"), per the agreed default.
+                'service' => $subject === 4,
+                'text' => isset($p['text']) ? $p['text'] : '', 'price' => isset($p['price']) ? (float) $p['price'] : 0,
+                'subject' => $subject,
+                'item_code' => $itemCode, 'sold_qty' => $soldQty, 'returned_qty' => $ret,
+                'returnable_qty' => max(0, $soldQty - $ret),
+            );
+        }
+        return array('ok' => true, 'message' => '', 'sale_document_id' => $sale['doc_id'], 'positions' => $positions, 'legs' => $legs);
+    }
+
+    /**
+     * fiscalizeReturn
+     *
+     * Issues a возврат прихода (FFD type 2) receipt for a selection of the order's SALE-receipt positions. Each
+     * returned position copies the sale receipt's EXACT price, tax and paymentSubjectType (so the refund matches
+     * what was charged, discounts/vouchers/coupons included — no recomputation) and, for marked units, its КМ as
+     * itemCode (reused from the sale; an operator may override with a scanned code). A return carries itemCode but
+     * NO industryAttribute (tag 1260): no tag1265 is passed, which OrangeDataReceiptBuilder treats as "omit 1260"
+     * (open item — confirm vs the contour; the sale's tag1265 is available if confirmation requires it). Supports
+     * full and partial returns and several legs per order (idempotent id oc-<order>-return-<leg>); a unit/quantity
+     * may be returned only once. Money refund stays in the Alfabank repay() flow.
+     *
+     * Scope: ControllerExtensionModuleOrangedataPiot::fiscalizeReturn.
+     *
+     * @param int   $order_id
+     * @param array $selection ['items' => [ ['pos_ref'=>string, 'quantity'=>float, 'km'=>string?] ]]. 'km' (a
+     *                          scanned override for a marked unit) is normalized here. A full return simply lists
+     *                          every returnable position at its remaining quantity.
+     * @param bool|null $ignoreItemCodeCheck null → module setting.
+     * @return array ['success','message','document_id','status','amount'?,'leg'?]
+     */
+    public function fiscalizeReturn($order_id, array $selection, $ignoreItemCodeCheck = null) {
+        $repo = $this->repo();
+        $db   = $this->db();
+        $order_id = (int) $order_id;
+        $fail = function ($m) { return array('success' => false, 'message' => $m, 'document_id' => '', 'status' => null); };
+
+        $orderQ = $db->query("SELECT * FROM `" . DB_PREFIX . "order` WHERE order_id = '" . $order_id . "'");
+        if (!$orderQ->num_rows) { return $fail('Заказ не найден'); }
+        $order = $orderQ->row;
+
+        $sale = $this->getSaleReceipt($order_id);
+        if (!$sale['ok']) { return $fail($sale['message']); }
+
+        require_once DIR_SYSTEM . 'library/orangedata/OrangeDataClient.php';
+        require_once DIR_SYSTEM . 'library/orangedata/MarkingCode.php';
+
+        // Index sale positions by pos_ref.
+        $saleByRef = array();
+        foreach ($sale['positions'] as $i => $p) {
+            $itemCode = isset($p['itemCode']) ? (string) $p['itemCode'] : '';
+            $saleByRef[self::posRef($itemCode, $i)] = array('p' => $p, 'marked' => $itemCode !== '', 'item_code' => $itemCode);
+        }
+
+        // Already-returned (fiscalized) quantity per pos_ref across all legs.
+        $returnRows = $repo->getReturnCodes($order_id);
+        $retQty = array();
+        foreach ($returnRows as $r) {
+            if ($r['fiscalized']) { $retQty[$r['pos_ref']] = (isset($retQty[$r['pos_ref']]) ? $retQty[$r['pos_ref']] : 0) + (float) $r['quantity']; }
+        }
+
+        $positions = array(); $legItems = array(); $over = array();
+        foreach (isset($selection['items']) ? $selection['items'] : array() as $sel) {
+            $ref = isset($sel['pos_ref']) ? (string) $sel['pos_ref'] : '';
+            $q   = (float) (isset($sel['quantity']) ? $sel['quantity'] : 1);
+            if ($ref === '' || $q <= 0 || !isset($saleByRef[$ref])) { continue; }
+            $sp = $saleByRef[$ref]; $p = $sp['p'];
+            $soldQty = isset($p['quantity']) ? (float) $p['quantity'] : 1;
+            $prior   = isset($retQty[$ref]) ? $retQty[$ref] : 0;
+
+            $line = array('text' => isset($p['text']) ? $p['text'] : '', 'price' => isset($p['price']) ? (float) $p['price'] : 0);
+            if (isset($p['tax'])) { $line['tax'] = (int) $p['tax']; }
+            if (isset($p['paymentSubjectType'])) { $line['payment_subject_type'] = (int) $p['paymentSubjectType']; }
+
+            $itemCode = '';
+            if ($sp['marked']) {
+                $q = 1.0; // a marked unit is one physical item
+                $itemCode = (isset($sel['km']) && $sel['km'] !== '') ? MarkingCode::normalize($sel['km'], true)['code'] : $sp['item_code'];
+                $line['item_code'] = $itemCode; // builder adds itemCode; no tag1265 → no tag 1260
+            }
+            if ($prior + $q > $soldQty + 1e-9) { $over[] = $ref; continue; }
+            $line['quantity'] = $q;
+            $positions[] = $line;
+            $legItems[]  = array('pos_ref' => $ref, 'item_code' => $itemCode, 'text' => $line['text'], 'price' => $line['price'], 'quantity' => $q);
+        }
+
+        if ($over)       { return $fail('Превышено количество к возврату для позиций: ' . implode(', ', $over)); }
+        if (!$positions) { return $fail('Не выбраны позиции для возврата'); }
+
+        // Leg + idempotency: reuse a created-but-unconfirmed leg whose pos_ref set matches; else next leg.
+        $selRefs = array(); foreach ($legItems as $it) { $selRefs[$it['pos_ref']] = true; } ksort($selRefs);
+        $reuseLeg = 0; $reuseDoc = ''; $byLeg = array();
+        foreach ($returnRows as $r) { $byLeg[(int) $r['return_leg']][] = $r; }
+        foreach ($byLeg as $L => $rows) {
+            $anyFisc = false; $refs = array(); $doc = '';
+            foreach ($rows as $r) { if ($r['fiscalized']) $anyFisc = true; $refs[$r['pos_ref']] = true; if ($r['document_id'] !== '') $doc = $r['document_id']; }
+            ksort($refs);
+            if (!$anyFisc && $doc !== '' && $refs == $selRefs) { $reuseLeg = (int) $L; $reuseDoc = $doc; break; }
+        }
+        $leg   = $reuseLeg ?: $repo->getNextReturnLeg($order_id);
+        $docId = $reuseDoc ?: ('oc-' . $order_id . '-return-' . $leg);
+
+        $amount = 0.0; foreach ($positions as $pos) { $amount += $pos['price'] * $pos['quantity']; }
+
+        foreach ($legItems as $it) { $repo->saveReturnItem(array('order_id' => $order_id, 'return_leg' => $leg, 'sale_document_id' => $sale['doc_id']) + $it); }
+
+        if ($ignoreItemCodeCheck === null) { $ignoreItemCodeCheck = (bool) $this->config('ignore_item_code_check', 0); }
+        $paymentType = $this->paymentTypeForCode(isset($order['payment_code']) ? $order['payment_code'] : '');
+
+        $client   = $this->getClient();
+        $document = $this->getBuilder()->document(array(
+            'id' => $docId, 'positions' => $positions, 'type' => 2, // возврат прихода (tag 1054 = 2)
+            'payment_type' => $paymentType, 'customer_contact' => $this->orderContact($order),
+            'ignore_item_code_check' => $ignoreItemCodeCheck,
+        ));
+        $create = $client->createDocument($document);
+        if ($create['http_code'] === 201 || $create['http_code'] === 409) {
+            $repo->setReturnDocumentId($order_id, $leg, $docId);
+            $result = $this->confirmDocument($client, $repo, $order_id, $docId, function ($docId, $fp) use ($repo, $order_id, $leg) {
+                $repo->markReturnFiscalized($order_id, $leg, $docId, $fp);
+            });
+            $result['amount'] = round($amount, 2);
+            $result['leg']    = $leg;
+            return $result;
+        }
+        // Hard failure (not 201/409): the receipt was never accepted. Drop the leg's just-persisted pending rows
+        // so a hard error does not leave abandoned rows / burn leg numbers; the operator can simply retry.
+        $repo->deleteReturnLeg($order_id, $leg);
+        $errs = isset($create['body']['errors']) ? implode('; ', $create['body']['errors']) : $create['raw'];
+        return $fail('Ошибка createDocument (' . $create['http_code'] . '): ' . $errs);
+    }
+
+    /**
      * expandDistributed
      *
      * Maps the positions returned by AlfabankDiscount::distribute() into OrangeData receipt positions.
@@ -615,7 +824,7 @@ class OrangeDataService {
      *
      * @return array ['success','pending'?,'message','document_id','status']
      */
-    private function confirmDocument($client, $repo, $order_id, $docId) {
+    private function confirmDocument($client, $repo, $order_id, $docId, $onFiscalized = null) {
         $status = null; $http = 202;
         for ($i = 0; $i < 10; $i++) {
             usleep(1500000);
@@ -644,7 +853,9 @@ class OrangeDataService {
         }
 
         if (is_array($status) && !empty($status['fp'])) {
-            $repo->markFiscalized($order_id, $docId);
+            // Return legs mark their own rows (leg-aware) via the callback; the sale path marks by order.
+            if (is_callable($onFiscalized)) { call_user_func($onFiscalized, $docId, $status['fp']); }
+            else { $repo->markFiscalized($order_id, $docId); }
             return array('success' => true, 'message' => 'Чек зарегистрирован (ФП ' . $status['fp'] . ')', 'document_id' => $docId, 'status' => $status);
         }
 

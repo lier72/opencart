@@ -137,6 +137,23 @@ $_['text_gtin_mismatch']            = 'Warning: the DataMatrix GTIN does not mat
 $_['text_no_ean']                   = 'No EAN';
 $_['help_no_ean']                   = 'No barcode (EAN) loaded from Odoo for this line. Run cli/odoo_variant_barcode_sync.php.';
 
+// Return receipt (возврат прихода)
+$_['text_return_title']             = 'Return (ТС ПИоТ / refund receipt)';
+$_['text_return_sale_doc']          = 'Sale receipt';
+$_['text_return_issued']            = 'Issued returns';
+$_['text_return_already']           = 'already returned';
+$_['text_return_of']                = 'of';
+$_['text_return_scan_override']     = 'scan КМ (optional)';
+$_['text_return_pick']              = 'Select positions to return.';
+$_['column_return_price']           = 'Price';
+$_['column_return_qty']             = 'To return';
+$_['button_return_full']            = 'Select all';
+$_['button_return_fiscalize']       = 'Issue return (receipt)';
+$_['help_return']                   = 'The return is built from the registered sale receipt: prices and КМ are taken from it. For marked positions the КМ is filled automatically; scan a different КМ if needed. Money is refunded separately, via the acquirer.';
+$_['error_return_empty']            = 'No positions selected for return.';
+$_['text_return_pending']           = 'awaiting processing';
+$_['text_return_full_only']         = 'full return only';
+
 // Scanner test
 $_['text_group_scanner']            = 'Scanner test';
 $_['entry_scan_test']               = 'Scan a DataMatrix';

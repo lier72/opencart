@@ -1,0 +1,113 @@
+<div class="panel panel-default" id="orangedata-piot-return-panel">
+  <div class="panel-heading"><h3 class="panel-title"><i class="fa fa-undo"></i> {{ text_return_title }}</h3></div>
+  <div class="panel-body">
+    <div id="odr-result"></div>
+    {% if not ok %}
+      <div class="alert alert-warning">{{ view_message }}</div>
+    {% else %}
+      <p class="text-muted" style="font-size:12px;margin-bottom:6px;">{{ text_return_sale_doc }}: {{ sale_document_id|e }}</p>
+      {% if legs %}
+      <div class="alert alert-info" style="font-size:12px;">
+        {{ text_return_issued }}:
+        {% for leg, info in legs %}
+          {% if info.pending %}<span class="label label-warning">#{{ leg }} {{ text_return_pending }}</span>
+          {% else %}<span class="label label-success">#{{ leg }} {% if info.fp %}ФП {{ info.fp }}{% endif %}</span>{% endif %}
+          {% if info.cheque_url %}<a href="{{ info.cheque_url }}" target="_blank">{{ info.document_id|e }}</a>{% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      <table class="table table-bordered">
+        <thead><tr>
+          <td style="width:30px;"></td>
+          <td>{{ column_product }}</td>
+          <td class="text-center">{{ column_return_price }}</td>
+          <td>{{ column_code }}</td>
+          <td class="text-center">{{ column_return_qty }}</td>
+        </tr></thead>
+        <tbody>
+        {% for p in positions %}
+          <tr{% if p.returnable_qty <= 0 %} class="text-muted"{% endif %}>
+            <td class="text-center">
+              {% if p.returnable_qty > 0 and not p.service %}<input type="checkbox" class="odr-pick" data-ref="{{ p.pos_ref }}" data-mode="{{ p.marked ? 'm' : 'n' }}"/>
+              {% elseif p.returnable_qty > 0 and p.service %}<span class="odr-service" data-ref="{{ p.pos_ref }}"></span>{% endif %}
+            </td>
+            <td>{{ p.text|e }}{% if p.marked %} <span class="label label-info">{{ text_marked }}</span>{% endif %}</td>
+            <td class="text-center">{{ p.price }}</td>
+            <td style="word-break:break-all;font-size:11px;max-width:320px;">
+              {% if p.marked %}
+                <div>{{ p.item_code_display|e }}</div>
+                <input type="text" class="form-control input-sm odr-km" data-ref="{{ p.pos_ref }}" autocomplete="off" placeholder="{{ text_return_scan_override }}"/>
+              {% else %}&mdash;{% endif %}
+            </td>
+            <td class="text-center">
+              {% if p.service %}
+                {% if p.returnable_qty > 0 %}<span class="text-muted" style="font-size:11px;">{{ text_return_full_only }}</span>{% else %}<span class="label label-default">{{ text_return_already }}</span>{% endif %}
+              {% elseif p.marked %}
+                1{% if p.returned_qty > 0 %}<br><span class="label label-default">{{ text_return_already }}</span>{% endif %}
+              {% elseif p.returnable_qty > 0 %}
+                <input type="number" class="form-control input-sm odr-qty" data-ref="{{ p.pos_ref }}" min="0" max="{{ p.returnable_qty }}" value="0" style="width:70px;margin:0 auto;"/>
+                <div class="text-muted" style="font-size:11px;">{{ text_return_of }} {{ p.returnable_qty }}</div>
+              {% else %}<span class="label label-default">{{ text_return_already }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" id="odr-full" class="btn btn-default"><i class="fa fa-check-square-o"></i> {{ button_return_full }}</button>
+      <button type="button" id="odr-fiscalize" class="btn btn-warning"><i class="fa fa-undo"></i> {{ button_return_fiscalize }}</button>
+      <div class="help-block" style="font-size:11px;margin-top:6px;">{{ help_return }}</div>
+    {% endif %}
+  </div>
+</div>
+<script type="text/javascript"><!--
+(function() {
+  var C = '#orangedata-piot-return-container';
+  var fullMode = false; // set by «Выбрать всё»; only then are service lines (shipping/COD) included
+  function msg(cls, html) { $('#odr-result').html('<div class="alert ' + cls + '">' + html + '</div>'); }
+  // Reload re-fetches the sale receipt + issued legs (messages shown AFTER, since the area is inside the panel).
+  function reload(after) {
+    $(C).load('index.php?route=extension/module/orangedata_piot/returnPanel&user_token={{ user_token }}&order_id={{ order_id }}', function() { if (typeof after === 'function') { after(); } });
+  }
+  // GS (0x1D) cannot be typed; scanners set to Ctrl+] / F8 insert the <GS> token (server restores the separator).
+  $(C).off('keydown.odr', '.odr-km').on('keydown.odr', '.odr-km', function(e) {
+    if (e.which === 13) { e.preventDefault(); return; }
+    if ((e.ctrlKey && (e.which === 221 || e.key === ']')) || e.which === 119) {
+      e.preventDefault();
+      var el = this, s = el.selectionStart, t = el.selectionEnd;
+      el.value = el.value.slice(0, s) + '<GS>' + el.value.slice(t);
+      el.selectionStart = el.selectionEnd = s + 4;
+    }
+  });
+  // Typing/scanning an override auto-selects its row.
+  $(C).off('input.odr', '.odr-km').on('input.odr', '.odr-km', function() {
+    if (this.value) { $(C).find('.odr-pick[data-ref="' + $(this).data('ref') + '"]').prop('checked', true); }
+  });
+  $(C).off('click.odr', '#odr-full').on('click.odr', '#odr-full', function() {
+    fullMode = true;
+    $(C).find('.odr-pick').prop('checked', true);
+    $(C).find('.odr-qty').each(function() { this.value = $(this).attr('max'); });
+  });
+  $(C).off('click.odr', '#odr-fiscalize').on('click.odr', '#odr-fiscalize', function() {
+    var data = {}, km = {};
+    $(C).find('.odr-pick:checked').each(function() {
+      var ref = $(this).data('ref');
+      if ($(this).data('mode') === 'm') { data[ref] = 1; }
+    });
+    // Non-marked quantities (>0) count whether or not the checkbox is ticked.
+    $(C).find('.odr-qty').each(function() { var q = parseFloat(this.value) || 0; if (q > 0) { data[$(this).data('ref')] = q; } });
+    // Service lines (shipping/COD) are included only on a full return.
+    if (fullMode) { $(C).find('.odr-service').each(function() { data[$(this).data('ref')] = 1; }); }
+    $(C).find('.odr-km').each(function() { if (this.value) { km[$(this).data('ref')] = this.value; } });
+    if ($.isEmptyObject(data)) { msg('alert-warning', '{{ text_return_pick }}'); return; }
+    var b = $(this).button('loading');
+    $.ajax({ url: '{{ return_fiscalize_url }}', type: 'post', dataType: 'json', data: { item: data, km: km },
+      complete: function() { b.button('reset'); },
+      success: function(j) {
+        if (j.error) { msg('alert-danger', j.error); }
+        else { reload(function() { msg(j.pending ? 'alert-warning' : 'alert-success', j.success + (j.cheque_url ? ' — <a href="' + j.cheque_url + '" target="_blank">' + j.document_id + '</a>' : '')); }); }
+      },
+      error: function(x) { msg('alert-danger', x.status + ' ' + x.statusText); }
+    });
+  });
+})();
+//--></script>

@@ -503,6 +503,82 @@ class ControllerExtensionModuleOrangedataPiot extends Controller {
         $this->response->setOutput(json_encode($json, JSON_UNESCAPED_UNICODE));
     }
 
+    /**
+     * returnPanel
+     *
+     * AJAX: renders the возврат-прихода panel. It reads the order's REGISTERED sale receipt from OrangeData
+     * (authoritative per-position price + КМ) and lists each position with its remaining returnable quantity,
+     * plus the return legs already issued. Loaded on demand (the injected block has a button) so the normal
+     * order view pays no OrangeData round-trip. Scope: OCMOD-injected return block on the order info page.
+     */
+    public function returnPanel() {
+        $data = array_merge(array(), (array) $this->load->language('extension/module/orangedata_piot'));
+        $order_id = isset($this->request->get['order_id']) ? (int) $this->request->get['order_id'] : 0;
+
+        require_once DIR_SYSTEM . 'library/orangedata/OrangeDataService.php';
+        require_once DIR_SYSTEM . 'library/orangedata/MarkingCode.php';
+        $service = new OrangeDataService($this->registry);
+        $view = $service->getReturnView($order_id);
+        foreach ($view['positions'] as $k => $p) {
+            $view['positions'][$k]['item_code_display'] = MarkingCode::visualize($p['item_code']); // GS → ⟨GS⟩
+        }
+        foreach ($view['legs'] as $leg => $info) {
+            $view['legs'][$leg]['cheque_url'] = $this->chequeUrl($info['document_id']);
+        }
+
+        $token = $this->session->data['user_token'];
+        $data['user_token']           = $token;
+        $data['order_id']             = $order_id;
+        $data['ok']                   = $view['ok'];
+        $data['view_message']         = $view['message'];
+        $data['positions']            = $view['positions'];
+        $data['legs']                 = $view['legs'];
+        $data['sale_document_id']     = $view['sale_document_id'];
+        $data['return_fiscalize_url'] = $this->jsUrl('extension/module/orangedata_piot/fiscalizeReturn', 'user_token=' . $token . '&order_id=' . $order_id);
+
+        $this->response->setOutput($this->load->view('extension/module/orangedata_piot_return', $data));
+    }
+
+    /** AJAX: build + submit a возврат-прихода receipt for the posted selection (item[pos_ref]=qty, km[pos_ref]=override). */
+    public function fiscalizeReturn() {
+        $this->load->language('extension/module/orangedata_piot');
+        $json = array();
+        if (!$this->user->hasPermission('modify', 'extension/module/orangedata_piot')) {
+            $json['error'] = $this->language->get('error_permission');
+        } else {
+            try {
+                require_once DIR_SYSTEM . 'library/orangedata/OrangeDataService.php';
+                $posted = isset($this->request->post['item']) ? (array) $this->request->post['item'] : array();
+                $kms    = isset($this->request->post['km']) ? (array) $this->request->post['km'] : array();
+                $items = array();
+                foreach ($posted as $ref => $qty) {
+                    if ((float) $qty <= 0) continue;
+                    $it = array('pos_ref' => (string) $ref, 'quantity' => (float) $qty);
+                    if (isset($kms[$ref]) && $kms[$ref] !== '') { $it['km'] = $kms[$ref]; }
+                    $items[] = $it;
+                }
+                if (!$items) {
+                    $json['error'] = $this->language->get('error_return_empty');
+                } else {
+                    $service = new OrangeDataService($this->registry);
+                    $result = $service->fiscalizeReturn((int) $this->request->get['order_id'], array('items' => $items));
+                    if (!empty($result['success'])) {
+                        $json['success']     = $result['message'];
+                        $json['pending']     = !empty($result['pending']);
+                        $json['document_id'] = isset($result['document_id']) ? $result['document_id'] : '';
+                        $json['cheque_url']  = $this->chequeUrl($json['document_id']);
+                    } else {
+                        $json['error'] = $result['message'];
+                    }
+                }
+            } catch (Exception $e) {
+                $json['error'] = $e->getMessage();
+            }
+        }
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json, JSON_UNESCAPED_UNICODE));
+    }
+
     /** AJAX: remove a mis-scanned (not-yet-fiscalized) code. */
     public function removeCode() {
         $this->load->model('extension/module/orangedata_piot');

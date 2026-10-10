@@ -137,6 +137,23 @@ $_['text_gtin_mismatch']            = 'Внимание: GTIN в DataMatrix не
 $_['text_no_ean']                   = 'Нет EAN';
 $_['help_no_ean']                   = 'Для этой позиции не загружен штрихкод (EAN) из Odoo. Запустите cli/odoo_variant_barcode_sync.php.';
 
+// Возврат прихода (чек возврата)
+$_['text_return_title']             = 'Возврат (ТС ПИоТ / чек возврата)';
+$_['text_return_sale_doc']          = 'Чек продажи';
+$_['text_return_issued']            = 'Оформленные возвраты';
+$_['text_return_already']           = 'уже возвращено';
+$_['text_return_of']                = 'из';
+$_['text_return_scan_override']     = 'скан КМ (необязательно)';
+$_['text_return_pick']              = 'Отметьте позиции для возврата.';
+$_['column_return_price']           = 'Цена';
+$_['column_return_qty']             = 'К возврату';
+$_['button_return_full']            = 'Выбрать всё';
+$_['button_return_fiscalize']       = 'Оформить возврат (чек)';
+$_['help_return']                   = 'Возврат формируется по зарегистрированному чеку продажи: цены и КМ берутся из него. Для маркированных позиций КМ подставляется автоматически; при необходимости отсканируйте другой КМ. Деньги возвращаются отдельно, через эквайринг.';
+$_['error_return_empty']            = 'Не выбраны позиции для возврата.';
+$_['text_return_pending']           = 'ожидает обработки';
+$_['text_return_full_only']         = 'только при полном возврате';
+
 // Проверка сканера
 $_['text_group_scanner']            = 'Проверка сканера';
 $_['entry_scan_test']               = 'Отсканируйте DataMatrix';

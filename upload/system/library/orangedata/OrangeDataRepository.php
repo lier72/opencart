@@ -78,6 +78,34 @@ class OrangeDataRepository {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
+        // Customer-return items, grouped into "legs" so an order can have several partial returns over time
+        // (leg 1, 2, …). Returns are built from the REGISTERED SALE RECEIPT (authoritative per-position price +
+        // itemCode), so each row references a sale position: `pos_ref` = 'km:<sha1(itemCode)>' for a marked unit
+        // (a КМ may be returned only once per order) or 'pos:<saleIndex>' for a non-marked line (aggregated,
+        // `quantity` capped at the sold quantity). `item_code` holds the КМ actually sent (defaults to the sold
+        // code — no re-scan — but may be an operator override). Kept separate from order_marking_code (the sale).
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "order_return_code` (
+              `return_code_id`    int NOT NULL AUTO_INCREMENT,
+              `order_id`          int NOT NULL,
+              `return_leg`        int NOT NULL DEFAULT '1',
+              `sale_document_id`  varchar(80) NOT NULL DEFAULT '',
+              `pos_ref`           varchar(80) NOT NULL,
+              `item_code`         text,
+              `text`              varchar(255) NOT NULL DEFAULT '',
+              `price`             decimal(15,2) NOT NULL DEFAULT '0.00',
+              `quantity`          decimal(15,3) NOT NULL DEFAULT '1.000',
+              `document_id`       varchar(80) NOT NULL DEFAULT '',
+              `fp`                varchar(32) NOT NULL DEFAULT '',
+              `fiscalized`        tinyint(1) NOT NULL DEFAULT '0',
+              `date_added`        datetime NOT NULL,
+              `date_modified`     datetime NOT NULL,
+              PRIMARY KEY (`return_code_id`),
+              KEY `order_id` (`order_id`),
+              UNIQUE KEY `leg_pos` (`order_id`,`return_leg`,`pos_ref`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
         // Migration for installs created before check_backend existed (records which backend produced the verdict).
         $col = $this->db->query("SHOW COLUMNS FROM `" . DB_PREFIX . "order_marking_code` LIKE 'check_backend'");
         if (!$col->num_rows) {
@@ -310,5 +338,90 @@ class OrangeDataRepository {
 
     public function deleteCode($id) {
         $this->db->query("DELETE FROM `" . DB_PREFIX . "order_marking_code` WHERE marking_code_id = '" . (int)$id . "' AND fiscalized = '0'");
+    }
+
+    /* ---- return codes (возврат прихода) ---- */
+
+    /**
+     * getReturnCodes
+     *
+     * All stored return-unit rows for an order, across every leg (ordered by leg then line/unit). Used by the
+     * return panel to show issued/pending returns and by fiscalizeReturn() to tell which units are already
+     * returned (a sold unit may be returned only once). Degrades to [] if the table is not created yet.
+     * Scope: OrangeDataService::fiscalizeReturn and the admin return panel.
+     *
+     * @param int $order_id
+     * @return array rows
+     */
+    public function getReturnCodes($order_id) {
+        // Swallow ONLY "table does not exist" (MySQL errno 1146 — fresh deploy before install()); any other
+        // schema/SQL error must surface, so it is never mistaken for "nothing returned" (which would let a unit
+        // be refunded twice). OpenCart's mysqli wrapper throws with "Error No: <errno>" in the message.
+        try {
+            return $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_return_code` WHERE order_id = '" . (int)$order_id . "' ORDER BY return_leg, pos_ref")->rows;
+        } catch (Exception $e) {
+            if (strpos($e->getMessage(), 'Error No: 1146') !== false) {
+                return array();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * getNextReturnLeg
+     *
+     * The next return-leg number for an order = max(existing leg)+1 (1 when none). Each distinct partial return
+     * is its own leg, giving a stable idempotent receipt id oc-<order>-return-<leg>. Scope: fiscalizeReturn().
+     *
+     * @param int $order_id
+     * @return int
+     */
+    public function getNextReturnLeg($order_id) {
+        $q = $this->db->query("SELECT MAX(return_leg) m FROM `" . DB_PREFIX . "order_return_code` WHERE order_id = '" . (int)$order_id . "'");
+        return $q->num_rows && $q->row['m'] !== null ? (int)$q->row['m'] + 1 : 1;
+    }
+
+    /**
+     * saveReturnItem
+     *
+     * Upserts one returned sale-receipt position into a leg (idempotent on retry via UNIQUE(order_id,return_leg,
+     * pos_ref)). pos_ref = 'km:<sha1(itemCode)>' (marked, quantity 1) or 'pos:<saleIndex>' (non-marked aggregate).
+     * Scope: fiscalizeReturn() while building a leg.
+     *
+     * @param array $d order_id, return_leg, sale_document_id, pos_ref, item_code, text, price, quantity
+     */
+    public function saveReturnItem(array $d) {
+        $set = "
+                order_id = '" . (int)$d['order_id'] . "', return_leg = '" . (int)$d['return_leg'] . "',
+                sale_document_id = '" . $this->db->escape(isset($d['sale_document_id']) ? $d['sale_document_id'] : '') . "',
+                pos_ref = '" . $this->db->escape($d['pos_ref']) . "',
+                item_code = '" . $this->db->escape(isset($d['item_code']) ? $d['item_code'] : '') . "',
+                text = '" . $this->db->escape(isset($d['text']) ? substr($d['text'], 0, 255) : '') . "',
+                price = '" . number_format((float)(isset($d['price']) ? $d['price'] : 0), 2, '.', '') . "',
+                quantity = '" . number_format((float)(isset($d['quantity']) ? $d['quantity'] : 1), 3, '.', '') . "'";
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "order_return_code` SET " . $set . ", date_added = NOW(), date_modified = NOW()
+            ON DUPLICATE KEY UPDATE item_code = VALUES(item_code), sale_document_id = VALUES(sale_document_id),
+                text = VALUES(text), price = VALUES(price), quantity = VALUES(quantity), date_modified = NOW()");
+    }
+
+    /** Records the return document id on a leg's rows (pending, before ФН confirmation). Scope: fiscalizeReturn(). */
+    public function setReturnDocumentId($order_id, $return_leg, $document_id) {
+        $this->db->query("UPDATE `" . DB_PREFIX . "order_return_code` SET document_id = '" . $this->db->escape($document_id) . "', date_modified = NOW() WHERE order_id = '" . (int)$order_id . "' AND return_leg = '" . (int)$return_leg . "'");
+    }
+
+    /** Marks a return leg fiscalized (only after the ФН confirms, i.e. fp present). Scope: fiscalizeReturn(). */
+    public function markReturnFiscalized($order_id, $return_leg, $document_id, $fp) {
+        $this->db->query("UPDATE `" . DB_PREFIX . "order_return_code` SET fiscalized = '1', document_id = '" . $this->db->escape($document_id) . "', fp = '" . $this->db->escape((string)$fp) . "', date_modified = NOW() WHERE order_id = '" . (int)$order_id . "' AND return_leg = '" . (int)$return_leg . "'");
+    }
+
+    /**
+     * deleteReturnLeg
+     *
+     * Removes a leg's NOT-yet-fiscalized rows. Scope: fiscalizeReturn() cleans up a leg it just persisted when
+     * createDocument fails outright (not 201/409), so a hard error does not leave abandoned rows / burn leg
+     * numbers. Never touches a fiscalized leg.
+     */
+    public function deleteReturnLeg($order_id, $return_leg) {
+        $this->db->query("DELETE FROM `" . DB_PREFIX . "order_return_code` WHERE order_id = '" . (int)$order_id . "' AND return_leg = '" . (int)$return_leg . "' AND fiscalized = '0'");
     }
 }

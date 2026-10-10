@@ -2,7 +2,7 @@
 <modification>
     <name>OrangeData ТС ПИоТ (разрешительный режим)</name>
     <code>orangedata_piot</code>
-    <version>1.1</version>
+    <version>1.2</version>
     <author>UniqSport</author>
     <link>https://orangedata.ru</link>
 
@@ -15,9 +15,12 @@
     <file path="admin/view/template/sale/order_info.twig">
         <operation>
             <search index="0"><![CDATA[<script type="text/javascript"><!--]]></search>
-            <add position="before"><![CDATA[  <div class="container-fluid"><div class="row"><div class="col-sm-12"><div id="orangedata-piot-container"></div></div></div></div>
+            <add position="before"><![CDATA[  <div class="container-fluid"><div class="row"><div class="col-sm-12"><div id="orangedata-piot-container"></div><div id="orangedata-piot-return-container"></div><div id="orangedata-piot-return-launch" style="margin:0 0 15px;"><button type="button" id="od-return-open" class="btn btn-default"><i class="fa fa-undo"></i> Возврат (ТС ПИоТ)</button></div></div></div></div>
   <script type="text/javascript"><!--
-  $(document).ready(function(){ $('#orangedata-piot-container').load('index.php?route=extension/module/orangedata_piot/order&user_token={{ user_token }}&order_id={{ order_id }}'); });
+  $(document).ready(function(){
+    $('#orangedata-piot-container').load('index.php?route=extension/module/orangedata_piot/order&user_token={{ user_token }}&order_id={{ order_id }}');
+    $('#od-return-open').on('click', function(){ $('#orangedata-piot-return-launch').hide(); $('#orangedata-piot-return-container').load('index.php?route=extension/module/orangedata_piot/returnPanel&user_token={{ user_token }}&order_id={{ order_id }}'); });
+  });
   //--></script>]]></add>
         </operation>
     </file>
