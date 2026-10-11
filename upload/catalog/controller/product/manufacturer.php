@@ -94,17 +94,11 @@ class ControllerProductManufacturer extends Controller {
 			$order = 'ASC';
 		}
 
-		if (isset($this->request->get['page'])) {
-			$page = $this->request->get['page'];
-		} else {
-			$page = 1;
-		}
-
-		if (isset($this->request->get['limit'])) {
-			$limit = (int)$this->request->get['limit'];
-		} else {
-			$limit = (int)$this->config->get('theme_' . $this->config->get('config_theme') . '_product_limit');
-		}
+		// Validate pagination before using request values in calculations or links.
+		$pagination_options = array('options' => array('min_range' => 1));
+		$page = filter_var($this->request->get['page'] ?? 1, FILTER_VALIDATE_INT, $pagination_options) ?: 1;
+		$default_limit = filter_var($this->config->get('theme_' . $this->config->get('config_theme') . '_product_limit'), FILTER_VALIDATE_INT, $pagination_options) ?: 20;
+		$limit = filter_var($this->request->get['limit'] ?? $default_limit, FILTER_VALIDATE_INT, $pagination_options) ?: $default_limit;
 
 		$adaptive_filter_debug_mode = (bool)($this->config->get('module_adaptive_filter_debug_mode') ?? false);
 
@@ -145,11 +139,11 @@ class ControllerProductManufacturer extends Controller {
 			}
 
 			if (isset($this->request->get['page'])) {
-				$url .= '&page=' . $this->request->get['page'];
+				$url .= '&page=' . $page;
 			}
 
 			if (isset($this->request->get['limit'])) {
-				$url .= '&limit=' . $this->request->get['limit'];
+				$url .= '&limit=' . $limit;
 			}
 
 			$data['breadcrumbs'][] = array(
@@ -234,7 +228,7 @@ class ControllerProductManufacturer extends Controller {
 			$url = '';
 
 			if (isset($this->request->get['limit'])) {
-				$url .= '&limit=' . $this->request->get['limit'];
+				$url .= '&limit=' . $limit;
 			}
 
 			$data['sorts'] = array();
@@ -354,7 +348,7 @@ class ControllerProductManufacturer extends Controller {
 			}
 
 			if (isset($this->request->get['limit'])) {
-				$url .= '&limit=' . $this->request->get['limit'];
+				$url .= '&limit=' . $limit;
 			}
 
 			$pagination = new Pagination();
@@ -375,7 +369,7 @@ class ControllerProductManufacturer extends Controller {
 			}
 			
 			if ($page > 1) {
-			    $this->document->addLink($this->url->link('product/manufacturer/info', 'manufacturer_id=' . $this->request->get['manufacturer_id'] . $url . '&page='. (($page - 2) ? '&page='. ($page - 1) : ''), true), 'prev');
+			    $this->document->addLink($this->url->link('product/manufacturer/info', 'manufacturer_id=' . $this->request->get['manufacturer_id'] . $url . (($page > 2) ? '&page=' . ($page - 1) : ''), true), 'prev');
 			}
 
 			if ($limit && ceil($product_total / $limit) > $page) {
@@ -421,11 +415,11 @@ class ControllerProductManufacturer extends Controller {
 			}
 
 			if (isset($this->request->get['page'])) {
-				$url .= '&page=' . $this->request->get['page'];
+				$url .= '&page=' . $page;
 			}
 
 			if (isset($this->request->get['limit'])) {
-				$url .= '&limit=' . $this->request->get['limit'];
+				$url .= '&limit=' . $limit;
 			}
 
 			$data['breadcrumbs'][] = array(
