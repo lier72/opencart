@@ -192,4 +192,11 @@ $_['error_invalid_address_delivery']	= 'Неверный адрес достав
 $_['error_invalid_size']				= 'Невалидное значение габаритов!';
 $_['error_pvz_weigt_limit']				= 'Ограничение по весу в выбранном ПВЗ!';
 $_['error_currency_cod']				= 'Валюта наложенного платежа должна совпадать с валютой договора!';
+
+// Marking codes (ТС ПИоТ → passed to CDEK)
+$_['column_marking']					= 'Marking code';
+$_['text_marking_ready']				= 'КМ %s/%s';
+$_['text_marking_none']					= 'no КМ';
+$_['error_cdek_marking_missing']		= 'Marked goods: %s КМ scanned, %s required. Scan the codes on the order page (ТС ПИоТ panel).';
+$_['error_cdek_item_unmatched']		= 'Item is not matched to an order product — marking cannot be verified.';
 ?>

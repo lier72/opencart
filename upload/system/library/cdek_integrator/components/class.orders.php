@@ -153,6 +153,12 @@ class orders extends cdek_integrator implements exchange {
 					$item_info['cost'] = $this->normalizePrice($item['cost']);
 					$item_info['weight'] = (int)$item['weight'];
 					$item_info['amount'] = (int)$item['amount'];
+					// «Код маркировки» for marked goods (reused from the ТС ПИоТ scan). CDEK requires amount = 1
+					// whenever marking is set; the caller (cdek_integrator::applyMarkingCodes) already split the
+					// line into amount-1 items. Raw code travels as-is → GS becomes \u001d in the JSON body.
+					if (isset($item['marking']) && $item['marking'] !== '') {
+						$item_info['marking'] = $item['marking'];
+					}
 					$package['items'][] = $item_info;
 				}
 				$order['packages'][] = $package;

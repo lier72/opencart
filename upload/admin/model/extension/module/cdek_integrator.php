@@ -1124,5 +1124,50 @@ class ModelExtensionModuleCdekIntegrator extends Model {
 	private function getSetting() {
 		return $this->config->get('cdek_integrator_setting');
 	}
+
+	/**
+	 * getMarkingCodesByLine
+	 *
+	 * Returns the scanned DataMatrix marking codes (КМ) of an order grouped by order_product_id, ordered by
+	 * unit_index — the SAME codes captured for OrangeData fiscalization (ocus_order_marking_code), reused so CDEK
+	 * waybills carry «Код маркировки» without a second scan. Delegates to the OrangeData system repository so
+	 * there is one source of truth. Scope: cdek_integrator createOrder()/validateOrderFrom()/order form.
+	 *
+	 * @param int $order_id
+	 * @return array [order_product_id => [km_raw, km_raw, ...]]
+	 */
+	public function getMarkingCodesByLine($order_id) {
+		require_once DIR_SYSTEM . 'library/orangedata/OrangeDataRepository.php';
+		$repo = new OrangeDataRepository($this->db);
+		$byLine = array();
+		foreach ($repo->getOrderMarkingCodes($order_id) as $c) {
+			if ($c['km_raw'] === '' || $c['km_raw'] === null) continue;
+			$byLine[(int)$c['order_product_id']][] = $c['km_raw'];
+		}
+		return $byLine;
+	}
+
+	/**
+	 * isProductMarked
+	 *
+	 * Whether a product is a marked good (same authority the OrangeData receipt uses: per-product override, else
+	 * the marked-categories map). This — NOT "has scanned codes" — decides whether CDEK items must carry
+	 * `marking`, so a stray scan never tags a non-marked good and a marked good is never shipped without a КМ.
+	 * Scope: cdek_integrator marking logic.
+	 *
+	 * @param int $product_id
+	 * @return bool
+	 */
+	private $marked_cache = array();
+
+	public function isProductMarked($product_id) {
+		$product_id = (int)$product_id;
+		if (array_key_exists($product_id, $this->marked_cache)) return $this->marked_cache[$product_id];
+		require_once DIR_SYSTEM . 'library/orangedata/OrangeDataRepository.php';
+		$repo = new OrangeDataRepository($this->db);
+		$map = OrangeDataRepository::parseCategoryMap($this->config->get('module_orangedata_piot_marked_categories'));
+		$marking = $repo->getProductMarking($product_id, $map);
+		return $this->marked_cache[$product_id] = !empty($marking['is_marked']);
+	}
 }
 ?>

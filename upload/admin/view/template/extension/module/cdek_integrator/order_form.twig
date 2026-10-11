@@ -510,6 +510,11 @@
 															{% endfor %}
 															<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][comment]" value="{{ item['name'] }}" size="3" />
 															<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][ware_key]" value="{{ item['order_product_id'] }}" size="3" />
+															{% if item['marked'] %}
+																<br /><span class="label {{ item['marking_scanned'] >= item['marking_total'] ? 'label-success' : 'label-warning' }}">{{ column_marking }}: {{ text_marking_ready|format(item['marking_scanned'], item['marking_total']) }}</span>
+																{% for mc in item['marking_codes'] %}<div class="text-muted" style="font-size:10px;word-break:break-all;">{{ mc }}</div>{% endfor %}
+																{% if item['marking_codes'] is empty %}<div class="text-warning" style="font-size:10px;">{{ text_marking_none }}</div>{% endif %}
+															{% endif %}
 														</td>
 														<td class="right">
 															<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][weight]" value="{{ item['weight'] }}" size="5" />
@@ -667,6 +672,11 @@
 														{% endfor %}
 														<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][comment]" value="{{ item['name'] }}" size="3" disabled="disabled"/>
 														<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][ware_key]" value="{{ item['order_product_id'] }}" size="3" disabled="disabled"/>
+														{% if item['marked'] %}
+															<br /><span class="label {{ item['marking_scanned'] >= item['marking_total'] ? 'label-success' : 'label-warning' }}">{{ column_marking }}: {{ text_marking_ready|format(item['marking_scanned'], item['marking_total']) }}</span>
+															{% for mc in item['marking_codes'] %}<div class="text-muted" style="font-size:10px;word-break:break-all;">{{ mc }}</div>{% endfor %}
+															{% if item['marking_codes'] is empty %}<div class="text-warning" style="font-size:10px;">{{ text_marking_none }}</div>{% endif %}
+														{% endif %}
 													</td>
 													<td class="right">
 														<input type="text" class="form-control" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][weight]" value="{{ item['weight'] }}" size="5" disabled="disabled"/>
