@@ -16,7 +16,12 @@
   </div>
   <div class="container-fluid">
       {% if (error_warning) %}
-        <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+        <div class="alert alert-danger"><i class="fa fa-exclamation-circle"></i>
+          {% if error_warning is iterable %}
+            {% for message in error_warning %}<div>{{ message|escape }}</div>{% endfor %}
+          {% else %}
+            {{ error_warning|escape }}
+          {% endif %}
           <button type="button" class="close" data-dismiss="alert">&times;</button>
         </div>
       {% endif %}
@@ -657,51 +662,53 @@ $('.item-slider a').click(function(event){
   
 });
 
-$(".pdf-invoice a.load").on('click', function(event){
-  
+// Delegate because loading/retrying replaces the links inside the wrapper.
+$(document).on('click', '.pdf-invoice a.load', function(event){
   event.preventDefault();
-  
-  var self = this;
-  var url = $(self).attr('href');
-  var context = $(self).closest('.pdf-invoice-wrapper');
-  var saved = $(context).html();
-  
-  if ($(self).data('is_active') == 1) return false;
+
+  var url = $(this).attr('href');
+  var context = $(this).closest('.pdf-invoice-wrapper');
+  var saved = context.html();
+  if (context.data('is_active')) return false;
+
+  function showPrintMessage(message, failed) {
+    $('#content > .container-fluid > .cdek-print-alert').remove();
+    $('<div>').addClass('alert cdek-print-alert ' + (failed ? 'alert-danger' : 'alert-success'))
+      .attr('role', 'alert').text(message).prependTo('#content > .container-fluid');
+  }
 
   $.ajax({
     url: url,
-    dataType: "json",
-    beforeSend: function(jqXHR, settings){
-      
-      $('.success, .warning, .attention, .error').remove();
-      
-      if (!$('.loader', context).length) $(context).html('<img class="loader" src="view/image/cdek_integrator/loader.gif" alt="Загрузка..." title="Загрузка..." />');
-      
-      $(self).data('is_active', 1);
-      
+    dataType: 'json',
+    timeout: 90000,
+    beforeSend: function() {
+      context.data('is_active', true);
+      $('#content > .container-fluid > .cdek-print-alert').remove();
+      context.html('<img class="loader" src="view/image/cdek_integrator/loader.gif" alt="Загрузка..." title="Загрузка..." />');
     },
-    complete: function(jqXHR, textStatus) {
-      $(self).data('is_active', 0);
+    complete: function() {
+      context.data('is_active', false);
     },
     success: function(json) {
-      
-      var type = 'success';
-      
-      if (json.status == 'error') {
-        
-        type = 'warning';
-        
-        $(context).html(saved);
-        
-      } else {
-        $(context).html('<a href="' + json.file + '" target="_blank">Смотреть</a><a href="' + url + '" class="load" title="Загрузить повторно"><img src="view/image/cdek_integrator/reload.png" /></a>');
+      if (!json || json.status !== 'OK' || !json.file) {
+        context.html(saved);
+        showPrintMessage(json && json.message ? json.message : 'Не удалось получить PDF квитанции.', true);
+        return;
       }
-      
-      $('.box').before('<div class="' + type + '">' + json.message + '</div>');
-      
+      context.empty();
+      $('<a>').attr({href: json.file, target: '_blank'}).text('Смотреть').appendTo(context);
+      context.append(' ');
+      $('<a>').attr({href: url, title: 'Загрузить повторно'}).addClass('load').text('Загрузить повторно').appendTo(context);
+      showPrintMessage(json.message || 'Квитанция загружена.', false);
+    },
+    error: function(xhr, textStatus) {
+      context.html(saved);
+      var message = textStatus === 'timeout'
+        ? 'Время ожидания квитанции истекло. Повторите загрузку.'
+        : 'Не удалось загрузить квитанцию: сервер вернул некорректный ответ' + (xhr.status ? ' (HTTP ' + xhr.status + ')' : '') + '. Повторите загрузку.';
+      showPrintMessage(message, true);
     }
   });
-  
 });
 
 $(".btn.sync").on('click', function(event){

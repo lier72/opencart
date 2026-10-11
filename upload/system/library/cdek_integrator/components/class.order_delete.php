@@ -14,7 +14,11 @@ class order_delete extends cdek_integrator implements exchange {
 	}
 	
 	public function getData(){
-		return $this->json;
+		return array();
+	}
+
+	public function getHttpMethod() {
+		return 'DELETE';
 	}
 	
 	private function createJson($orders = array()) {

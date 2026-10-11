@@ -385,6 +385,14 @@ class OrangeDataService {
         }
         $order = $orderQ->row;
 
+        // Fiscalize ONLY Alfabank-paid orders: Alfabank issues the «Предоплата 100%» check, so our receipt is the
+        // зачёт-аванса leg. Other methods are out of scope (COD CDEK — CDEK issues its own check; others not used),
+        // so refuse them. 'blocked' => the auto-fiscalize event logs a SKIP rather than an error.
+        if (empty($order['payment_code']) || $order['payment_code'] !== 'alfabank') {
+            return array('success' => false, 'blocked' => true, 'document_id' => '', 'status' => null,
+                'message' => 'Фискализация выполняется только для заказов, оплаченных Alfabank (оплата заказа: ' . (isset($order['payment_code']) ? $order['payment_code'] : '—') . ').');
+        }
+
         $products = $db->query("SELECT * FROM `" . DB_PREFIX . "order_product` WHERE order_id = '" . $order_id . "'")->rows;
         $codesByLine = array();
         foreach ($repo->getOrderMarkingCodes($order_id) as $c) {
@@ -662,6 +670,11 @@ class OrangeDataService {
         $orderQ = $db->query("SELECT * FROM `" . DB_PREFIX . "order` WHERE order_id = '" . $order_id . "'");
         if (!$orderQ->num_rows) { return $fail('Заказ не найден'); }
         $order = $orderQ->row;
+
+        // Returns, like sales, are only for Alfabank-paid orders (a возврат of our зачёт-аванса receipt).
+        if (empty($order['payment_code']) || $order['payment_code'] !== 'alfabank') {
+            return $fail('Возврат оформляется только для заказов, оплаченных Alfabank (оплата заказа: ' . (isset($order['payment_code']) ? $order['payment_code'] : '—') . ').');
+        }
 
         $sale = $this->getSaleReceipt($order_id);
         if (!$sale['ok']) { return $fail($sale['message']); }

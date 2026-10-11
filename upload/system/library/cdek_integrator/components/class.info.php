@@ -522,69 +522,16 @@ class info extends cdek_integrator {
 	}
 	
 	public function getPVZData() {
-		
-		$data = array();
-		
-		$pvz_list = $this->getURL($this->base_url . 'pvzlist.php?type=ALL', new parser_xml());
-		
-		if (isset($pvz_list->Pvz)) {
-				
-			foreach ($pvz_list->Pvz as $pvz_info) {
-				
-				if (empty($pvz_info['City']) || empty($pvz_info['Address'])) {
-					continue;
-				}
-				
-				$key = md5($pvz_info['Address']);
-									
-				if (array_key_exists($key, $data)) continue;
-				
-				$info = array(
-					'Code'		=> (string)$pvz_info['Code'],
-					'City'		=> (string)$pvz_info['City'],
-					'CityCode'	=> (string)$pvz_info['CityCode'],
-					'Address'	=> (string)$pvz_info['Address'],
-					'Name'		=> (string)$pvz_info['Name'],
-					'WorkTime'	=> (string)$pvz_info['WorkTime'],
-					'Phone'		=> (string)$pvz_info['Phone'],
-					'Note'		=> (string)$pvz_info['Note'],
-					'x'			=> (string)$pvz_info['coordX'],
-					'y'			=> (string)$pvz_info['coordY']
-				);
-				
-				if (isset($pvz_info->WeightLimit)) {
-					
-					$info['WeightLimit'] = array(
-						'WeightMin' => (float)$pvz_info->WeightLimit['WeightMin'],
-						'WeightMax' => (float)$pvz_info->WeightLimit['WeightMax']
-					);
-				
-				}
-				
-				if (empty($data[(int)$pvz_info['CityCode']])) {
-					
-					$data[(int)$pvz_info['CityCode']] = array(
-						'City'	=> $info['City'],
-						'List'	=> array()
-					);
-					
-				}
-				
-				$data[(int)$pvz_info['CityCode']]['List'][$key] = $info;
-			}
-			
-		}
-		
-		return $data;	
+		return $this->getPVZ();
 	}
 
-	public function getPVZ($city_id) {
+	public function getPVZ($city_id = null) {
 		
 		$data = array();
 		
-		$pvz_list = $this->getURL($this->ajax_url . 'v2/deliverypoints?city_code=' . $city_id.'&type=ALL', new parser_json());
+		$pvz_list = $this->getURL($this->ajax_url . 'v2/deliverypoints?type=ALL' . ($city_id !== null ? '&city_code=' . (int)$city_id : ''), new parser_json());
 		
-		if (isset($pvz_list)) {
+		if (is_array($pvz_list)) {
 				
 			 foreach ($pvz_list as $pvz_info) {
 				
@@ -611,18 +558,18 @@ class info extends cdek_integrator {
 					'CityCode'	=> (string)$pvz_info['location']['city_code'],
 					'Address'	=> (string)$pvz_info['location']['address'],
 					'Name'		=> (string)$pvz_info['name'],
-					'Phone'		=> (string)$pvz_info['phones'][0]['number'],
+					'Phone'		=> isset($pvz_info['phones'][0]['number']) ? (string)$pvz_info['phones'][0]['number'] : '',
 					'WorkTime'	=> (string)$pvz_info['work_time'],
-//					'Note'		=> (string)$pvz_info['note'],  //TODO nedd to check why is is undefined in production server
+					'Note' => isset($pvz_info['note']) ? (string)$pvz_info['note'] : '',
 					'x'			=> (string)$pvz_info['location']['longitude'],
 					'y'			=> (string)$pvz_info['location']['latitude']
 				);
 				
-				if (isset($pvz_info->WeightLimit)) {
+				if (isset($pvz_info['weight_min']) || isset($pvz_info['weight_max'])) {
 					
 					$info['WeightLimit'] = array(
-						'WeightMin' => (float)$pvz_info['weight_min'],
-						'WeightMax' => (float)$pvz_info['weight_max']
+						'WeightMin' => isset($pvz_info['weight_min']) ? (float)$pvz_info['weight_min'] : 0,
+						'WeightMax' => isset($pvz_info['weight_max']) ? (float)$pvz_info['weight_max'] : 0
 					);
 				
 				}

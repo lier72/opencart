@@ -28,7 +28,11 @@ class orders extends cdek_integrator implements exchange {
 	public function getData(){
 		return $this->post;
 	}
-	
+
+	public function getCreationErrors($response) {
+		return $this->getResponseErrors($response, true);
+	}
+
 	private function createPost($order_info = array()) {
 		if (!empty($order_info)) {
 			$order = array();
@@ -41,7 +45,8 @@ class orders extends cdek_integrator implements exchange {
 
 			$order['developer_key'] = "c6e7304995e8e1f513f1ec380ff89779";
 
-			if ($order_info['address']['pvz_code'] != '') {
+			$to_door = isset($order_info['mode_id']) && in_array((int)$order_info['mode_id'], array(1, 3));
+			if (!$to_door && !empty($order_info['address']['pvz_code'])) {
 				$order['delivery_point'] = $order_info['address']['pvz_code'];
 			}
 

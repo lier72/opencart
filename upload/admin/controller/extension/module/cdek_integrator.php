@@ -628,7 +628,14 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			$component->setNumber($this->request->post['number']);
 
-			$cdek_orders_post = $this->request->post['cdek_orders'];			
+			// Use the validated tariff, not the hidden form field, to select the address mode.
+			$tariff_list = $this->getInfo()->getTariffList();
+			$mode_id = (int)$tariff_list[$this->request->post['cdek_orders']['tariff_id']]['mode_id'];
+			$this->request->post['cdek_orders']['mode_id'] = $mode_id;
+			if (in_array($mode_id, array(1, 3))) {
+				$this->request->post['cdek_orders']['address']['pvz_code'] = '';
+			}
+			$cdek_orders_post = $this->request->post['cdek_orders'];
 
 			$telephone = $cdek_orders_post['recipient_telephone'];
 			$telephone = trim($telephone);
@@ -661,19 +668,15 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			$this->logWrite();
 
-			if (!empty($response['requests']['errors'])) {
-
-				foreach ($response['requests']['errors'] as $error) {
-
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
-
-				}
+			$creation_errors = $component->getCreationErrors($response);
+			if ($creation_errors) {
+				$this->error['warning'] = $creation_errors;
 			}
 
 			$date = '';
 			$cdek_orders = array();
 
-			if (isset($response) && empty($response['requests']['errors'])) {	
+			if (!$creation_errors) {
 
 				if (isset($response['entity']['uuid'])) {
 
@@ -693,8 +696,6 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 					$cdek_orders = $order_info;
 				}
 
-			} elseif(!$this->api->error) {
-				$this->error['warning'][] = 'Не удалось получить ответ от сервера СДЭК.';
 			}
 
 			if (!empty($cdek_orders)) {
@@ -1098,8 +1099,11 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			);
 
 			// Shared marking codes (ТС ПИоТ scan) for read-only display + the "КМ N/M" readiness badge on the form.
+			// Only relevant for cod_cdek orders (where marking is actually sent to CDEK); hidden otherwise.
 			require_once DIR_SYSTEM . 'library/orangedata/MarkingCode.php';
 			$marking_codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($this->request->get['order_id']);
+			$marking_order_row = $this->model_sale_order->getOrder($this->request->get['order_id']);
+			$marking_applies = !empty($marking_order_row['payment_code']) && $marking_order_row['payment_code'] === 'cod_cdek';
 
 			foreach ($packages as $package_id => $products) {
 
@@ -1216,7 +1220,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 					// Marking-code readiness for this line (shown read-only on the form; drives the "КМ N/M" badge).
 					$mc_opid = (int)$order_product['order_product_id'];
 					$mc_codes = isset($marking_codes_by_line[$mc_opid]) ? $marking_codes_by_line[$mc_opid] : array();
-					$item_data['marked'] = $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
+					$item_data['marked'] = (isset($marking_applies) && $marking_applies) && $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
 					$item_data['marking_scanned'] = count($mc_codes);
 					$item_data['marking_total'] = (int)$order_product['quantity'];
 					$item_data['marking_codes'] = array();
@@ -1401,14 +1405,18 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 				$item_data['total'] = $this->currency->format(((int)$item_data * $item_data['price']), $order_info['currency_code'], $order_info['currency_value']) . ' / ' . $this->currency->format(((int)$item_data * $item_data['payment']), $order_info['currency_code'], $order_info['currency_value']);
 
-				// Marking-code readiness for this line (read-only display + "КМ N/M" badge on the edit form).
+				// Marking-code readiness for this line (read-only display + "КМ N/M" badge; cod_cdek orders only).
 				if (!isset($marking_codes_by_line)) {
 					require_once DIR_SYSTEM . 'library/orangedata/MarkingCode.php';
 					$marking_codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($order_id);
 				}
+				if (!isset($marking_applies)) {
+					$marking_order_row = $this->model_sale_order->getOrder($order_id);
+					$marking_applies = !empty($marking_order_row['payment_code']) && $marking_order_row['payment_code'] === 'cod_cdek';
+				}
 				$mc_opid = (int)$order_product['order_product_id'];
 				$mc_codes = isset($marking_codes_by_line[$mc_opid]) ? $marking_codes_by_line[$mc_opid] : array();
-				$item_data['marked'] = $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
+				$item_data['marked'] = (isset($marking_applies) && $marking_applies) && $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
 				$item_data['marking_scanned'] = count($mc_codes);
 				$item_data['marking_total'] = (int)$order_product['quantity'];
 				$item_data['marking_codes'] = array();
@@ -2410,7 +2418,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				);
 			}
 
-			if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf') && is_file(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf')) {
+			if ($this->hasCdekPdf($this->request->get['order_id'])) {
 				$rdata['pdf'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'].'&order_id='.$this->request->get['order_id'], 'SSL');
 			}
 
@@ -2736,18 +2744,24 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
  */
 	public function dispatchPrint()
 	{
+		unset($this->session->data['warning'], $this->session->data['success']);
+		if (empty($this->request->get['order_id'])) {
+			$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+			return;
+		}
 		if (!file_exists(DIR_DOWNLOAD . 'cdek')) {
     		mkdir(DIR_DOWNLOAD . 'cdek', 0777, true);
 		}
 
-		if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf'))
+		if ($this->hasCdekPdf($this->request->get['order_id']))
 		{
 			if ($this->isAjax())
 			{
-				$json['message'] = $this->session->data['success'];
-				$json['file'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'].'&order_id='.$this->request->get['order_id'], 'SSL');
+				$json['status'] = 'OK';
+				$json['message'] = 'Квитанция загружена.';
+				$json['file'] = $this->getCdekPdfUrl($this->request->get['order_id']);
 				$this->response->setOutput(json_encode($json));
-				exit;
+				return;
 			} else {
 				$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL'));
 			}
@@ -2791,55 +2805,26 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			$component->setData($exdata);
 
-			$pdf_info = $this->api->sendData($component);
-
-			$this->logWrite();
-
-			if (!empty($pdf_info['requests']['errors'])) {
-
-				foreach ($pdf_info['requests']['errors'] as $error) {
-
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
-
-				}
-
-			} else {
-
-				$component_info = $this->api->loadComponent('order_print_info');
-
-				$component_info->setMetod($pdf_info['entity']['uuid']);
-
-				$pdf_receipt = $this->api->sendData($component_info);
-
-				$this->logWrite();
-				
-				if (!empty($pdf_receipt['requests']['errors'])) {
-
-					foreach ($pdf_receipt['requests']['errors'] as $error) {
-
-						$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
-	
-					}
-
-				} else {
-
-					$download_pdf = $this->api->loadComponent('order_download_pdf');
-
-					$download_pdf->setMetod($pdf_receipt['entity']['uuid']);
-
-					$pdf = $this->api->sendData($download_pdf);
-
-					$this->logWrite();
-
-					if ($pdf != '') {
-						file_put_contents(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf', $pdf);
-						$this->session->data['success'] = 'Квитанция для заказа #' . $this->request->get['order_id'] . ' успешно загружена!';
-					} else {
-						$this->session->data['warning'] = 'Не удалось загрузить квитанцию, попробуйте ещё!';
-					}
-				}
-
-			}
+            $job_key = (string)$dispatch_info['number'];
+            $uuid = isset($this->session->data['cdek_print_jobs'][$job_key]) ? $this->session->data['cdek_print_jobs'][$job_key] : '';
+            try {
+                $pdf = $component->fetchPdf($this->api, $uuid);
+                $file = DIR_DOWNLOAD . 'cdek/order-' . (int)$this->request->get['order_id'] . '.pdf';
+                if (file_put_contents($file, $pdf, LOCK_EX) !== strlen($pdf)) {
+                    @unlink($file);
+                    throw new RuntimeException('Не удалось сохранить PDF квитанции на сервере.');
+                }
+                $uuid = '';
+                $this->session->data['success'] = 'Квитанция для заказа #' . (int)$this->request->get['order_id'] . ' успешно загружена!';
+            } catch (RuntimeException $e) {
+                $this->session->data['warning'] = $e->getMessage();
+            }
+            if ($uuid) {
+                $this->session->data['cdek_print_jobs'][$job_key] = $uuid;
+            } else {
+                unset($this->session->data['cdek_print_jobs'][$job_key]);
+            }
+            $this->logWrite();
 
 		} else {
 
@@ -2859,7 +2844,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			} else {
 
 				$json['message'] = $this->session->data['success'];
-				$json['file'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'].'&order_id='.$this->request->get['order_id'], 'SSL');
+				$json['file'] = $this->getCdekPdfUrl($this->request->get['order_id']);
 				unset($this->session->data['success']);
 
 			}
@@ -2909,15 +2894,12 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 			$response = $this->api->sendData($component);
 
 			$this->logWrite();
-			if (!empty($response['requests']['errors'])) {
-
-				foreach ($response['requests']['errors'] as $error) {
-
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
-
-				}
+			$delete_errors = $this->api->getResponseErrors($response, true);
+			if ($delete_errors) {
+				$this->session->data['warning'] = implode('; ', $delete_errors);
 			}
-			if ($forced || empty($response['requests']['errors'])) {
+
+			if ($forced || !$delete_errors) {
 
 				if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf') && is_file(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf')) {
 					@unlink(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf');
@@ -2929,13 +2911,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 			} else {
 
-				$error_list = $response['requests']['errors'];
-
-				$forced_delete = $this->url->link('extension/module/cdek_integrator/dispatchDelete', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'] . '&forced', 'SSL');
-
-				foreach ($error_list as $error) {
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
-				}
+				$this->session->data['warning'] = implode('; ', $delete_errors);
 
 			}
 
@@ -2945,8 +2921,14 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 		if ($this->isAjax()) {
 			
-			$json['message'] = $this->session->data['success'];
-			unset($this->session->data['success']);
+			if (!empty($this->session->data['warning'])) {
+				$json['status'] = 'error';
+				$json['message'] = $this->session->data['warning'];
+				unset($this->session->data['warning']);
+			} else {
+				$json['message'] = isset($this->session->data['success']) ? $this->session->data['success'] : '';
+				unset($this->session->data['success']);
+			}
 
 			$this->response->setOutput(json_encode($json));
 
@@ -3665,6 +3647,13 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$this->load->model('extension/module/cdek_integrator');
 		$this->load->model('sale/order');
 
+		// Marking is handed to CDEK ONLY when CDEK collects COD (cod_cdek) and therefore issues its own fiscal
+		// check. Prepaid / delivery-only orders are already fiscalized by us (OrangeData) and need no marking here.
+		$order = $this->model_sale_order->getOrder($order_id);
+		if (empty($order['payment_code']) || $order['payment_code'] !== 'cod_cdek') {
+			return $cdek_orders_post;
+		}
+
 		$codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($order_id);
 		$product_by_opid = array();
 		foreach ($this->model_sale_order->getOrderProducts($order_id) as $op) {
@@ -3775,15 +3764,20 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 					$this->error['cdek_orders']['cdek_comment'] = $this->language->get('error_maxlength_255');
 				}
 
-				// Marking-code readiness: a marked order line must have enough scanned КМ (ocus_order_marking_code)
-				// to cover the quantity being shipped, else CDEK cannot be given «Код маркировки». A per-line
-				// cursor is consumed across packages so a product split over packages is checked against one pool.
+				// Marking-code readiness: ONLY for cod_cdek orders (CDEK collects COD → needs «Код маркировки»).
+				// A marked line must have enough scanned КМ (ocus_order_marking_code) to cover the shipped quantity;
+				// a per-line cursor is consumed across packages so a product split over packages uses one pool.
 				$this->load->model('extension/module/cdek_integrator');
 				$this->load->model('sale/order');
-				$marking_codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($order_id);
+				$mc_order = $this->model_sale_order->getOrder($order_id);
+				$is_cod_cdek = !empty($mc_order['payment_code']) && $mc_order['payment_code'] === 'cod_cdek';
+				$marking_codes_by_line = array();
 				$marking_product_by_opid = array();
-				foreach ($this->model_sale_order->getOrderProducts($order_id) as $op) { $marking_product_by_opid[(int)$op['order_product_id']] = (int)$op['product_id']; }
 				$marking_used = array();
+				if ($is_cod_cdek) {
+					$marking_codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($order_id);
+					foreach ($this->model_sale_order->getOrderProducts($order_id) as $op) { $marking_product_by_opid[(int)$op['order_product_id']] = (int)$op['product_id']; }
+				}
 
 				foreach ($order_info['package'] as $package_id => $package_info) {
 
@@ -3834,7 +3828,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['amount'] = $this->language->get('error_positive_numeric');
 							}
 
-							// Marked goods: block the waybill unless every shipped unit has a scanned КМ to send to CDEK.
+							// Marked goods (cod_cdek orders only): block the waybill unless every shipped unit has a scanned КМ.
+							if ($is_cod_cdek) {
 							$mc_opid = isset($package_item['ware_key']) ? (int)$package_item['ware_key'] : 0;
 							$mc_product_id = isset($marking_product_by_opid[$mc_opid]) ? $marking_product_by_opid[$mc_opid] : 0;
 							// Fail loud if an item cannot be matched to an order product — otherwise a marked good could
@@ -3850,6 +3845,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 								}
 								$marking_used[$mc_opid] += $mc_amount;
 							}
+							} // end if ($is_cod_cdek)
 
 						}
 
@@ -4331,15 +4327,27 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		return number_format(round($value, (int)$decimal_place), (int)$decimal_place, $decimal_point, $thousand_point);
 	}
 
+    private function getCdekPdfUrl($order_id) {
+        // JSON/DOM URLs need literal query separators, not HTML entities.
+        return html_entity_decode($this->url->link('extension/module/cdek_integrator/showPdf',
+            array('user_token' => $this->session->data['user_token'], 'order_id' => (int)$order_id), true), ENT_QUOTES, 'UTF-8');
+    }
+
+    private function hasCdekPdf($order_id) {
+        $file = DIR_DOWNLOAD . 'cdek/order-' . (int)$order_id . '.pdf';
+        return is_readable($file) && is_file($file) &&
+            file_get_contents($file, false, null, 0, 5) === '%PDF-';
+    }
+
 	public function showPdf() {
 		$order_id = 0;
 		if(isset($this->request->get['order_id']) && (int)$this->request->get['order_id']) {
 			$order_id = (int)$this->request->get['order_id'];
 		}
 
-		$file = DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf';
+		$file = DIR_DOWNLOAD . 'cdek/order-' . $order_id . '.pdf';
 
-		if (file_exists($file) && is_file($file))
+		if ($this->hasCdekPdf($order_id))
 		{
 			$content = file_get_contents($file);
 
@@ -4352,9 +4360,10 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 
 	        die($content);
 
-			$rdata['pdf'] = HTTP_CATALOG . 'download/cdek/order-' . $this->request->get['order_id'] . '.pdf';
+			$rdata['pdf'] = HTTP_CATALOG . 'download/cdek/order-' . $order_id . '.pdf';
 		} else {
-			echo 'not found pdf for order '.$order_id;
+			$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchPrint', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $order_id, 'SSL'));
+			return;
 		}
 	}
 

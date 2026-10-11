@@ -95,12 +95,42 @@ class cdek_integrator {
 		return new $component($this->account, $this->secure_password, $this->date);
 	}
 
+	public function getResponseErrors($response, $require_uuid = false) {
+		$messages = array();
+		if (!is_array($response)) {
+			return array('Не удалось получить ответ от сервера СДЭК.');
+		}
+
+		$requests = isset($response['requests']) && is_array($response['requests']) ? $response['requests'] : array();
+		// Accept both the API v2 list and the older single-request representation.
+		if (isset($requests['errors']) || isset($requests['state'])) {
+			$requests = array($requests);
+		}
+		$requests[] = $response; // HTTP validation errors may be at the top level.
+		foreach ($requests as $request) {
+			if (!is_array($request)) continue;
+			if (!empty($request['errors']) && is_array($request['errors'])) {
+				foreach ($request['errors'] as $error) {
+					$code = isset($error['code']) ? (string)$error['code'] : '';
+					$message = isset($error['message']) ? (string)$error['message'] : 'СДЭК отклонил запрос.';
+					$messages[] = ($code !== '' ? $code . ': ' : '') . $message;
+				}
+			} elseif (isset($request['state']) && $request['state'] === 'INVALID') {
+				$messages[] = 'СДЭК отклонил запрос (INVALID).';
+			}
+		}
+		if ($require_uuid && !$messages && empty($response['entity']['uuid'])) {
+			$messages[] = 'СДЭК не вернул идентификатор запроса. Проверьте результат в СДЭК перед повторной отправкой.';
+		}
+		return array_values(array_unique($messages));
+	}
+
 	public function sendData(exchange $component) {
 
 		$action = $this->ajax_url . $component->getMethod();
 		$parser = method_exists($component, 'getParser') ? $component->getParser() : new parser_json();
 
-		$response = $this->getURL($action, $parser, $component->getData());
+		$response = $this->getURL($action, $parser, $component->getData(), method_exists($component, 'getHttpMethod') ? $component->getHttpMethod() : null);
 
 		// Обнуление массива ошибок
 		$this->error = array();
@@ -108,7 +138,7 @@ class cdek_integrator {
 		return method_exists($component, 'prepareResponse') ? $component->prepareResponse($response, $this->error) : $response;
 	}
 
-	protected function getURL($url, response_parser $parser, $data = array()) {
+	protected function getURL($url, response_parser $parser, $data = array(), $http_method = null) {
 
 		$info = $this->loadComponent('info');
 
@@ -135,6 +165,9 @@ class cdek_integrator {
 		    $headers[]= 'Content-Type: application/json';
 			curl_setopt($ch, CURLOPT_POST, 1);
 			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+		}
+		if ($http_method !== null) {
+			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $http_method);
 		}
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
