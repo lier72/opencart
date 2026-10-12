@@ -164,7 +164,7 @@ public function _sendGatewayData($data, $action_address, $headers = array())
 {
 $curl_opt = array(
 CURLOPT_HTTPHEADER => $headers,
-CURLOPT_VERBOSE => true,
+CURLOPT_VERBOSE => false,
 CURLOPT_SSL_VERIFYHOST => false,
 CURLOPT_URL => $action_address,
 CURLOPT_RETURNTRANSFER => true,
@@ -188,7 +188,7 @@ return json_encode($error);
 $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 curl_close($ch);
 if ($this->logging) {
-$this->logger($action_address, '', serialize($data), $response);
+$this->logger($action_address, '', $data, substr($response, $header_size));
 }
 return substr($response, $header_size);
 }
@@ -201,10 +201,13 @@ return substr($response, $header_size);
 */
 public function logger($url, $method, $request, $response)
 {
+require_once __DIR__ . '/AlfabankLogSanitizer.php';
 $this->library('log');
 $file_name = "oc3x_alfabank_" . date("y-m") . ".log";
 $logger = new Log($file_name);
-$logger->write("Alfabank: " . $url . $method . "\nREQUEST: " . json_encode($request) . "\nRESPONSE: " . $response . "\n\n");
+$logger->write("Alfabank: " . AlfabankLogSanitizer::endpoint($url) .
+    "\nREQUEST: " . json_encode(AlfabankLogSanitizer::payload($request)) .
+    "\nRESPONSE: " . json_encode(AlfabankLogSanitizer::payload($response)) . "\n\n");
 }
 
 /**
