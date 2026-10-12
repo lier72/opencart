@@ -46,7 +46,7 @@ $_['text_success_reverse'] = "The transaction was reversed successfully!";
 $_['error_order_missing'] = "Gateway order is missing";
 $_['text_payment_attempts'] = 'Payment attempts';
 $_['text_confirm_reverse_title'] = 'Confirm payment cancellation';
-$_['text_confirm_reverse'] = 'This sends a cancellation request to the payment gateway. AlfaBank allows only one cancellation attempt, even if it fails. Enter your current administrator password to continue.';
+$_['text_confirm_reverse'] = 'This sends a cancellation request to the payment gateway. Cancellation is available only within the time limit set by the bank; a paid status alone does not guarantee eligibility. AlfaBank allows only one cancellation attempt, even if it fails. Enter your current administrator password to continue.';
 $_['text_gateway_status_error'] = 'Gateway status check failed';
 $_['text_gateway_status_registered'] = 'Registered, not paid';
 $_['text_gateway_status_held'] = 'Pre-authorized, amount held';
@@ -131,3 +131,8 @@ $_['entry_backToShopURL'] = 'Back to shop URL';
 $_['entry_backToShopURL_description'] = 'adds URL for checkout page button that will take a cardholder back to the assigned merchant web-site URL';
 
 $_['help_order_status_reversed'] = 'Authorization reversals are recorded in order history without changing the current order status.';
+
+$_['error_payment_reverse_check'] = 'Could not verify the current payment state. No cancellation request was sent.';
+$_['error_payment_reverse_unknown'] = 'The cancellation result is unknown. Check the payment status before taking another action.';
+$_['error_payment_reverse_rejected'] = 'AlfaBank rejected cancellation (%s): %s';
+$_['help_payment_reverse_refund'] = 'The payment is captured. Cancellation has a bank-defined time limit and may no longer be available. If you intend to return the funds, use a separate refund operation. No refund was submitted.';

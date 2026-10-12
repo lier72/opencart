@@ -837,32 +837,7 @@ class ControllerExtensionPaymentAlfabank extends Controller
                     }
                 }
             } elseif ($order_action == 'payment_reverse') {
-                $response = $method_library->_sendGatewayData($parameters, $action_adr . "reverse.do");
-                $response = json_decode($response, true);
-                if (!empty($response) && isset($response['errorCode'])) {
-                    if (empty($response['errorCode'])) {
-                        $json['success'] = $this->language->get('text_success_reverse');
-                        $json['redirect'] = 1;
-                        $sql_data = array(
-                            'order_amount_deposited' => 0.00,
-                            'status_deposited' => 3,
-                            'status_reversed' => 1,
-                        );
-                        $status_response = $this->fetchGatewayOrderStatus($method_library, $action_adr, $parameters);
-                        if ($this->isGatewayStatusForOrder($status_response, $order_info) &&
-                            (int)$status_response['orderStatus'] === 3) {
-                            $sql_data = array_merge($sql_data, $this->getGatewayOrderUpdateData($status_response));
-                        }
-                        $this->model_extension_payment_alfabank->updateGatewayOrder($gateway_order['gateway_order_reference'], $sql_data);
-                        $json['history'] = array(
-                            'order_status_id' => (int)$order_info['order_status_id'],
-                            'comment' => 'AlfaBank: авторизация отменена (ID: ' . $gateway_order['gateway_order_reference'] . ')',
-                            'notify' => 0,
-                        );
-                    } else {
-                        $json['error'] = $response['errorMessage'];
-                    }
-                }
+                $json = $this->reverseGatewayPayment($method_library, $action_adr, $parameters, $gateway_order, $order_info);
             }
             $this->response->setOutput(json_encode($json));
             return;
@@ -871,6 +846,53 @@ class ControllerExtensionPaymentAlfabank extends Controller
             $json['error'] = $this->language->get('error_order_missing');
         }
         $this->response->setOutput(json_encode($json));
+    }
+
+    /** Reversal is a separate operation; a bank rejection never triggers a refund. */
+    private function reverseGatewayPayment($client, $base_url, $parameters, $attempt, $order)
+    {
+        $fresh = $this->fetchGatewayOrderStatus($client, $base_url, $parameters);
+        if (!$this->isGatewayStatusForOrder($fresh, $order)) {
+            return array('error' => $this->language->get('error_payment_reverse_check'));
+        }
+        $fields = $this->getGatewayOrderUpdateData($fresh);
+        if (!$fields) {
+            return array('error' => $this->language->get('error_payment_reverse_check'));
+        }
+        $this->model_extension_payment_alfabank->updateGatewayOrder($attempt['gateway_order_reference'], $fields);
+        $attempt = array_merge($attempt, $fields);
+        if (!$this->canReverseGatewayOrder($attempt)) {
+            return array('error' => $this->language->get('error_payment_reverse_status'));
+        }
+
+        $response = json_decode($client->_sendGatewayData($parameters, $base_url . 'reverse.do'), true);
+        if (!is_array($response) || !isset($response['errorCode'])) {
+            return array('error' => $this->language->get('error_payment_reverse_unknown'));
+        }
+        if ((string)$response['errorCode'] !== '0') {
+            $message = sprintf($this->language->get('error_payment_reverse_rejected'),
+                $response['errorCode'], $response['errorMessage'] ?? '');
+            if ((string)$response['errorCode'] === '7' && (int)$attempt['status_deposited'] === 2) {
+                $message .= ' ' . $this->language->get('help_payment_reverse_refund');
+            }
+            return array('error' => $message);
+        }
+
+        $fields = array('order_amount_deposited' => 0.0, 'status_deposited' => 3, 'status_reversed' => 1);
+        $status = $this->fetchGatewayOrderStatus($client, $base_url, $parameters);
+        if ($this->isGatewayStatusForOrder($status, $order) && (int)$status['orderStatus'] === 3) {
+            $fields = array_merge($fields, $this->getGatewayOrderUpdateData($status));
+        }
+        $this->model_extension_payment_alfabank->updateGatewayOrder($attempt['gateway_order_reference'], $fields);
+        return array(
+            'success' => $this->language->get('text_success_reverse'),
+            'redirect' => 1,
+            'history' => array(
+                'order_status_id' => (int)$order['order_status_id'],
+                'comment' => 'AlfaBank: авторизация отменена (ID: ' . $attempt['gateway_order_reference'] . ')',
+                'notify' => 0,
+            ),
+        );
     }
 
     private function verifyCurrentUserPassword($password)

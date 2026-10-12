@@ -22,7 +22,7 @@ $_['logging_disabled']  = 'Deshabilitar';
 $_['entry_order_status']    = 'Estado de pago exitoso';
 $_['text_payment_attempts'] = 'Intentos de pago';
 $_['text_confirm_reverse_title'] = 'Confirmar cancelación del pago';
-$_['text_confirm_reverse'] = 'Esta acción solicita la cancelación en la pasarela de pago. AlfaBank permite un solo intento, incluso si falla. Introduzca su contraseña actual de administrador para continuar.';
+$_['text_confirm_reverse'] = 'Esta acción solicita la cancelación en la pasarela de pago. La cancelación está sujeta al plazo del banco; el estado pagado no garantiza que esté disponible. AlfaBank permite un solo intento, incluso si falla. Introduzca su contraseña actual de administrador para continuar.';
 $_['text_gateway_status_error'] = 'Error al consultar el estado en la pasarela';
 $_['text_gateway_status_registered'] = 'Registrado, no pagado';
 $_['text_gateway_status_held'] = 'Preautorizado, importe retenido';
@@ -51,3 +51,8 @@ $_['entry_order_status_refunded'] = 'Estado del pedido: reembolso completo';
 $_['entry_order_status_partially_refunded'] = 'Estado del pedido: reembolso parcial';
 
 $_['help_order_status_reversed'] = 'Las anulaciones de autorización se registran en el historial sin cambiar el estado actual del pedido.';
+
+$_['error_payment_reverse_check'] = 'No se pudo verificar el estado actual del pago. No se envió la cancelación.';
+$_['error_payment_reverse_unknown'] = 'Se desconoce el resultado de la cancelación. Compruebe el estado antes de otra operación.';
+$_['error_payment_reverse_rejected'] = 'AlfaBank rechazó la cancelación (%s): %s';
+$_['help_payment_reverse_refund'] = 'El pago está capturado. El banco limita el plazo de cancelación y puede haber vencido. Para devolver el dinero, utilice una operación de reembolso separada. No se envió ningún reembolso.';
