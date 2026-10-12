@@ -1,4 +1,5 @@
 <?php
+$_['error_payment_history_update'] = 'La operación bancaria se completó, pero no se pudo actualizar el historial del pedido. Compruebe el estado del pedido antes de repetir una operación de pago.';
 $_['heading_title'] = 'Permite utilizar la pasarela de pago de Alfabank';
 $_['text_alfabank']  = '<img src="view/image/payment/alfabank.png" alt="Alfabank" title="Alfabank" style="width:110px;" /></a>';
 $_['text_payment']      = 'Continuar con el pago';

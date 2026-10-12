@@ -1,4 +1,5 @@
 <?php
+$_['error_payment_history_update'] = 'Bank operation completed, but the OpenCart order history could not be updated. Check the order status before retrying any payment operation.';
 $_['heading_title']         = 'Alfa Bank';
 $_['text_payment']      = 'Proceed with payment';
 $_['text_success']      = 'Settings updated!';

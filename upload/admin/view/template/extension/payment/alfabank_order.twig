@@ -197,14 +197,26 @@
                         if (typeof json.error !== 'undefined' && json.error) {
                             showPaymentAlert('danger', json.error);
                         } else if (typeof json.success !== 'undefined') {
+                            const finish = function () {
+                                showPaymentAlert('success', json.success);
+                                if (typeof json.redirect !== 'undefined') {
+                                    window.location.reload();
+                                }
+                            };
                             if (typeof json.history !== 'undefined') {
-                                addOrderHistory(json.history.order_status_id, json.history.comment, json.history.notify);
-                            }
-
-                            showPaymentAlert('success', json.success);
-
-                            if (typeof json.redirect !== 'undefined') {
-                                window.location.reload();
+                                addOrderHistory(json.history.order_status_id, json.history.comment, json.history.notify)
+                                    .done(function (historyResult) {
+                                        if (historyResult && historyResult.success && !historyResult.error) {
+                                            finish();
+                                        } else {
+                                            showPaymentAlert('danger', '{{ error_payment_history_update|e('js') }}');
+                                        }
+                                    })
+                                    .fail(function () {
+                                        showPaymentAlert('danger', '{{ error_payment_history_update|e('js') }}');
+                                    });
+                            } else {
+                                finish();
                             }
                         }
                     }
@@ -279,11 +291,11 @@
             });
 
             function addOrderHistory(orderStatusId, comment, notify) {
-                $.ajax({
+                return $.ajax({
                     url: '{{ catalog }}index.php?route=api/order/history&api_token={{ api_token }}&store_id={{ store_id }}&order_id={{ order_id }}',
                     type: 'post',
                     dataType: 'json',
-                    data: 'order_status_id=' + orderStatusId + '&notify=' + notify + '&comment=' + comment
+                    data: {order_status_id: orderStatusId, notify: notify, comment: comment}
                 });
             }
 

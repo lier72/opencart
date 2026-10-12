@@ -144,6 +144,41 @@ class AlfabankAdminOrderTest extends TestCase
         $this->assertFalse($matches->invoke($this->controller, $password, array()));
     }
 
+    public function testCheckingCabinetRefundRepairsOrderStatusWithoutRepeatingRefund(): void
+    {
+        $this->registry->set('config', new \Config());
+        $method = new \ReflectionMethod($this->controller, 'getCheckedRefundHistory');
+        $method->setAccessible(true);
+        $order = array('order_id' => 116273, 'order_status_id' => 14);
+        $response = array(
+            'errorCode' => '0', 'orderStatus' => 4, 'orderNumber' => '116273_1791658293',
+            'paymentAmountInfo' => array('approvedAmount' => 45400, 'refundedAmount' => 45400),
+        );
+        $history = $method->invoke($this->controller, $response, $order, 'refund-reference');
+        $this->assertSame(13, $history['order_status_id']);
+        $this->assertSame(0, $history['notify']);
+        $this->assertStringContainsString('454.00', $history['comment']);
+        $this->assertStringContainsString('refund-reference', $history['comment']);
+        $order['order_status_id'] = 13;
+        $this->assertNull($method->invoke($this->controller, $response, $order, 'refund-reference'));
+        $order['order_status_id'] = 14;
+        $response['paymentAmountInfo']['refundedAmount'] = 10000;
+        $this->assertSame(8, $method->invoke($this->controller, $response, $order, 'refund-reference')['order_status_id']);
+        unset($response['paymentAmountInfo']['approvedAmount']);
+        $this->assertNull($method->invoke($this->controller, $response, $order, 'refund-reference'));
+        $response['paymentAmountInfo']['approvedAmount'] = 45400;
+        $response['orderNumber'] = '116279_other';
+        $this->assertNull($method->invoke($this->controller, $response, $order, 'refund-reference'));
+        $response['orderNumber'] = '116273_1791658293';
+        $response['errorCode'] = '7';
+        $this->assertNull($method->invoke($this->controller, $response, $order, 'refund-reference'));
+        $response['errorCode'] = '0';
+        $this->registry->set('user', new class {
+            public function hasPermission($type, $route) { return false; }
+        });
+        $this->assertNull($method->invoke($this->controller, $response, $order, 'refund-reference'));
+    }
+
     public function testCancellationEndpointRejectsRequestWithoutAdminPassword(): void
     {
         $this->registry->get('request')->post = array(
@@ -231,13 +266,76 @@ class AlfabankAdminOrderTest extends TestCase
         $this->assertNotFalse($status_branch_end);
 
         $status_branch = substr($controller_source, $status_branch_start, $status_branch_end - $status_branch_start);
-        $this->assertStringNotContainsString("\$json['redirect']", $status_branch);
+        $this->assertStringContainsString('getCheckedRefundHistory', $status_branch);
 
         $data['can_modify_order_payment'] = false;
         $read_only_html = $twig->render('alfabank_order.twig', $data);
 
         $this->assertStringNotContainsString('data-action="payment_reverse"', $read_only_html);
         $this->assertStringNotContainsString('id="alfabank-reverse-modal"', $read_only_html);
+    }
+
+    /** @dataProvider reversalResponses */
+    public function testReversalRefreshesStateAndNeverFallsBackToRefund($freshStatus, $orderNumber, $reverseError, $expectedCalls, $success): void
+    {
+        $language = $this->registry->get('language');
+        $language->set('error_payment_reverse_check', 'Status could not be verified.');
+        $language->set('error_payment_reverse_status', 'Not cancellable.');
+        $language->set('error_payment_reverse_rejected', 'Rejected (%s): %s');
+        $language->set('help_payment_reverse_refund', 'Use a separate refund operation.');
+        $language->set('text_success_reverse', 'Cancelled.');
+        $model = new class {
+            public $updates = array();
+            public function updateGatewayOrder($reference, $fields) { $this->updates[] = $fields; }
+        };
+        $this->registry->set('model_extension_payment_alfabank', $model);
+        $fresh = array('errorCode' => 0, 'orderNumber' => $orderNumber, 'orderStatus' => $freshStatus,
+            'paymentAmountInfo' => array('approvedAmount' => $freshStatus === 3 ? 0 : 45400, 'refundedAmount' => 0));
+        $client = new class($fresh, $reverseError) {
+            public $calls = array();
+            private $fresh;
+            private $error;
+            public function __construct($fresh, $error) { $this->fresh = $fresh; $this->error = $error; }
+            public function _sendGatewayData($parameters, $url) {
+                $this->calls[] = basename($url);
+                if (basename($url) === 'refund.do') throw new \RuntimeException('Unexpected refund');
+                if (basename($url) === 'reverse.do') return json_encode(array('errorCode' => $this->error, 'errorMessage' => 'Incorrect state'));
+                if (count($this->calls) > 1) {
+                    $this->fresh['orderStatus'] = 3;
+                    $this->fresh['paymentAmountInfo']['approvedAmount'] = 0;
+                }
+                return json_encode($this->fresh);
+            }
+        };
+        $method = new \ReflectionMethod($this->controller, 'reverseGatewayPayment');
+        $method->setAccessible(true);
+        $result = $method->invoke($this->controller, $client, 'https://example.test/', array('orderId' => 'attempt'),
+            array('gateway_order_reference' => 'attempt', 'status_deposited' => 2, 'order_amount_refunded' => 0),
+            array('order_id' => 116273, 'order_status_id' => 14));
+        $this->assertSame($expectedCalls, $client->calls);
+        if ($success) {
+            $this->assertSame(14, $result['history']['order_status_id']);
+            $this->assertSame(3, $model->updates[count($model->updates)-1]['status_deposited']);
+        } else {
+            $this->assertArrayHasKey('error', $result);
+            $this->assertArrayNotHasKey('history', $result);
+            $this->assertArrayNotHasKey('success', $result);
+            if ($reverseError === '7' && count($expectedCalls) === 2) {
+                $this->assertStringContainsString('separate refund', $result['error']);
+                $this->assertCount(1, $model->updates);
+                $this->assertSame(2, $model->updates[0]['status_deposited']);
+            }
+        }
+    }
+
+    public function reversalResponses(): array
+    {
+        return array(
+            'captured payment rejected by bank' => array(2, '116273_123', '7', array('getOrderStatusExtended.do','reverse.do'), false),
+            'stale local state already reversed' => array(3, '116273_123', '0', array('getOrderStatusExtended.do'), false),
+            'wrong order response' => array(2, '116279_123', '0', array('getOrderStatusExtended.do'), false),
+            'successful reversal' => array(1, '116273_123', '0', array('getOrderStatusExtended.do','reverse.do','getOrderStatusExtended.do'), true),
+        );
     }
 
     private function attempt($status): array

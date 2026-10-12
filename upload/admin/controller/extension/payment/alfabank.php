@@ -639,6 +639,33 @@ class ControllerExtensionPaymentAlfabank extends Controller
         return AlfabankGatewayState::normalize($response);
     }
 
+    private function getCheckedRefundHistory($response, $order_info, $reference)
+    {
+        if (!$this->user->hasPermission('modify', 'sale/order') ||
+            !$this->isGatewayStatusForOrder($response, $order_info)) {
+            return null;
+        }
+
+        $state = $this->getGatewayOrderUpdateData($response);
+        if (!isset($state['status_deposited']) || $state['status_deposited'] !== 4) {
+            return null;
+        }
+
+        require_once DIR_SYSTEM . 'library/alfabank/AlfabankRefundStatus.php';
+        $captured = $state['order_amount_deposited'] ?? null;
+        $refunded = $state['order_amount_refunded'] ?? null;
+        $status = AlfabankRefundStatus::resolve($this->config, $captured, $refunded);
+        if ($status === null || (int)$order_info['order_status_id'] === $status) {
+            return null;
+        }
+
+        return array(
+            'order_status_id' => $status,
+            'comment' => AlfabankRefundStatus::comment($reference, $captured, $refunded),
+            'notify' => 0,
+        );
+    }
+
     public function gatewayOrderAction()
     {
         $this->language->load('extension/payment/alfabank');
@@ -743,6 +770,11 @@ class ControllerExtensionPaymentAlfabank extends Controller
                         ? $response['paymentAmountInfo']['paymentState']
                         : $this->getGatewayStatusForView($response['orderStatus'])['label'];
                     $json['success'] = "Gateway transaction status is: " . $payment_state;
+                    $history = $this->getCheckedRefundHistory($response, $order_info, $gateway_order['gateway_order_reference']);
+                    if ($history !== null) {
+                        $json['history'] = $history;
+                        $json['redirect'] = 1;
+                    }
                 } else {
                     $json['error'] = isset($response['errorMessage'])
                         ? $response['errorMessage']
