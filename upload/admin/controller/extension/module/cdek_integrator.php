@@ -1098,12 +1098,10 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 				1 => $this->model_extension_module_cdek_integrator->getOrderProducts($this->request->get['order_id'])
 			);
 
-			// Shared marking codes (ТС ПИоТ scan) for read-only display + the "КМ N/M" readiness badge on the form.
-			// Only relevant for cod_cdek orders (where marking is actually sent to CDEK); hidden otherwise.
+			// Shared marking codes (ТС ПИоТ scan) for the read-only КМ list + "КМ N/M" badge on the Attachments
+			// tab. The КМ blocks are shown/hidden by the «Наложенный платеж» (COD) toggle — see the script below.
 			require_once DIR_SYSTEM . 'library/orangedata/MarkingCode.php';
 			$marking_codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($this->request->get['order_id']);
-			$marking_order_row = $this->model_sale_order->getOrder($this->request->get['order_id']);
-			$marking_applies = !empty($marking_order_row['payment_code']) && $marking_order_row['payment_code'] === 'cod_cdek';
 
 			foreach ($packages as $package_id => $products) {
 
@@ -1220,7 +1218,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 					// Marking-code readiness for this line (shown read-only on the form; drives the "КМ N/M" badge).
 					$mc_opid = (int)$order_product['order_product_id'];
 					$mc_codes = isset($marking_codes_by_line[$mc_opid]) ? $marking_codes_by_line[$mc_opid] : array();
-					$item_data['marked'] = (isset($marking_applies) && $marking_applies) && $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
+					$item_data['marked'] = $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
 					$item_data['marking_scanned'] = count($mc_codes);
 					$item_data['marking_total'] = (int)$order_product['quantity'];
 					$item_data['marking_codes'] = array();
@@ -1410,13 +1408,9 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 					require_once DIR_SYSTEM . 'library/orangedata/MarkingCode.php';
 					$marking_codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($order_id);
 				}
-				if (!isset($marking_applies)) {
-					$marking_order_row = $this->model_sale_order->getOrder($order_id);
-					$marking_applies = !empty($marking_order_row['payment_code']) && $marking_order_row['payment_code'] === 'cod_cdek';
-				}
 				$mc_opid = (int)$order_product['order_product_id'];
 				$mc_codes = isset($marking_codes_by_line[$mc_opid]) ? $marking_codes_by_line[$mc_opid] : array();
-				$item_data['marked'] = (isset($marking_applies) && $marking_applies) && $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
+				$item_data['marked'] = $this->model_extension_module_cdek_integrator->isProductMarked($order_product['product_id']);
 				$item_data['marking_scanned'] = count($mc_codes);
 				$item_data['marking_total'] = (int)$order_product['quantity'];
 				$item_data['marking_codes'] = array();
@@ -3647,10 +3641,10 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 		$this->load->model('extension/module/cdek_integrator');
 		$this->load->model('sale/order');
 
-		// Marking is handed to CDEK ONLY when CDEK collects COD (cod_cdek) and therefore issues its own fiscal
-		// check. Prepaid / delivery-only orders are already fiscalized by us (OrangeData) and need no marking here.
-		$order = $this->model_sale_order->getOrder($order_id);
-		if (empty($order['payment_code']) || $order['payment_code'] !== 'cod_cdek') {
+		// Marking is handed to CDEK ONLY when this waybill is cash-on-delivery — CDEK then collects payment and
+		// issues its own fiscal check, which needs «Код маркировки». Driven by the form's «Наложенный платеж»
+		// (cdek_orders[cod]) toggle, not the order's original payment method (an operator may set COD manually).
+		if (empty($cdek_orders_post['cod'])) {
 			return $cdek_orders_post;
 		}
 
@@ -3764,17 +3758,16 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 					$this->error['cdek_orders']['cdek_comment'] = $this->language->get('error_maxlength_255');
 				}
 
-				// Marking-code readiness: ONLY for cod_cdek orders (CDEK collects COD → needs «Код маркировки»).
-				// A marked line must have enough scanned КМ (ocus_order_marking_code) to cover the shipped quantity;
-				// a per-line cursor is consumed across packages so a product split over packages uses one pool.
+				// Marking-code readiness: ONLY when this waybill is COD (CDEK collects payment → needs «Код маркировки»),
+				// driven by the submitted «Наложенный платеж» flag. A marked line must have enough scanned КМ
+				// (ocus_order_marking_code) to cover the shipped qty; a per-line cursor is consumed across packages.
 				$this->load->model('extension/module/cdek_integrator');
 				$this->load->model('sale/order');
-				$mc_order = $this->model_sale_order->getOrder($order_id);
-				$is_cod_cdek = !empty($mc_order['payment_code']) && $mc_order['payment_code'] === 'cod_cdek';
+				$is_cod = !empty($order_info['cod']);
 				$marking_codes_by_line = array();
 				$marking_product_by_opid = array();
 				$marking_used = array();
-				if ($is_cod_cdek) {
+				if ($is_cod) {
 					$marking_codes_by_line = $this->model_extension_module_cdek_integrator->getMarkingCodesByLine($order_id);
 					foreach ($this->model_sale_order->getOrderProducts($order_id) as $op) { $marking_product_by_opid[(int)$op['order_product_id']] = (int)$op['product_id']; }
 				}
@@ -3828,8 +3821,8 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['amount'] = $this->language->get('error_positive_numeric');
 							}
 
-							// Marked goods (cod_cdek orders only): block the waybill unless every shipped unit has a scanned КМ.
-							if ($is_cod_cdek) {
+							// Marked goods (COD waybills only): block unless every shipped unit has a scanned КМ.
+							if ($is_cod) {
 							$mc_opid = isset($package_item['ware_key']) ? (int)$package_item['ware_key'] : 0;
 							$mc_product_id = isset($marking_product_by_opid[$mc_opid]) ? $marking_product_by_opid[$mc_opid] : 0;
 							// Fail loud if an item cannot be matched to an order product — otherwise a marked good could
@@ -3845,7 +3838,7 @@ class ControllerExtensionModuleCdekIntegrator extends Controller {
 								}
 								$marking_used[$mc_opid] += $mc_amount;
 							}
-							} // end if ($is_cod_cdek)
+							} // end if ($is_cod)
 
 						}
 

@@ -60,6 +60,7 @@
     <button type="button" id="od-check" class="btn btn-info"><i class="fa fa-search"></i> {{ button_check }}</button>
     <button type="button" id="od-fiscalize" class="btn btn-primary"><i class="fa fa-file-text-o"></i> {{ button_fiscalize }}</button>
     {% if has_document %}<button type="button" id="od-verify" class="btn btn-default"><i class="fa fa-check-square-o"></i> {{ button_verify_receipt }}</button>{% endif %}
+    {% if cdek_show %}<a href="{{ cdek_url }}" target="_blank" class="btn {{ cdek_dispatched ? 'btn-default' : 'btn-success' }}"><i class="fa fa-truck"></i> {{ cdek_dispatched ? button_cdek_open : button_cdek_create }}</a>{% endif %}
     <div id="od-verify-result" style="margin-top:10px;"></div>
     {% endif %}
   </div>

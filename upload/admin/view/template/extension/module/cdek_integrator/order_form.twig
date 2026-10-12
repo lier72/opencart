@@ -511,9 +511,9 @@
 															<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][comment]" value="{{ item['name'] }}" size="3" />
 															<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][ware_key]" value="{{ item['order_product_id'] }}" size="3" />
 															{% if item['marked'] %}
-																<br /><span class="label {{ item['marking_scanned'] >= item['marking_total'] ? 'label-success' : 'label-warning' }}">{{ column_marking }}: {{ text_marking_ready|format(item['marking_scanned'], item['marking_total']) }}</span>
+																<div class="cdek-km-block" style="display:{{ cdek_orders['cod'] ? 'block' : 'none' }};"><br /><span class="label {{ item['marking_scanned'] >= item['marking_total'] ? 'label-success' : 'label-warning' }}">{{ column_marking }}: {{ text_marking_ready|format(item['marking_scanned'], item['marking_total']) }}</span>
 																{% for mc in item['marking_codes'] %}<div class="text-muted" style="font-size:10px;word-break:break-all;">{{ mc }}</div>{% endfor %}
-																{% if item['marking_codes'] is empty %}<div class="text-warning" style="font-size:10px;">{{ text_marking_none }}</div>{% endif %}
+																{% if item['marking_codes'] is empty %}<div class="text-warning" style="font-size:10px;">{{ text_marking_none }}</div>{% endif %}</div>
 															{% endif %}
 														</td>
 														<td class="right">
@@ -673,9 +673,9 @@
 														<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][comment]" value="{{ item['name'] }}" size="3" disabled="disabled"/>
 														<input type="hidden" name="cdek_orders[package][{{ package_id }}][item][{{ row }}][ware_key]" value="{{ item['order_product_id'] }}" size="3" disabled="disabled"/>
 														{% if item['marked'] %}
-															<br /><span class="label {{ item['marking_scanned'] >= item['marking_total'] ? 'label-success' : 'label-warning' }}">{{ column_marking }}: {{ text_marking_ready|format(item['marking_scanned'], item['marking_total']) }}</span>
+															<div class="cdek-km-block" style="display:{{ cdek_orders['cod'] ? 'block' : 'none' }};"><br /><span class="label {{ item['marking_scanned'] >= item['marking_total'] ? 'label-success' : 'label-warning' }}">{{ column_marking }}: {{ text_marking_ready|format(item['marking_scanned'], item['marking_total']) }}</span>
 															{% for mc in item['marking_codes'] %}<div class="text-muted" style="font-size:10px;word-break:break-all;">{{ mc }}</div>{% endfor %}
-															{% if item['marking_codes'] is empty %}<div class="text-warning" style="font-size:10px;">{{ text_marking_none }}</div>{% endif %}
+															{% if item['marking_codes'] is empty %}<div class="text-warning" style="font-size:10px;">{{ text_marking_none }}</div>{% endif %}</div>
 														{% endif %}
 													</td>
 													<td class="right">
@@ -1348,5 +1348,15 @@ initTimepicker();
 			$('.full_package select').removeAttr('disabled');
 		}
 	});
+
+	// «Наложенный платеж» (COD) controls whether the waybill carries «Код маркировки»: show the КМ blocks only
+	// when COD is on, so toggling it to «Да» brings the marking data into the Attachments tab (and, on submit,
+	// the server attaches it to the CDEK order — see cdek_integrator::applyMarkingCodes).
+	function cdekToggleMarking() {
+		var on = $('#cdek-orders-cod').val() == 1;
+		$('.cdek-km-block').toggle(on);
+	}
+	$(document).on('change', '#cdek-orders-cod', cdekToggleMarking);
+	$(document).ready(cdekToggleMarking);
 </script>
 {{ footer }}

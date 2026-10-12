@@ -125,6 +125,8 @@ $_['column_code']                   = 'Marking code';
 $_['column_status']                 = 'Status';
 $_['button_check']                  = 'Check via ТС ПИоТ';
 $_['button_fiscalize']              = 'Fiscalize receipt';
+$_['button_cdek_create']            = 'Create CDEK order';
+$_['button_cdek_open']              = 'Open CDEK order';
 
 // EAN-first scan routing
 $_['entry_scan_ean']                = 'Scan product (EAN)';

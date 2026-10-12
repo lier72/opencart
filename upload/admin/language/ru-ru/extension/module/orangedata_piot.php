@@ -125,6 +125,8 @@ $_['column_code']                   = 'Код маркировки';
 $_['column_status']                 = 'Статус';
 $_['button_check']                  = 'Проверить в ТС ПИоТ';
 $_['button_fiscalize']              = 'Фискализировать чек';
+$_['button_cdek_create']            = 'Создать заказ СДЭК';
+$_['button_cdek_open']              = 'Открыть заказ СДЭК';
 
 // EAN-first scan routing
 $_['entry_scan_ean']                = 'Сканировать товар (EAN)';

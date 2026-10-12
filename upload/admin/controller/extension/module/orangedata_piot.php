@@ -379,6 +379,27 @@ class ControllerExtensionModuleOrangedataPiot extends Controller {
         $data['has_document']   = false;
         foreach ($lines as $l) { foreach ($l['units'] as $u) { if (!empty($u['code']['document_id'])) $data['has_document'] = true; } }
 
+        // "Create CDEK waybill" button — shown by the SAME rule the CDEK order list uses: the order's shipping
+        // method is one of the configured CDEK methods (cdek_integrator_setting['shipping_method']). Reflects
+        // whether a waybill already exists (cdek_order row) so the label switches create → open.
+        $data['cdek_show']       = false;
+        $data['cdek_dispatched'] = false;
+        $data['cdek_url']        = '';
+        $cdek_setting = $this->config->get('cdek_integrator_setting');
+        if (is_array($cdek_setting) && !empty($cdek_setting['shipping_method'])) {
+            $order_row = $this->model_sale_order->getOrder($order_id);
+            $shipping_code = isset($order_row['shipping_code']) ? strtolower($order_row['shipping_code']) : '';
+            foreach ((array) $cdek_setting['shipping_method'] as $m) {
+                if ($m !== '' && $shipping_code !== '' && strpos($shipping_code, strtolower($m)) === 0) { $data['cdek_show'] = true; break; }
+            }
+            if ($data['cdek_show']) {
+                $this->load->model('extension/module/cdek_integrator');
+                $disp = $this->model_extension_module_cdek_integrator->getDispatchInfo($order_id, false);
+                $data['cdek_dispatched'] = !empty($disp);
+                $data['cdek_url'] = $this->url->link('extension/module/cdek_integrator/createOrder', 'user_token=' . $token . '&order_id=' . $order_id, true);
+            }
+        }
+
         $this->response->setOutput($this->load->view('extension/module/orangedata_piot_order', $data));
     }
 
