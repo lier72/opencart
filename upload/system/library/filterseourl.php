@@ -77,6 +77,13 @@ class FilterSeoUrl {
 	 * Reverse lookup: given a URL path segment, return the fa/fo/ff value it represents, or null.
 	 */
 	public function resolveSlug($slug, $store_id, $language_id) {
+		// Filter slugs are stored as ASCII, but URL segments may contain
+		// Unicode or malformed bytes. They cannot match this table and can
+		// cause an illegal mix of collations if passed to the SQL comparison.
+		if (preg_match('/[\x80-\xFF]/', $slug)) {
+			return null;
+		}
+
 		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "filter_seo_url`
 			WHERE `store_id` = '" . (int)$store_id . "'
 			AND `language_id` = '" . (int)$language_id . "'
