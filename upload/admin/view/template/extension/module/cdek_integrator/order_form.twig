@@ -1145,14 +1145,14 @@ initTimepicker();
 			{% if (cdek_orders['pvz_list'] is not empty) %}
 			{% for pvz_info in cdek_orders['pvz_list'] %}
 			{
-				code: "{{ pvz_info['Code'] }}",
-				name: "{{ pvz_info['Name'] }}",
-				address: "{{ pvz_info['Address'] }}",
-				y: "{{ pvz_info['y'] }}",
-				x: "{{ pvz_info['x'] }}",
-				worktime: "{{ pvz_info['WorkTime'] }}",
-				phone: "{{ pvz_info['Phone'] }}",
-				label: "{{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})"
+				code: "{{ pvz_info['Code']|escape('js') }}",
+				name: "{{ pvz_info['Name']|escape('js') }}",
+				address: "{{ pvz_info['Address']|escape('js') }}",
+				y: "{{ pvz_info['y']|escape('js') }}",
+				x: "{{ pvz_info['x']|escape('js') }}",
+				worktime: "{{ pvz_info['WorkTime']|escape('js') }}",
+				phone: "{{ pvz_info['Phone']|escape('js') }}",
+				label: "{{ pvz_info['Name']|escape('js') }} ({{ pvz_info['Address']|escape('js') }})"
 			}{% if not loop.last %},{% endif %}
 			{% endfor %}
 			{% endif %}
@@ -1162,14 +1162,14 @@ initTimepicker();
 			{% if (cdek_orders['pvz_list_sell'] is not empty) %}
 			{% for pvz_info in cdek_orders['pvz_list_sell'] %}
 			{
-				code: "{{ pvz_info['Code'] }}",
-				name: "{{ pvz_info['Name'] }}",
-				address: "{{ pvz_info['Address'] }}",
-				y: "{{ pvz_info['y'] }}",
-				x: "{{ pvz_info['x'] }}",
-				worktime: "{{ pvz_info['WorkTime'] }}",
-				phone: "{{ pvz_info['Phone'] }}",
-				label: "{{ pvz_info['Name'] }} ({{ pvz_info['Address'] }})"
+				code: "{{ pvz_info['Code']|escape('js') }}",
+				name: "{{ pvz_info['Name']|escape('js') }}",
+				address: "{{ pvz_info['Address']|escape('js') }}",
+				y: "{{ pvz_info['y']|escape('js') }}",
+				x: "{{ pvz_info['x']|escape('js') }}",
+				worktime: "{{ pvz_info['WorkTime']|escape('js') }}",
+				phone: "{{ pvz_info['Phone']|escape('js') }}",
+				label: "{{ pvz_info['Name']|escape('js') }} ({{ pvz_info['Address']|escape('js') }})"
 			}{% if not loop.last %},{% endif %}
 			{% endfor %}
 			{% endif %}
