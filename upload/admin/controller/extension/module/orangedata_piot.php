@@ -41,6 +41,11 @@ class ControllerExtensionModuleOrangedataPiot extends Controller {
         'module_orangedata_piot_verify_peer',
         'module_orangedata_piot_ignore_item_code_check',
         'module_orangedata_piot_auto_fiscalize',
+        'module_orangedata_piot_fiscalize_from_date',
+        'module_orangedata_piot_cron_fiscalize_mode',
+        'module_orangedata_piot_cron_fiscalize_statuses',
+        'module_orangedata_piot_cron_fiscalize_limit',
+        'module_orangedata_piot_cron_check_codes',
         'module_orangedata_piot_check_backend',
         'module_orangedata_piot_trueapi_env',
         'module_orangedata_piot_trueapi_key',
@@ -92,6 +97,21 @@ class ControllerExtensionModuleOrangedataPiot extends Controller {
         // Sensible default payment-type map (real payment_code values of this store) on first load.
         if ($data['module_orangedata_piot_payment_type_map'] === null || $data['module_orangedata_piot_payment_type_map'] === '') {
             $data['module_orangedata_piot_payment_type_map'] = "rbs:14\nalfabank:14\nsbp:14\nyandexplusplus:14\nyandexplusplus_card:14\nycp:14\nbank_transfer:2\ncod:1\ncod_cdek:1";
+        }
+
+        // Cron defaults. The start date defaults to TODAY so a first install can never reach back over the
+        // years of historic orders that predate this module; the mode defaults to report (sends nothing).
+        if ($data['module_orangedata_piot_fiscalize_from_date'] === null || $data['module_orangedata_piot_fiscalize_from_date'] === '') {
+            $data['module_orangedata_piot_fiscalize_from_date'] = date('Y-m-d');
+        }
+        if ($data['module_orangedata_piot_cron_fiscalize_mode'] === null || $data['module_orangedata_piot_cron_fiscalize_mode'] === '') {
+            $data['module_orangedata_piot_cron_fiscalize_mode'] = 'report';
+        }
+        if ($data['module_orangedata_piot_cron_fiscalize_limit'] === null || $data['module_orangedata_piot_cron_fiscalize_limit'] === '') {
+            $data['module_orangedata_piot_cron_fiscalize_limit'] = 50;
+        }
+        if (!is_array($data['module_orangedata_piot_cron_fiscalize_statuses'])) {
+            $data['module_orangedata_piot_cron_fiscalize_statuses'] = array();
         }
 
         // Marked-categories picker: resolve names for existing rows + provide the group list + autocomplete.
@@ -224,15 +244,19 @@ class ControllerExtensionModuleOrangedataPiot extends Controller {
             require_once DIR_SYSTEM . 'library/orangedata/OrangeDataService.php';
             $service = new OrangeDataService($this->registry);
             $service->setOverrides($this->request->post); // test what is in the form, saved or not
-            $client = $service->getClient();
-            // Documented sample code (Base64) — a real code is not needed to prove connectivity/signature.
-            $resp = $client->checkPiotCodes(array(array('cis' => 'MDEwNDYyOTMwODg3NzA0NDIxRHprY1l0Mh04MDA1MDkwMDAwHTkzZEdWeg==')));
-            if ($resp['http_code'] === 200) {
-                $json['success'] = sprintf($this->language->get('text_test_ok'), $resp['http_code']);
-            } elseif ($resp['error']) {
-                $json['error'] = sprintf($this->language->get('text_test_fail'), $resp['error']);
+            // Step-by-step diagnosis (files, certificate, key + passphrase, signing key, live request with curl
+            // trace) so a failure points at its exact cause; also written to orangedata.log.
+            $diag = $service->diagnoseConnection();
+            $json['diagnostics'] = $diag['steps'];
+            $json['verbose'] = $diag['verbose'];
+            if ($diag['ok']) {
+                $json['success'] = sprintf($this->language->get('text_test_ok'), 200);
             } else {
-                $json['error'] = sprintf($this->language->get('text_test_http'), $resp['http_code'], substr($resp['raw'], 0, 300));
+                $failed = array();
+                foreach ($diag['steps'] as $s) {
+                    if ($s[0] === 'fail') $failed[] = $s[1] . ($s[2] !== '' ? ': ' . $s[2] : '');
+                }
+                $json['error'] = sprintf($this->language->get('text_test_fail'), implode(' | ', $failed));
             }
         } catch (Exception $e) {
             $json['error'] = sprintf($this->language->get('text_test_fail'), $e->getMessage());
@@ -486,12 +510,10 @@ class ControllerExtensionModuleOrangedataPiot extends Controller {
         $this->response->setOutput(json_encode($json));
     }
 
-    /** Builds the receipt-viewer URL, choosing test vs prod host from the configured API base URL. */
+    /** Builds the receipt-viewer URL documented in OrangeData API section 4 (independent of API base URL). */
     private function chequeUrl($document_id) {
         if (!$document_id) return '';
-        $base = (string) $this->config->get('module_orangedata_piot_base_url');
-        $host = (strpos($base, 'apip.') !== false || strpos($base, ':12001') !== false) ? 'cheques-test.orangedata.ru' : 'cheques.orangedata.ru';
-        return 'https://' . $host . '/' . $this->config->get('module_orangedata_piot_inn') . '/' . rawurlencode($document_id);
+        return 'https://cheques-lk.orangedata.ru/' . $this->config->get('module_orangedata_piot_inn') . '/' . rawurlencode($document_id);
     }
 
     /**

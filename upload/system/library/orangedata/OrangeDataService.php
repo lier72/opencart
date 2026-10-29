@@ -32,6 +32,26 @@ class OrangeDataService {
         $this->registry = $registry;
     }
 
+    /**
+     * Order payment methods this module is ALLOWED to issue a receipt for, if someone asks it to (manual
+     * "Фискализировать чек" / "Оформить возврат" from the admin order panel). Each one still needs an entry in
+     * the `payment_type_map` setting, which decides its checkClose payment type (14 зачёт аванса / 2 безнал / 1 нал).
+     * `bank_transfer` is here so a manual click is never blocked — but it is deliberately NOT in
+     * $cronFiscalizePaymentCodes below: those orders are B2B, settled by a standard accounting invoice + bill
+     * of lading, not a retail receipt, and must not be swept up automatically.
+     * @var string[]
+     */
+    private static $fiscalizablePaymentCodes = array('alfabank', 'bank_transfer');
+
+    /**
+     * Order payment methods the CRON (cronFiscalizeOrders) scans for unfiscalized orders. Narrower than
+     * $fiscalizablePaymentCodes on purpose: bank_transfer orders don't need a closing receipt at all under normal
+     * operation, so the cron must never report or auto-fiscalize them — only a human clicking the button in the
+     * admin order panel should ever send one.
+     * @var string[]
+     */
+    private static $cronFiscalizePaymentCodes = array('alfabank');
+
     /** @var array Unsaved setting values (e.g. the settings form being tested) that take precedence over config. */
     private $overrides = array();
 
@@ -55,7 +75,194 @@ class OrangeDataService {
         $v = array_key_exists($key, $this->overrides)
             ? $this->overrides[$key]
             : $this->registry->get('config')->get('module_orangedata_piot_' . $key);
+        // OpenCart HTML-escapes every submitted value (Request::clean) and saves settings escaped, so a passphrase
+        // or token containing & < > " would reach curl/OrangeData as &amp; etc. Undo exactly that escaping.
+        if (is_string($v)) {
+            $v = htmlspecialchars_decode($v, ENT_COMPAT);
+        }
         return ($v === null || $v === '') ? $default : $v;
+    }
+
+    /**
+     * diagnoseConnection
+     *
+     * Step-by-step diagnosis of the OrangeData connection, used by the settings «Проверить соединение» action:
+     * environment (PHP/curl/OpenSSL, process user, open_basedir) → each configured file → SSL certificate →
+     * SSL key + passphrase → certificate/key match → signing key → required fields → one live signed request with
+     * curl's verbose TLS trace. Never outputs the passphrase or any key material (only lengths / headers).
+     * Every step is also written to orangedata.log. Never throws.
+     * Scope: admin testConnection().
+     *
+     * @return array ['ok' => bool, 'steps' => [[status ok|warn|fail|info, title, detail]], 'verbose' => string]
+     */
+    public function diagnoseConnection() {
+        $steps = array(); $fail = false;
+        $add = function ($status, $title, $detail = '') use (&$steps, &$fail) {
+            $steps[] = array($status, $title, $detail);
+            if ($status === 'fail') $fail = true;
+        };
+
+        // 1) Environment
+        $cv = function_exists('curl_version') ? curl_version() : array();
+        $user = function_exists('posix_geteuid') && function_exists('posix_getpwuid') ? posix_getpwuid(posix_geteuid()) : null;
+        $add('info', 'Окружение', 'PHP ' . PHP_VERSION . ' (' . PHP_SAPI . '), curl ' . (isset($cv['version']) ? $cv['version'] : '?')
+            . ' / ' . (isset($cv['ssl_version']) ? $cv['ssl_version'] : '?') . ', OpenSSL ext ' . (defined('OPENSSL_VERSION_TEXT') ? OPENSSL_VERSION_TEXT : '?')
+            . ', пользователь процесса: ' . ($user ? $user['name'] : '?')
+            . ', open_basedir: ' . (ini_get('open_basedir') ?: 'не ограничен'));
+        $add('info', 'Источник настроек', $this->overrides ? 'значения из формы (не сохранённые)' : 'сохранённые настройки');
+
+        // 2) Required fields
+        foreach (array('base_url' => 'URL API', 'inn' => 'ИНН', 'key' => 'ключ (key)', 'group' => 'группа') as $k => $label) {
+            $v = (string) $this->config($k, '');
+            $add($v === '' ? 'fail' : 'ok', $label, $v === '' ? 'не указан' : $v);
+        }
+
+        // 3) Files
+        $paths = array();
+        foreach (array('ssl_cert_path' => 'SSL-сертификат', 'ssl_key_path' => 'SSL-ключ', 'sign_key_path' => 'Ключ подписи') as $k => $label) {
+            $p = (string) $this->config($k, '');
+            if ($p === '') { $add('fail', $label . ': путь', 'не указан'); continue; }
+            $exists = @is_file($p);
+            if (!$exists) {
+                $add('fail', $label . ': файл', $p . ' — не найден' . (ini_get('open_basedir') ? ' (или вне open_basedir)' : ''));
+                continue;
+            }
+            $readable = is_readable($p);
+            $owner = function_exists('posix_getpwuid') ? @posix_getpwuid(fileowner($p)) : null;
+            $add($readable ? 'ok' : 'fail', $label . ': файл', $p . ' — ' . filesize($p) . ' байт, права ' . substr(sprintf('%o', fileperms($p)), -4)
+                . ', владелец ' . ($owner ? $owner['name'] : fileowner($p)) . ($readable ? '' : ' — НЕТ прав на чтение'));
+            if ($readable) $paths[$k] = $p;
+        }
+
+        $verbose = $this->diagnoseCrypto($paths, $add);
+
+        $log = new Log('orangedata.log');
+        foreach ($steps as $s) {
+            $log->write('[diagnose] ' . strtoupper($s[0]) . ' ' . $s[1] . ($s[2] !== '' ? ': ' . $s[2] : ''));
+        }
+        if ($verbose !== '') {
+            $log->write("[diagnose] curl trace:\n" . $verbose);
+        }
+
+        return array('ok' => !$fail, 'steps' => $steps, 'verbose' => $verbose);
+    }
+
+    /**
+     * diagnoseCrypto
+     *
+     * Second half of diagnoseConnection(): certificate, SSL key + passphrase, cert/key match, signing key and
+     * the live request. Reports through $add($status, $title, $detail). Scope: diagnoseConnection() only.
+     *
+     * @return string curl verbose trace of the live request ('' when it was not attempted)
+     */
+    private function diagnoseCrypto(array $paths, callable $add) {
+        while (openssl_error_string() !== false) {}
+        $sslErr = function () { $e = array(); while (($m = openssl_error_string()) !== false) $e[] = $m; return implode('; ', $e); };
+
+        // SSL certificate
+        $cert = null;
+        if (isset($paths['ssl_cert_path'])) {
+            $cert = @openssl_x509_read(file_get_contents($paths['ssl_cert_path']));
+            if ($cert === false) {
+                $cert = null;
+                $add('fail', 'SSL-сертификат: чтение', 'не PEM-сертификат: ' . $sslErr());
+            } else {
+                $c = openssl_x509_parse($cert);
+                $expired = isset($c['validTo_time_t']) && $c['validTo_time_t'] < time();
+                $add($expired ? 'fail' : 'ok', 'SSL-сертификат', 'CN=' . (isset($c['subject']['CN']) ? $c['subject']['CN'] : '?')
+                    . ', выдан: ' . (isset($c['issuer']['CN']) ? $c['issuer']['CN'] : '?')
+                    . ', действует до ' . (isset($c['validTo_time_t']) ? date('Y-m-d', $c['validTo_time_t']) : '?') . ($expired ? ' — ИСТЁК' : ''));
+            }
+        }
+
+        // SSL key + passphrase
+        $key = null;
+        if (isset($paths['ssl_key_path'])) {
+            $pem = (string) file_get_contents($paths['ssl_key_path']);
+            $first = trim(strtok($pem, "\n"));
+            $encrypted = strpos($pem, 'ENCRYPTED') !== false;
+            $pass = (string) $this->config('ssl_key_pass', '');
+            $rawPass = (string) $this->rawConfig('ssl_key_pass');
+            $add('info', 'SSL-ключ: формат', $first . ($encrypted ? ' (зашифрован паролем)' : ' (без пароля)'));
+            $add($encrypted && $pass === '' ? 'fail' : 'info', 'Пароль SSL-ключа', $pass === '' ? 'не указан' : 'указан, длина ' . strlen($pass)
+                . ($rawPass !== $pass ? ' (в настройках был сохранён HTML-экранированным — исправлено при чтении)' : ''));
+            $key = @openssl_pkey_get_private($pem, $pass);
+            if ($key === false) {
+                $key = null;
+                $add('fail', 'SSL-ключ: открытие', ($encrypted ? 'неверный пароль' : 'не PEM-ключ') . ' — ' . $sslErr());
+            } else {
+                $add('ok', 'SSL-ключ: открытие', 'открывается');
+            }
+        }
+
+        // Certificate ↔ key
+        if ($cert && $key) {
+            $match = openssl_x509_check_private_key($cert, $key);
+            $add($match ? 'ok' : 'fail', 'Сертификат и ключ', $match ? 'соответствуют друг другу' : 'ключ НЕ от этого сертификата');
+        }
+
+        // Signing key
+        if (isset($paths['sign_key_path'])) {
+            try {
+                $raw = (string) file_get_contents($paths['sign_key_path']);
+                $isXml = strpos($raw, '<RSAKeyValue') !== false || strpos($raw, '<?xml') !== false;
+                $signPem = $isXml ? OrangeDataClient::xmlRsaPrivateKeyToPem($raw) : $raw;
+                $sk = @openssl_pkey_get_private($signPem);
+                $add($sk ? 'ok' : 'fail', 'Ключ подписи', ($isXml ? 'XML (.NET) → PEM' : 'PEM') . ($sk ? ', загружается' : ' — не загружается: ' . $sslErr()));
+            } catch (Exception $e) {
+                $add('fail', 'Ключ подписи', $e->getMessage());
+            }
+        }
+
+        // Live signed request with curl's verbose trace
+        try {
+            $cfg = $this->buildClientConfig();
+            $cfg['debug'] = true;
+            $client = new OrangeDataClient($cfg);
+            $resp = $client->checkPiotCodes(array(array('cis' => 'MDEwNDYyOTMwODg3NzA0NDIxRHprY1l0Mh04MDA1MDkwMDAwHTkzZEdWeg==')));
+            if ($resp['error']) {
+                $add('fail', 'Запрос к OrangeData', $resp['error']);
+            } elseif ((int) $resp['http_code'] === 200) {
+                $add('ok', 'Запрос к OrangeData', 'HTTP 200 — mTLS и подпись приняты');
+            } else {
+                $add('fail', 'Запрос к OrangeData', 'HTTP ' . $resp['http_code'] . ': ' . substr(trim($resp['raw']), 0, 300));
+            }
+            return substr((string) $resp['verbose'], 0, 8000);
+        } catch (Exception $e) {
+            $add('fail', 'Запрос к OrangeData', 'не отправлен: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    /** Setting value exactly as stored/posted (before HTML un-escaping). Diagnostics only. */
+    private function rawConfig($key) {
+        return array_key_exists($key, $this->overrides)
+            ? $this->overrides[$key]
+            : $this->registry->get('config')->get('module_orangedata_piot_' . $key);
+    }
+
+    /**
+     * assertSslKeyOpens
+     *
+     * Opens the client SSL key with the configured passphrase BEFORE handing it to curl, so a missing or wrong
+     * passphrase is reported precisely instead of curl's «unable to set private key file … type PEM».
+     * Production keys from the OrangeData ЛК are usually passphrase-protected; the test key is not.
+     * Scope: buildClientConfig().
+     */
+    private function assertSslKeyOpens($keyPath, $pass) {
+        $pem = (string) file_get_contents($keyPath);
+        $encrypted = strpos($pem, 'ENCRYPTED') !== false; // "BEGIN ENCRYPTED PRIVATE KEY" or "Proc-Type: 4,ENCRYPTED"
+        if ($encrypted && $pass === '') {
+            throw new RuntimeException('SSL-ключ ' . $keyPath . ' зашифрован паролем — укажите «Пароль SSL-ключа» в настройках модуля.');
+        }
+        while (openssl_error_string() !== false) {} // clear stale OpenSSL errors
+        $key = openssl_pkey_get_private($pem, $pass);
+        if ($key === false) {
+            $err = openssl_error_string();
+            throw new RuntimeException('SSL-ключ ' . $keyPath . ' не открывается'
+                . ($encrypted ? ' — неверный «Пароль SSL-ключа»' : ' — файл не является PEM-ключом')
+                . ($err ? ' (' . $err . ')' : '') . '.');
+        }
     }
 
     /**
@@ -108,6 +315,7 @@ class OrangeDataService {
         $signPath = $this->requireReadableFile('sign_key_path', 'путь к ключу подписи (PEM или XML)');
         $certPath = $this->requireReadableFile('ssl_cert_path', 'путь к SSL-сертификату (client.crt)');
         $keyPath  = $this->requireReadableFile('ssl_key_path', 'путь к SSL-ключу (client.key)');
+        $this->assertSslKeyOpens($keyPath, (string) $this->config('ssl_key_pass', ''));
         // No silent default for the group: `main` on the test contour is an FFD 1.05 group and yields
         // «Группа не поддерживает ФФД 1.2»; the group must be the one registered for the FFD 1.2 kassa.
         foreach (array('inn' => 'ИНН', 'key' => 'ключ (key)', 'group' => 'группа устройств (group, напр. main_2)') as $k => $label) {
@@ -361,13 +569,194 @@ class OrangeDataService {
     }
 
     /**
+     * cronFiscalizeOrders
+     *
+     * Scans recent orders that should have a sale receipt but have none confirmed, and classifies each one:
+     *   ready   → fiscalized (or, in report mode, only listed as "would be fiscalized");
+     *   blocked → needs a human (unscanned КМ, denied code, check not performed) → goes in the notice;
+     *   failed  → the attempt errored (OrangeData/network) → goes in the notice.
+     * Orders are bounded by a start date so the years of history predating this module are never touched.
+     * Scanned payment methods are $cronFiscalizePaymentCodes (currently just alfabank) — narrower than what
+     * the admin panel allows manually, because bank_transfer orders are B2B and settled outside this module.
+     *
+     * Report mode (`cron_fiscalize_mode` != 'fiscalize') sends NOTHING to OrangeData — it is safe to run first
+     * to see what the live mode would do. A code that has not been checked yet is checked when
+     * `cron_check_codes` is on and the mode is live; report mode never calls ТС ПИоТ either.
+     *
+     * Scope: admin/odoo_order_status_cron.php via the odoo_connector model.
+     *
+     * @param array $options Overrides for the module settings: 'mode' (report|fiscalize), 'since' (Y-m-d),
+     *                       'limit' (int), 'statuses' (int[]), 'check_codes' (bool).
+     * @return array ['mode','since','scanned','fiscalized','would_fiscalize','blocked','failed','items'=>[…],'errors'=>[…]]
+     */
+    public function cronFiscalizeOrders(array $options = array()) {
+        $repo = $this->repo();
+
+        $mode  = isset($options['mode']) ? $options['mode'] : (string) $this->config('cron_fiscalize_mode', 'report');
+        $since = isset($options['since']) ? $options['since'] : (string) $this->config('fiscalize_from_date', date('Y-m-d'));
+        $limit = (int) (isset($options['limit']) ? $options['limit'] : $this->config('cron_fiscalize_limit', 50));
+        $checkCodes = isset($options['check_codes']) ? (bool) $options['check_codes'] : (bool) $this->config('cron_check_codes', 1);
+
+        $statuses = isset($options['statuses']) ? $options['statuses'] : $this->config('cron_fiscalize_statuses', array());
+        if (!is_array($statuses)) {
+            $statuses = array_filter(array_map('trim', explode(',', (string) $statuses)), 'strlen');
+        }
+
+        $report = array('mode' => $mode, 'since' => $since, 'scanned' => 0, 'fiscalized' => 0,
+            'would_fiscalize' => 0, 'blocked' => 0, 'failed' => 0, 'items' => array(), 'errors' => array());
+
+        if (!$this->config('status', 0)) {
+            $report['errors'][] = 'Модуль OrangeData ТС ПИоТ отключён — фискализация по крону не выполняется.';
+            return $report;
+        }
+        if ($since === '') {
+            $report['errors'][] = 'Не задана дата начала фискализации (настройка «Фискализировать заказы с»).';
+            return $report;
+        }
+
+        $orders = $repo->findUnfiscalizedOrders($since, self::$cronFiscalizePaymentCodes, $statuses, $limit);
+        $report['scanned'] = count($orders);
+
+        foreach ($orders as $o) {
+            $order_id = (int) $o['order_id'];
+            $item = array(
+                'order_id' => $order_id, 'payment_code' => $o['payment_code'],
+                'order_status_id' => (int) $o['order_status_id'], 'customer_name' => $o['customer_name'],
+                'total' => $o['total'], 'date_added' => $o['date_added'],
+                'state' => '', 'reason' => '', 'document_id' => '',
+            );
+
+            try {
+                // Check any code that has not been checked yet, so an order only waiting on a check can proceed.
+                if ($checkCodes && $mode === 'fiscalize') {
+                    $pending = false;
+                    foreach ($repo->getOrderMarkingCodes($order_id) as $c) {
+                        if (empty($c['fiscalized']) && $c['km_raw'] !== '' && $c['status_code'] === null) { $pending = true; break; }
+                    }
+                    if ($pending) { $this->checkOrder($order_id); }
+                }
+
+                $readiness = $this->getFiscalReadiness($order_id);
+                $item['reason'] = $readiness['reason'];
+
+                if (!$readiness['ready']) {
+                    $item['state'] = 'blocked';
+                    $report['blocked']++;
+                    $report['items'][] = $item;
+                    continue;
+                }
+
+                if ($mode !== 'fiscalize') {
+                    $item['state'] = 'would_fiscalize';
+                    $report['would_fiscalize']++;
+                    $report['items'][] = $item;
+                    continue;
+                }
+
+                $result = $this->fiscalizeOrder($order_id);
+                $item['document_id'] = $result['document_id'];
+                $item['reason']      = $result['message'];
+                if (!empty($result['success'])) {
+                    $item['state'] = !empty($result['pending']) ? 'pending' : 'fiscalized';
+                    $report['fiscalized']++;
+                } else {
+                    $item['state'] = !empty($result['blocked']) ? 'blocked' : 'failed';
+                    $report[$item['state']]++;
+                }
+            } catch (Exception $e) {
+                $item['state']  = 'failed';
+                $item['reason'] = $e->getMessage();
+                $report['failed']++;
+                $report['errors'][] = 'Заказ #' . $order_id . ': ' . $e->getMessage();
+            }
+
+            $report['items'][] = $item;
+        }
+
+        return $report;
+    }
+
+    /**
+     * getFiscalReadiness
+     *
+     * Answers "could this order be fiscalized right now?" WITHOUT sending anything: the payment method is in the
+     * allow-list, and every marked unit is scanned and sale-allowed (or in аварийный режим). Same conditions
+     * fiscalizeOrder() enforces — it calls this first, so the cron's report mode and the real run never disagree.
+     *
+     * Scope: cronFiscalizeOrders() (report + pre-flight) and fiscalizeOrder().
+     *
+     * @param int $order_id
+     * @return array ['ready'=>bool,'code'=>string,'reason'=>string,'has_marked'=>bool,'scanned'=>int,'required'=>int]
+     *               code: ok | no_order | payment | unscanned | denied | unchecked
+     */
+    public function getFiscalReadiness($order_id) {
+        $repo = $this->repo();
+        $db   = $this->db();
+        $order_id = (int) $order_id;
+
+        $out = array('ready' => false, 'code' => '', 'reason' => '', 'has_marked' => false, 'scanned' => 0, 'required' => 0);
+
+        $orderQ = $db->query("SELECT payment_code FROM `" . DB_PREFIX . "order` WHERE order_id = '" . $order_id . "'");
+        if (!$orderQ->num_rows) {
+            return array('code' => 'no_order', 'reason' => 'Заказ не найден') + $out;
+        }
+
+        $payment_code = (string) $orderQ->row['payment_code'];
+        if (!in_array($payment_code, self::$fiscalizablePaymentCodes, true)) {
+            return array('code' => 'payment',
+                'reason' => 'Способ оплаты «' . ($payment_code !== '' ? $payment_code : '—') . '» не фискализируется модулем') + $out;
+        }
+
+        $codesByLine = array();
+        foreach ($repo->getOrderMarkingCodes($order_id) as $c) {
+            $codesByLine[$c['order_product_id']][] = $c;
+        }
+        $categoryMap = OrangeDataRepository::parseCategoryMap($this->config('marked_categories', array()));
+        $products = $db->query("SELECT * FROM `" . DB_PREFIX . "order_product` WHERE order_id = '" . $order_id . "'")->rows;
+
+        foreach ($products as $p) {
+            $opId      = (int) $p['order_product_id'];
+            $marking   = $repo->getProductMarking($p['product_id'], $categoryMap);
+            $lineCodes = isset($codesByLine[$opId]) ? $codesByLine[$opId] : array();
+            $isMarked  = !empty($marking['is_marked']) || !empty($lineCodes);
+            if (!$isMarked) {
+                continue;
+            }
+
+            $out['has_marked'] = true;
+            $need = (int) $p['quantity'];
+            $out['required'] += $need;
+            $out['scanned']  += min(count($lineCodes), $need);
+
+            if (count($lineCodes) < $need) {
+                return array('code' => 'unscanned',
+                    'reason' => 'Не отсканированы все КМ: ' . $p['name'] . ' (' . count($lineCodes) . '/' . $need . ')') + $out;
+            }
+            foreach ($lineCodes as $c) {
+                $emergency = ((int) $c['status_code'] === 203);
+                if (!empty($c['is_sale_allowed']) || $emergency) {
+                    continue;
+                }
+                $unchecked = $c['status_code'] === null || in_array((int) $c['status_code'], array(-1, 514), true);
+                return array('code' => $unchecked ? 'unchecked' : 'denied',
+                    'reason' => ($unchecked ? 'Проверка КМ не выполнена: ' : 'Продажа запрещена для КМ: ') . $p['name']
+                        . ($c['reason_text'] !== '' ? ' — ' . $c['reason_text'] : '')) + $out;
+            }
+        }
+
+        $out['ready'] = true;
+        $out['code']  = 'ok';
+        $out['reason'] = $out['has_marked']
+            ? 'Все КМ отсканированы и разрешены (' . $out['scanned'] . ')'
+            : 'В заказе нет маркируемых товаров';
+        return $out;
+    }
+
+    /**
      * fiscalizeOrder
      *
-     * Builds and submits the fiscal receipt for an order: each marked unit becomes a position with its
-     * itemCode + industryAttribute (tag 1260/1265); unmarked products and shipping become plain positions.
-     * Refuses to fiscalize if any marked unit is unscanned or sale-denied (unless аварийный режим).
-     *
-     * Scope: the "Фискализировать" action on the order panel, and the auto-fiscalize event.
+     * Issues the sale receipt for an order. Refuses (blocked) when getFiscalReadiness() says the order is not
+     * ready, so the cron's report and the real run apply identical rules.
      *
      * @param int  $order_id
      * @param bool $ignoreItemCodeCheck Skip the ФН code check (test contour only).
@@ -377,6 +766,13 @@ class OrangeDataService {
         $repo = $this->repo();
         $db = $this->db();
 
+        // Single source of truth for "may we fiscalize": the same check the cron uses in report mode.
+        $readiness = $this->getFiscalReadiness($order_id);
+        if (!$readiness['ready']) {
+            return array('success' => false, 'blocked' => true, 'document_id' => '', 'status' => null,
+                'message' => $readiness['reason']);
+        }
+
         // Query order tables directly so this works in BOTH admin and catalog (event) contexts.
         $order_id = (int) $order_id;
         $orderQ = $db->query("SELECT * FROM `" . DB_PREFIX . "order` WHERE order_id = '" . $order_id . "'");
@@ -385,12 +781,18 @@ class OrangeDataService {
         }
         $order = $orderQ->row;
 
-        // Fiscalize ONLY Alfabank-paid orders: Alfabank issues the «Предоплата 100%» check, so our receipt is the
-        // зачёт-аванса leg. Other methods are out of scope (COD CDEK — CDEK issues its own check; others not used),
-        // so refuse them. 'blocked' => the auto-fiscalize event logs a SKIP rather than an error.
-        if (empty($order['payment_code']) || $order['payment_code'] !== 'alfabank') {
+        // Fiscalize only payment methods we issue a receipt for:
+        //   alfabank      — Alfabank issues «Предоплата 100%», so our receipt is the зачёт-аванса leg (type 14);
+        //   bank_transfer — no acquirer receipt exists, so ours is the ONLY receipt (type 2 безналичными).
+        // The per-method payment type comes from the `payment_type_map` setting, not from here.
+        // Out of scope: cod / cod_cdek (CDEK issues its own check) and anything else.
+        // NB: the test must be «neither of them» (&&) — `!== a || !== b` is always true and would block everything.
+        // 'blocked' => the auto-fiscalize event logs a SKIP rather than an error.
+        $payment_code = isset($order['payment_code']) ? (string) $order['payment_code'] : '';
+        if (!in_array($payment_code, self::$fiscalizablePaymentCodes, true)) {
             return array('success' => false, 'blocked' => true, 'document_id' => '', 'status' => null,
-                'message' => 'Фискализация выполняется только для заказов, оплаченных Alfabank (оплата заказа: ' . (isset($order['payment_code']) ? $order['payment_code'] : '—') . ').');
+                'message' => 'Фискализация выполняется только для заказов с оплатой: ' . implode(', ', self::$fiscalizablePaymentCodes)
+                    . ' (оплата заказа: ' . ($payment_code !== '' ? $payment_code : '—') . ').');
         }
 
         $products = $db->query("SELECT * FROM `" . DB_PREFIX . "order_product` WHERE order_id = '" . $order_id . "'")->rows;
@@ -510,6 +912,9 @@ class OrangeDataService {
             $prev = $client->getDocumentStatus($prevId);
             if ((int) $prev['http_code'] === 200 && !empty($prev['body']['fp'])) {
                 $repo->markFiscalized($order_id, $prevId);
+                $repo->recordReceipt(array('order_id' => $order_id, 'document_id' => $prevId, 'kind' => 'sale',
+                    'fiscalized' => 1, 'fp' => $prev['body']['fp'],
+                    'document_number' => isset($prev['body']['documentNumber']) ? $prev['body']['documentNumber'] : ''));
                 return array('success' => true, 'message' => 'Чек уже зарегистрирован (ФП ' . $prev['body']['fp'] . ')', 'document_id' => $prevId, 'status' => $prev['body']);
             }
             if ((int) $prev['http_code'] === 202) {
@@ -545,8 +950,19 @@ class OrangeDataService {
         // 201 = accepted into the queue, 409 = this id already accepted earlier. Neither means the ФН has
         // confirmed the receipt — only a status body carrying `fp` does. Record the id as pending first.
         if ($create['http_code'] === 201 || $create['http_code'] === 409) {
-            $repo->setDocumentId($order_id, $docId);
-            return $this->confirmDocument($client, $repo, $order_id, $docId);
+            $repo->setDocumentId($order_id, $docId); // marked units only — no rows when the order has none
+            // Receipt row for EVERY order, so the cron can tell "already fiscalized" from "never sent".
+            $repo->recordReceipt(array('order_id' => $order_id, 'document_id' => $docId, 'kind' => 'sale',
+                'fiscalized' => 0, 'amount' => $amountKop / 100, 'payment_type' => $paymentType));
+            $result = $this->confirmDocument($client, $repo, $order_id, $docId);
+            $st = is_array($result['status']) ? $result['status'] : array();
+            $repo->recordReceipt(array('order_id' => $order_id, 'document_id' => $docId, 'kind' => 'sale',
+                'fiscalized' => !empty($st['fp']) ? 1 : 0,
+                'fp' => isset($st['fp']) ? $st['fp'] : '',
+                'document_number' => isset($st['documentNumber']) ? $st['documentNumber'] : '',
+                'amount' => $amountKop / 100, 'payment_type' => $paymentType,
+                'last_error' => empty($result['success']) ? $result['message'] : ''));
+            return $result;
         }
 
         $errs = isset($create['body']['errors']) ? implode('; ', $create['body']['errors']) : $create['raw'];
@@ -671,9 +1087,13 @@ class OrangeDataService {
         if (!$orderQ->num_rows) { return $fail('Заказ не найден'); }
         $order = $orderQ->row;
 
-        // Returns, like sales, are only for Alfabank-paid orders (a возврат of our зачёт-аванса receipt).
-        if (empty($order['payment_code']) || $order['payment_code'] !== 'alfabank') {
-            return $fail('Возврат оформляется только для заказов, оплаченных Alfabank (оплата заказа: ' . (isset($order['payment_code']) ? $order['payment_code'] : '—') . ').');
+        // Returns use the SAME allow-list as sales (self::$fiscalizablePaymentCodes): whatever we issued a sale
+        // receipt for must be refundable, otherwise an order could be sold with no way to issue возврат прихода.
+        // Only the money refund differs (Alfabank via repay(); bank_transfer is refunded manually by the bank).
+        $payment_code = isset($order['payment_code']) ? (string) $order['payment_code'] : '';
+        if (!in_array($payment_code, self::$fiscalizablePaymentCodes, true)) {
+            return $fail('Возврат оформляется только для заказов с оплатой: ' . implode(', ', self::$fiscalizablePaymentCodes)
+                . ' (оплата заказа: ' . ($payment_code !== '' ? $payment_code : '—') . ').');
         }
 
         $sale = $this->getSaleReceipt($order_id);
@@ -714,6 +1134,9 @@ class OrangeDataService {
                 $q = 1.0; // a marked unit is one physical item
                 $itemCode = (isset($sel['km']) && $sel['km'] !== '') ? MarkingCode::normalize($sel['km'], true)['code'] : $sp['item_code'];
                 $line['item_code'] = $itemCode; // builder adds itemCode; no tag1265 → no tag 1260
+                // Планируемый статус (tag 2003) on a RETURN is 3 «штучный товар … возвращён»; the builder's
+                // default 1 means «реализован» and would report the returned unit as sold again.
+                $line['planned_status'] = 3;
             }
             if ($prior + $q > $soldQty + 1e-9) { $over[] = $ref; continue; }
             $line['quantity'] = $q;

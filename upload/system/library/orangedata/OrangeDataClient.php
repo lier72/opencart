@@ -58,6 +58,7 @@ class OrangeDataClient {
             'client_info'   => array(),
             'verify_peer'   => true,
             'timeout'       => 30,
+            'debug'         => false, // true → each result carries 'verbose' (curl's TLS/HTTP trace) for diagnostics
         ), $config);
 
         $this->config['base_url'] = rtrim($this->config['base_url'], '/') . '/';
@@ -309,11 +310,26 @@ class OrangeDataClient {
         if ($payload !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         }
+        $trace = null;
+        if (!empty($this->config['debug'])) {
+            // curl's own step-by-step log (DNS, TCP, TLS handshake, client cert/key, HTTP). Contains no passphrase.
+            $trace = fopen('php://temp', 'w+');
+            curl_setopt($ch, CURLOPT_VERBOSE, true);
+            curl_setopt($ch, CURLOPT_STDERR, $trace);
+        }
 
         $raw       = curl_exec($ch);
         $httpCode  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlErr   = curl_errno($ch) ? curl_error($ch) : null;
+        $curlErrNo = curl_errno($ch);
+        $curlErr   = $curlErrNo ? curl_error($ch) . ' [curl errno ' . $curlErrNo . ']' : null;
         curl_close($ch);
+
+        $verbose = null;
+        if ($trace) {
+            rewind($trace);
+            $verbose = stream_get_contents($trace);
+            fclose($trace);
+        }
 
         $this->log($curlErr ? 'error' : 'debug', 'OrangeData ' . $method . ' ' . $path, array(
             'http_code' => $httpCode,
@@ -333,6 +349,7 @@ class OrangeDataClient {
             'body'      => $decoded,
             'raw'       => is_string($raw) ? $raw : '',
             'error'     => $curlErr,
+            'verbose'   => $verbose,
         );
     }
 

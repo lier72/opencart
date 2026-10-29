@@ -2842,11 +2842,17 @@ class ModelExtensionModuleOdooConnector extends Model {
                 }
             }
 
+            // Step 6b: OrangeData — fiscalize orders whose marking data is complete, list the rest for a human.
+            $json['fiscalization'] = $this->cronFiscalizeOrangeData($debug);
+
             // Step 7: Send email notification if any issues found
             $total_issues = count($json['orders_not_in_odoo']) +
                            count($json['orders_draft_in_odoo']) +
                            count($json['orders_cdek_not_received']) +
-                           (int)$json['alfabank_unmapped']['paid_without_order'];
+                           (int)$json['alfabank_unmapped']['paid_without_order'] +
+                           (int)$json['fiscalization']['blocked'] +
+                           (int)$json['fiscalization']['failed'] +
+                           (int)$json['fiscalization']['would_fiscalize'];
 
             if ($total_issues > 0) {
                 $email_sent = $this->sendOrderStatusNotificationEmail($json, $debug);
@@ -2875,6 +2881,45 @@ class ModelExtensionModuleOdooConnector extends Model {
         }
 
         return $json;
+    }
+
+    /**
+     * Fiscalize orders whose marking data is complete; report the ones that need a human.
+     *
+     * Delegates every fiscal decision to OrangeDataService::cronFiscalizeOrders() so the rules match the admin
+     * order panel exactly. Never throws: a fiscalization problem must not abort the Odoo status cron.
+     *
+     * @param bool $debug
+     * @return array service report (see cronFiscalizeOrders), or a zeroed report when the module is unavailable
+     */
+    private function cronFiscalizeOrangeData($debug = false) {
+        $empty = array('mode' => 'report', 'since' => '', 'scanned' => 0, 'fiscalized' => 0, 'would_fiscalize' => 0,
+            'blocked' => 0, 'failed' => 0, 'items' => array(), 'errors' => array());
+
+        $service_file = DIR_SYSTEM . 'library/orangedata/OrangeDataService.php';
+        if (!is_file($service_file)) {
+            return $empty;
+        }
+
+        try {
+            require_once $service_file;
+            $service = new \OrangeDataService($this->registry);
+            $report  = $service->cronFiscalizeOrders();
+
+            if ($debug) {
+                $this->log->write('cronFiscalizeOrangeData: ' . json_encode(array(
+                    'mode' => $report['mode'], 'since' => $report['since'], 'scanned' => $report['scanned'],
+                    'fiscalized' => $report['fiscalized'], 'would_fiscalize' => $report['would_fiscalize'],
+                    'blocked' => $report['blocked'], 'failed' => $report['failed'],
+                ), JSON_UNESCAPED_UNICODE));
+            }
+
+            return $report;
+        } catch (Exception $e) {
+            $this->log->write('cronFiscalizeOrangeData ERROR: ' . $e->getMessage());
+            $empty['errors'][] = 'OrangeData: ' . $e->getMessage();
+            return $empty;
+        }
     }
 
     /**
@@ -3097,6 +3142,60 @@ class ModelExtensionModuleOdooConnector extends Model {
                 $message .= '</tr>';
             }
             $message .= '</table><br/>';
+        }
+
+        // OrangeData fiscalization: what was issued, and what is waiting on a human.
+        if (!empty($data['fiscalization']) && !empty($data['fiscalization']['items'])) {
+            $f = $data['fiscalization'];
+            $mode_label = $f['mode'] === 'fiscalize' ? 'Фискализация' : 'Только отчёт (чеки не отправлялись)';
+
+            $message .= '<h3 style="color: #c00;">4. Фискализация OrangeData — ' . htmlspecialchars($mode_label) . '</h3>';
+            $message .= '<p>Проверено заказов: ' . (int) $f['scanned'] . ' (с ' . htmlspecialchars($f['since']) . ')';
+            if ((int) $f['fiscalized'])      { $message .= ' · пробито: <b>' . (int) $f['fiscalized'] . '</b>'; }
+            if ((int) $f['would_fiscalize']) { $message .= ' · готовы к фискализации: <b>' . (int) $f['would_fiscalize'] . '</b>'; }
+            if ((int) $f['blocked'])         { $message .= ' · требуют внимания: <b style="color:#c00;">' . (int) $f['blocked'] . '</b>'; }
+            if ((int) $f['failed'])          { $message .= ' · ошибок: <b style="color:#c00;">' . (int) $f['failed'] . '</b>'; }
+            $message .= '</p>';
+
+            $labels = array(
+                'fiscalized'      => array('Пробит', '#090'),
+                'pending'         => array('Отправлен, ожидает ФН', '#f90'),
+                'would_fiscalize' => array('Готов (режим отчёта)', '#00c'),
+                'blocked'         => array('Требует внимания', '#c00'),
+                'failed'          => array('Ошибка', '#c00'),
+            );
+
+            $message .= '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">';
+            $message .= '<tr style="background-color: #f0f0f0;">';
+            $message .= '<th>Заказ</th><th>Дата</th><th>Оплата</th><th>Сумма</th><th>Состояние</th><th>Причина / чек</th>';
+            $message .= '</tr>';
+
+            foreach ($f['items'] as $item) {
+                $state = isset($labels[$item['state']]) ? $labels[$item['state']] : array($item['state'], '#333');
+                $order_link = $admin_url . 'index.php?route=sale/order/info&order_id=' . (int) $item['order_id'];
+                $detail = $item['reason'];
+                if ($item['document_id'] !== '') {
+                    $detail = trim($detail . ' [' . $item['document_id'] . ']');
+                }
+
+                $message .= '<tr>';
+                $message .= '<td><a href="' . $order_link . '">' . (int) $item['order_id'] . '</a></td>';
+                $message .= '<td>' . htmlspecialchars($item['date_added']) . '</td>';
+                $message .= '<td>' . htmlspecialchars($item['payment_code']) . '</td>';
+                $message .= '<td>' . number_format((float) $item['total'], 2) . ' ₽</td>';
+                $message .= '<td><span style="color: ' . $state[1] . ';">' . htmlspecialchars($state[0]) . '</span></td>';
+                $message .= '<td>' . htmlspecialchars($detail) . '</td>';
+                $message .= '</tr>';
+            }
+            $message .= '</table><br/>';
+
+            if (!empty($f['errors'])) {
+                $message .= '<ul>';
+                foreach ($f['errors'] as $e) {
+                    $message .= '<li style="color:#c00;">' . htmlspecialchars($e) . '</li>';
+                }
+                $message .= '</ul>';
+            }
         }
 
         // Footer with errors if any

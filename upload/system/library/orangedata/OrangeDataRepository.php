@@ -106,6 +106,31 @@ class OrangeDataRepository {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
+        // One row per receipt we submit, for EVERY order — including orders with no marked goods, which have no
+        // order_marking_code rows at all. Without this there is no local record that such an order was fiscalized,
+        // so the cron could not tell "not fiscalized yet" from "fiscalized, nothing to store" and would re-send
+        // it on every run. Also the only place the sale receipt's ФП is kept (returns already keep theirs).
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "order_fiscal_receipt` (
+              `fiscal_receipt_id` int NOT NULL AUTO_INCREMENT,
+              `order_id`          int NOT NULL,
+              `document_id`       varchar(80) NOT NULL COMMENT 'OrangeData receipt id (oc-<order>-ship[-n] | …-return-<leg>)',
+              `kind`              varchar(8) NOT NULL DEFAULT 'sale' COMMENT 'sale | return',
+              `return_leg`        int NOT NULL DEFAULT '0' COMMENT '0 for a sale, else the return leg',
+              `fiscalized`        tinyint(1) NOT NULL DEFAULT '0' COMMENT '1 only once the ФН returned an ФП',
+              `fp`                varchar(32) NOT NULL DEFAULT '' COMMENT 'фискальный признак',
+              `document_number`   varchar(32) NOT NULL DEFAULT '',
+              `amount`            decimal(15,2) NOT NULL DEFAULT '0.00',
+              `payment_type`      int DEFAULT NULL COMMENT 'checkClose payment type: 14 зачёт аванса / 2 безнал / 1 нал',
+              `last_error`        varchar(1024) NOT NULL DEFAULT '',
+              `date_added`        datetime NOT NULL,
+              `date_modified`     datetime NOT NULL,
+              PRIMARY KEY (`fiscal_receipt_id`),
+              KEY `order_id` (`order_id`),
+              UNIQUE KEY `document` (`document_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
         // Migration for installs created before check_backend existed (records which backend produced the verdict).
         $col = $this->db->query("SHOW COLUMNS FROM `" . DB_PREFIX . "order_marking_code` LIKE 'check_backend'");
         if (!$col->num_rows) {
@@ -423,5 +448,92 @@ class OrangeDataRepository {
      */
     public function deleteReturnLeg($order_id, $return_leg) {
         $this->db->query("DELETE FROM `" . DB_PREFIX . "order_return_code` WHERE order_id = '" . (int)$order_id . "' AND return_leg = '" . (int)$return_leg . "' AND fiscalized = '0'");
+    }
+
+    /* ------------------------------------------------------------------ *
+     *  Fiscal receipts (order_fiscal_receipt) — one row per submitted receipt, for every order
+     * ------------------------------------------------------------------ */
+
+    /**
+     * recordReceipt
+     *
+     * Upserts the receipt row by document_id (the id is unique per receipt, and a retry of the same id must
+     * update, not duplicate). Call it when a document is accepted (fiscalized 0, "pending") and again when the
+     * ФН confirms it (fiscalized 1 + fp). Scope: OrangeDataService fiscalize/confirm paths.
+     *
+     * @param array $d order_id, document_id, kind, return_leg, fiscalized, fp, document_number, amount,
+     *                 payment_type, last_error — all optional except order_id + document_id.
+     */
+    public function recordReceipt(array $d) {
+        $set = array(
+            "order_id = '" . (int) $d['order_id'] . "'",
+            "document_id = '" . $this->db->escape($d['document_id']) . "'",
+            "kind = '" . $this->db->escape(isset($d['kind']) ? $d['kind'] : 'sale') . "'",
+            "return_leg = '" . (int) (isset($d['return_leg']) ? $d['return_leg'] : 0) . "'",
+            "fiscalized = '" . (int) (!empty($d['fiscalized'])) . "'",
+            "fp = '" . $this->db->escape(isset($d['fp']) ? (string) $d['fp'] : '') . "'",
+            "document_number = '" . $this->db->escape(isset($d['document_number']) ? (string) $d['document_number'] : '') . "'",
+            "amount = '" . (float) (isset($d['amount']) ? $d['amount'] : 0) . "'",
+            "payment_type = " . (isset($d['payment_type']) && $d['payment_type'] !== null ? "'" . (int) $d['payment_type'] . "'" : 'NULL'),
+            "last_error = '" . $this->db->escape(isset($d['last_error']) ? (string) $d['last_error'] : '') . "'",
+            "date_modified = NOW()",
+        );
+        // On a retry keep the first date_added, and never downgrade a confirmed receipt back to pending.
+        $update = array_slice($set, 2);
+        $update[] = "fiscalized = GREATEST(fiscalized, '" . (int) (!empty($d['fiscalized'])) . "')";
+
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "order_fiscal_receipt` SET " . implode(', ', $set) . ", date_added = NOW()
+            ON DUPLICATE KEY UPDATE " . implode(', ', $update));
+    }
+
+    /** All receipts of an order, newest first. Scope: admin panel / diagnostics. */
+    public function getOrderReceipts($order_id) {
+        return $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_fiscal_receipt` WHERE order_id = '" . (int)$order_id . "' ORDER BY fiscal_receipt_id DESC")->rows;
+    }
+
+    /**
+     * findUnfiscalizedOrders
+     *
+     * Orders that should have a sale receipt but have none confirmed. "Already fiscalized" is true if either a
+     * confirmed receipt row exists OR (legacy, before order_fiscal_receipt existed) a marking row is fiscalized.
+     * Bounded by a start date so the years of historic orders that predate this module are never touched.
+     *
+     * Scope: OrangeDataService::cronFiscalizeOrders().
+     *
+     * @param string $since        'YYYY-MM-DD' — only orders added on/after this date.
+     * @param array  $paymentCodes allowed order.payment_code values.
+     * @param array  $statusIds    allowed order.order_status_id values (empty = any non-zero status).
+     * @param int    $limit        batch size.
+     * @return array order rows
+     */
+    public function findUnfiscalizedOrders($since, array $paymentCodes, array $statusIds, $limit = 50) {
+        if (!$paymentCodes) {
+            return array();
+        }
+        $codes = array();
+        foreach ($paymentCodes as $c) { $codes[] = "'" . $this->db->escape($c) . "'"; }
+
+        $statusSql = '';
+        if ($statusIds) {
+            $ids = array();
+            foreach ($statusIds as $s) { $ids[] = (int) $s; }
+            $statusSql = " AND o.order_status_id IN (" . implode(',', $ids) . ")";
+        } else {
+            $statusSql = " AND o.order_status_id > 0";
+        }
+
+        return $this->db->query("
+            SELECT o.order_id, o.payment_code, o.order_status_id, o.total, o.currency_value, o.date_added,
+                   CONCAT(o.firstname, ' ', o.lastname) AS customer_name
+            FROM `" . DB_PREFIX . "order` o
+            WHERE o.payment_code IN (" . implode(',', $codes) . ")
+              AND o.date_added >= '" . $this->db->escape($since) . "'
+              " . $statusSql . "
+              AND NOT EXISTS (SELECT 1 FROM `" . DB_PREFIX . "order_fiscal_receipt` r
+                              WHERE r.order_id = o.order_id AND r.kind = 'sale' AND r.fiscalized = '1')
+              AND NOT EXISTS (SELECT 1 FROM `" . DB_PREFIX . "order_marking_code` m
+                              WHERE m.order_id = o.order_id AND m.fiscalized = '1')
+            ORDER BY o.order_id ASC
+            LIMIT " . (int) $limit)->rows;
     }
 }

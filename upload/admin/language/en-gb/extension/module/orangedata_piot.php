@@ -172,3 +172,19 @@ $_['text_verify_payments']          = 'payment (type=amount)';
 $_['text_verify_ok']                = 'Receipt registered; codes and industry attribute 1260/1265 match the check.';
 $_['text_verify_mismatch']          = 'Mismatch: tag 1265 in the receipt differs from the check result (or is missing).';
 $_['text_verify_expected']          = 'expected';
+$_['text_curl_trace']               = 'Detailed connection log (curl)';
+
+// Scheduled fiscalization (cron)
+$_['text_group_cron']               = 'Scheduled fiscalization (cron)';
+$_['entry_cron_mode']               = 'Mode';
+$_['text_cron_mode_report']         = 'Report only (send nothing)';
+$_['text_cron_mode_fiscalize']      = 'Fiscalize';
+$_['help_cron_mode']                = 'In report mode the cron sends NO receipts and does not call ТС ПИоТ — it only lists what it would do. Review the first report, then switch to Fiscalize.';
+$_['entry_fiscalize_from_date']     = 'Fiscalize orders from';
+$_['help_fiscalize_from_date']      = 'Orders created before this date are never touched. Protects against issuing receipts for years of order history.';
+$_['entry_cron_statuses']           = 'Order statuses';
+$_['help_cron_statuses']            = 'The cron considers only orders in the selected statuses. None selected = any status (still bounded by the start date).';
+$_['entry_cron_limit']              = 'Orders per run';
+$_['help_cron_limit']               = 'How many orders one cron run processes.';
+$_['entry_cron_check_codes']        = 'Check unchecked codes';
+$_['help_cron_check_codes']         = 'If a code is scanned but not yet checked, the cron runs the ТС ПИоТ check before fiscalizing (Fiscalize mode only).';

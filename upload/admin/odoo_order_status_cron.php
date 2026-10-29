@@ -171,6 +171,30 @@ try {
         echo "\n";
     }
 
+    if (!empty($result['fiscalization'])) {
+        $f = $result['fiscalization'];
+        echo "OrangeData fiscalization (" . ($f['mode'] === 'fiscalize' ? 'LIVE' : 'REPORT ONLY — nothing sent') . "):\n";
+        echo "  scanned=" . (int)$f['scanned'] . " since " . $f['since'] .
+            ", fiscalized=" . (int)$f['fiscalized'] .
+            ", ready=" . (int)$f['would_fiscalize'] .
+            ", blocked=" . (int)$f['blocked'] .
+            ", failed=" . (int)$f['failed'] . "\n";
+
+        foreach ($f['items'] as $item) {
+            echo "  - Order #" . (int)$item['order_id'] . " [" . $item['state'] . "] " . $item['reason'];
+            if ($item['document_id'] !== '') {
+                echo " (" . $item['document_id'] . ")";
+            }
+            echo "\n";
+        }
+
+        foreach ($f['errors'] as $e) {
+            echo "  ! " . $e . "\n";
+        }
+
+        echo "\n";
+    }
+
     if (!empty($result['errors'])) {
         echo "ERRORS:\n";
         foreach ($result['errors'] as $error) {

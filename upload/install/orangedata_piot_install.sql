@@ -1,13 +1,18 @@
 --
 -- OrangeData ТС ПИоТ / разрешительный режим (постановление РФ № 1944) schema.
 --
--- Three tables:
+-- Five tables:
 --   ocus_order_marking_code — one row PER PHYSICAL UNIT (qty 3 => 3 rows). Holds the scanned
 --       marking code, the ТС ПИоТ check verdict, and the tag1265 later written into the receipt.
 --   ocus_product_marking    — per-product "is this a marked good + which товарная группа" flag,
 --       kept in its own table so the core `ocus_product` table is not altered.
 --   ocus_odoo_variant_barcode — per-variant (product_option_value) EAN cache, backfilled from Odoo by
 --       cli/odoo_variant_barcode_sync.php; drives EAN-first scan routing on the order panel.
+--   ocus_order_return_code — customer returns (возврат прихода), one row per returned sale-receipt position,
+--       grouped into legs; built from the registered sale receipt (authoritative price + КМ).
+--   ocus_order_fiscal_receipt — one row per submitted SALE receipt, for every fiscalizable order (including
+--       orders with no marked goods, which have no order_marking_code rows at all). The only local record that
+--       an order's closing receipt was fiscalized; the cron (cronFiscalizeOrders) relies on it to never resend.
 --
 
 DROP TABLE IF EXISTS `ocus_order_marking_code`;
@@ -63,3 +68,50 @@ CREATE TABLE IF NOT EXISTS `ocus_odoo_variant_barcode` (
   KEY `product_id` (`product_id`),
   KEY `ean` (`ean`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Per-variant EAN cache for EAN-first DataMatrix scan routing';
+
+-- Customer returns (возврат прихода). Built from the REGISTERED sale receipt, so each row references a sale
+-- position: pos_ref = 'km:<sha1(itemCode)>' (marked unit, returned once) or 'pos:<index>' (non-marked, quantity
+-- capped at sold qty). Grouped into legs (oc-<order>-return-<leg>). Authoritative creator: OrangeDataRepository::install().
+CREATE TABLE IF NOT EXISTS `ocus_order_return_code` (
+  `return_code_id`   int NOT NULL AUTO_INCREMENT,
+  `order_id`         int NOT NULL,
+  `return_leg`       int NOT NULL DEFAULT '1' COMMENT '1-based: several partial returns per order',
+  `sale_document_id` varchar(80) NOT NULL DEFAULT '' COMMENT 'the sale receipt this return is built from',
+  `pos_ref`          varchar(80) NOT NULL COMMENT "km:<sha1(itemCode)> | pos:<saleIndex>",
+  `item_code`        text COMMENT 'КМ sent on the return (sold code reused, or scanned override)',
+  `text`             varchar(255) NOT NULL DEFAULT '',
+  `price`            decimal(15,2) NOT NULL DEFAULT '0.00' COMMENT 'per-unit refund price, copied from the sale receipt',
+  `quantity`         decimal(15,3) NOT NULL DEFAULT '1.000',
+  `document_id`      varchar(80) NOT NULL DEFAULT '',
+  `fp`               varchar(32) NOT NULL DEFAULT '',
+  `fiscalized`       tinyint(1) NOT NULL DEFAULT '0',
+  `date_added`       datetime NOT NULL,
+  `date_modified`    datetime NOT NULL,
+  PRIMARY KEY (`return_code_id`),
+  KEY `order_id` (`order_id`),
+  UNIQUE KEY `leg_pos` (`order_id`,`return_leg`,`pos_ref`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Customer return (возврат прихода) positions per leg';
+
+-- One row per submitted SALE receipt, for EVERY fiscalizable order — including orders with no marked goods,
+-- which have no ocus_order_marking_code rows at all. Without this there is no local record such an order was
+-- fiscalized, so the cron could not tell "not fiscalized yet" from "fiscalized, nothing to store" and would
+-- re-send it on every run. Also the only place the sale receipt's ФП is kept (returns already keep theirs, in
+-- ocus_order_return_code). Authoritative creator: OrangeDataRepository::install().
+CREATE TABLE IF NOT EXISTS `ocus_order_fiscal_receipt` (
+  `fiscal_receipt_id` int NOT NULL AUTO_INCREMENT,
+  `order_id`          int NOT NULL,
+  `document_id`       varchar(80) NOT NULL COMMENT 'OrangeData receipt id (oc-<order>-ship[-n] | …-return-<leg>)',
+  `kind`              varchar(8) NOT NULL DEFAULT 'sale' COMMENT 'sale | return',
+  `return_leg`        int NOT NULL DEFAULT '0' COMMENT '0 for a sale, else the return leg',
+  `fiscalized`        tinyint(1) NOT NULL DEFAULT '0' COMMENT '1 only once the ФН returned an ФП',
+  `fp`                varchar(32) NOT NULL DEFAULT '' COMMENT 'фискальный признак',
+  `document_number`   varchar(32) NOT NULL DEFAULT '',
+  `amount`            decimal(15,2) NOT NULL DEFAULT '0.00',
+  `payment_type`      int DEFAULT NULL COMMENT 'checkClose payment type: 14 зачёт аванса / 2 безнал / 1 нал',
+  `last_error`        varchar(1024) NOT NULL DEFAULT '',
+  `date_added`        datetime NOT NULL,
+  `date_modified`     datetime NOT NULL,
+  PRIMARY KEY (`fiscal_receipt_id`),
+  KEY `order_id` (`order_id`),
+  UNIQUE KEY `document` (`document_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='One row per submitted sale/return receipt, for cron idempotency';

@@ -67,6 +67,8 @@ class OrangeDataReceiptBuilder {
      *   @type bool   $emergency   True when check statusCode == 203 (omit industryAttribute).
      *   @type int    $payment_method_type  Override признак способа расчёта.
      *   @type int    $payment_subject_type Override признак предмета расчёта.
+     *   @type int    $planned_status Override планируемый статус (tag 2003). Required on a RETURN receipt:
+     *                3 = «штучный товар … возвращён» (the default 1 means «реализован»).
      * }
      * @return array The position structure.
      */
@@ -94,7 +96,7 @@ class OrangeDataReceiptBuilder {
             }
             $position['paymentSubjectType']      = isset($line['payment_subject_type']) ? (int) $line['payment_subject_type'] : (int) $this->defaults['marked_subject_type'];
             $position['itemCode']                = (string) $line['item_code'];
-            $position['plannedStatus']           = (int) $this->defaults['planned_status'];
+            $position['plannedStatus']           = isset($line['planned_status']) ? (int) $line['planned_status'] : (int) $this->defaults['planned_status'];
             $position['quantityMeasurementUnit'] = (int) $this->defaults['quantity_measurement_unit'];
 
             // Attach отраслевой реквизит 1260 only when a check token exists and we are NOT in аварийный режим.

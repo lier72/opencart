@@ -1,0 +1,214 @@
+{
+    "source": "https://esm-emu.ao-esp.ru/api/v3/codes/check",
+    "recorded": "2026-10-01T19:04:50+00:00",
+    "cases": [
+        {
+            "scenario": {
+                "id": "201",
+                "title": "5.1 Нет сведений о нанесении (utilised=false)",
+                "expect": "deny",
+                "reason": 2,
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNW9NaCxyemJXSXRYRh05MUZGRDAdOTJkR1Z6ZElxcUdkVmRzRXJpQXNXM1pXZXQ4QTVrZWVxcEcyNkkwdDhSRE5rPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215oMh,rzbWItXF\\u001D91FFD0\\u001D92dGVzdIqqGdVdsEriAsW3ZWet8A5keeqpG26I0t8RDNk=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215oMh,rzbWItXF\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":true,\"realizable\":false,\"utilised\":false,\"isOwner\":true,\"isBlocked\":false,\"errorCode\":0,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"ff0bcc14-9a46-49a9-b56a-fa1f0ea9c95c\",\"reqTimestamp\":1790881480023,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "202",
+                "title": "5.2 Не введён в оборот (realizable=false)",
+                "expect": "deny",
+                "reason": 5,
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNVh4LFRlPk82OTNGdx05MUZGRDAdOTJkR1Z6ZER6ZjROTlZtYlF3NWQxYW5UN1FKNGVNQjE1M2xkN0RHOFl5WnBFPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215Xx,Te>O693Fw\\u001D91FFD0\\u001D92dGVzdDzf4NNVmbQw5d1anT7QJ4eMB153ld7DG8YyZpE=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215Xx,Te>O693Fw\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":true,\"realizable\":false,\"utilised\":true,\"isOwner\":true,\"isBlocked\":false,\"errorCode\":0,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"d5efb18d-2a45-4c1a-bed5-2a1dd9373a8f\",\"reqTimestamp\":1790881480226,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "203",
+                "title": "5.3 Выведен из оборота (sold=true)",
+                "expect": "deny",
+                "reason": 4,
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNXZYWGg8RWsoO1FzRh05MUZGRDAdOTJkR1Z6ZERleXdHTEF6VkhJaWQza3V5TXloUjBHMlMvKzdFVGVQdG15a1pvPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215vXXh<Ek(;QsF\\u001D91FFD0\\u001D92dGVzdDeywGLAzVHIid3kuyMyhR0G2S/+7ETePtmykZo=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215vXXh<Ek(;QsF\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":true,\"realizable\":false,\"utilised\":true,\"isOwner\":true,\"isBlocked\":false,\"errorCode\":0,\"isTracking\":true,\"sold\":true,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"a63d91ac-4471-4602-9737-33ea9f8ab73b\",\"reqTimestamp\":1790881480472,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "204",
+                "title": "5.4 Заблокирован ОГВ (isBlocked=true)",
+                "expect": "deny",
+                "reason": 6,
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNVEpSi9CJ2NQMylILh05MUZGRDAdOTJkR1Z6ZEo0aE1ZYlgzaHF5NXcva3FyVnBxU1ZraEoxeENvRklPaTZrUUtZPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215Q)J/B'cP3)H.\\u001D91FFD0\\u001D92dGVzdJ4hMYbX3hqy5w/kqrVpqSVkhJ1xCoFIOi6kQKY=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215Q)J/B'cP3)H.\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":true,\"realizable\":true,\"utilised\":true,\"isOwner\":false,\"isBlocked\":true,\"ogvs\":[\"RAR\"],\"errorCode\":0,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"33293429-229b-4231-ace8-207c01cdc977\",\"reqTimestamp\":1790881480711,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "205",
+                "title": "5.5 Нет сведений о маркировке (found=false)",
+                "expect": "deny",
+                "reason": 1,
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNW8zM0tGbVhzPiVPRh05MUZGRDAdOTJkR1Z6ZEwwWkoxa0VreEN0SVRGYU16VjFPWW1jTlhaQm5tTFNlOG9kM2FJPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215o33KFmXs>%OF\\u001D91FFD0\\u001D92dGVzdL0ZJ1kEkxCtITFaMzV1OYmcNXZBnmLSe8od3aI=\",\"found\":false,\"valid\":true,\"printView\":\"0104607809596237215o33KFmXs>%OF\",\"gtin\":\"04607809596237\",\"verified\":false,\"realizable\":false,\"utilised\":false,\"isOwner\":false,\"isBlocked\":false,\"message\":\"cannot find code [0104607809596237215o33KFmXs>%OF\\u001D91FFD0\\u001D92dGVzdL0ZJ1kEkxCtITFaMzV1OYmcNXZBnmLSe8od3aI=] in db\",\"errorCode\":10,\"isTracking\":false,\"sold\":false}],\"reqId\":\"198d7d49-ac8e-489b-80be-c8172d6b09ce\",\"reqTimestamp\":1790881480911,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "206",
+                "title": "5.6 DataMatrix без EAN — штатная продажа",
+                "expect": "allow",
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNTwoTyFtRUMqakliMx05MUZGRDAdOTJkR1Z6ZER5dnRxdWlXUEV3cStiaGVmNjd5Qm11K3BpQTI4em9PZHBXYkNZPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215<(O!mEC*jIb3\\u001D91FFD0\\u001D92dGVzdDyvtquiWPEwq+bhef67yBmu+piA28zoOdpWbCY=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215<(O!mEC*jIb3\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":true,\"realizable\":true,\"utilised\":true,\"isOwner\":true,\"isBlocked\":false,\"errorCode\":0,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"44b2f8e3-48e2-496b-b99f-44078569974d\",\"reqTimestamp\":1790881481091,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "207",
+                "title": "5.7 Некорректный код проверки (verified=false)",
+                "expect": "deny",
+                "reason": 3,
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNWd1S0pLZEk9ISlGJh05MUZGRDAdOTJkR1Z6ZEExWTNLWUZZNGpPNzFKK0toYVEwVEh2UmVzVlVHQ3pVSzd0YVYwPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215guKJKdI=!)F&\\u001D91FFD0\\u001D92dGVzdA1Y3KYFY4jO71J+KhaQ0THvResVUGCzUK7taV0=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215guKJKdI=!)F&\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":false,\"realizable\":true,\"utilised\":true,\"isOwner\":true,\"isBlocked\":false,\"message\":\"Code is invalid (cryptoEnd missing or incorrect)\",\"errorCode\":5,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"77baaa4a-509b-43f0-a2d7-6f047c0a7eac\",\"reqTimestamp\":1790881481387,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "208",
+                "title": "5.8 Дубль КМ в чеке",
+                "expect": "allow",
+                "offline": 0,
+                "local": "ПМСР must reject the 2nd scan of the same КМ in one order",
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNTwoTyFtRUMqakliMx05MUZGRDAdOTJkR1Z6ZER5dnRxdWlXUEV3cStiaGVmNjd5Qm11K3BpQTI4em9PZHBXYkNZPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215<(O!mEC*jIb3\\u001D91FFD0\\u001D92dGVzdDyvtquiWPEwq+bhef67yBmu+piA28zoOdpWbCY=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215<(O!mEC*jIb3\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":true,\"realizable\":true,\"utilised\":true,\"isOwner\":true,\"isBlocked\":false,\"errorCode\":0,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"b18581a6-1d97-497d-8033-9a260646ad82\",\"reqTimestamp\":1790881481682,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "209",
+                "title": "5.9 Повторная продажа",
+                "expect": "allow",
+                "offline": 0,
+                "local": "ПМСР must reject a КМ already fiscalized in another order",
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNTwoTyFtRUMqakliMx05MUZGRDAdOTJkR1Z6ZER5dnRxdWlXUEV3cStiaGVmNjd5Qm11K3BpQTI4em9PZHBXYkNZPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215<(O!mEC*jIb3\\u001D91FFD0\\u001D92dGVzdDyvtquiWPEwq+bhef67yBmu+piA28zoOdpWbCY=\",\"found\":true,\"valid\":true,\"printView\":\"0104607809596237215<(O!mEC*jIb3\",\"gtin\":\"04607809596237\",\"groupIds\":[1],\"verified\":true,\"realizable\":true,\"utilised\":true,\"isOwner\":true,\"isBlocked\":false,\"errorCode\":0,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"ba990713-10ac-4570-8c73-c08b9de916b2\",\"reqTimestamp\":1790881481922,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "210",
+                "title": "5.10 Офлайн, нет в чёрном списке",
+                "expect": "allow",
+                "offline": 1,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNTwoTyFtRUMqajRMTR05MUZGRDAdOTJkR1Z6ZER5dnRxdWlXUEV3cStiaGVmNjd5Qm11K3BpQTI4em9PZHBXYkNZPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215<(O!mEC*j4LM\",\"found\":false,\"valid\":false,\"printView\":\"0104607809596237215<(O!mEC*j4LM\",\"gtin\":\"04607809596237\",\"groupIds\":[],\"verified\":false,\"realizable\":false,\"utilised\":false,\"isBlocked\":false,\"ogvs\":[],\"sold\":false}],\"reqId\":\"3810c7a2-8242-438e-bebc-42fe901d8079\",\"reqTimestamp\":1790881483678,\"isCheckedOffline\":true,\"version\":\"1ebf3971-5b24-403b-ae6d-8bb5a0383c14\",\"inst\":\"6e7ff224-0e08-41ed-844c-d386675f4e50\"}]}"
+        },
+        {
+            "scenario": {
+                "id": "211",
+                "title": "5.11 Офлайн, нет в чёрном списке (ГИС МТ 5 с)",
+                "expect": "allow",
+                "offline": 1,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNWcldVBJd3ErNVJYUR05MUZGRDAdOTJkR1Z6ZEtRa3gydEh5N3pEV1FSUHpOVGR5WWU3ZlJ3WElMTS80TzZaenBnPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215g%uPIwq+5RXQ\",\"found\":false,\"valid\":false,\"printView\":\"0104607809596237215g%uPIwq+5RXQ\",\"gtin\":\"04607809596237\",\"groupIds\":[],\"verified\":false,\"realizable\":false,\"utilised\":false,\"isBlocked\":false,\"ogvs\":[],\"sold\":false}],\"reqId\":\"1949f419-70c8-4543-ac29-28b1e05366e3\",\"reqTimestamp\":1790881485388,\"isCheckedOffline\":true,\"version\":\"1ebf3971-5b24-403b-ae6d-8bb5a0383c14\",\"inst\":\"6e7ff224-0e08-41ed-844c-d386675f4e50\"}]}"
+        },
+        {
+            "scenario": {
+                "id": "212",
+                "title": "5.12 Офлайн, в чёрном списке",
+                "expect": "deny",
+                "reason": 6,
+                "offline": 1,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNWcldURPaW8rNVJYUR05MUZGRDAdOTJkR1Z6ZEtRa3gydEh5N3pEV1FSUHpOVGR5WWU3ZlJ3WElMTS80TzZaenBnPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215g%uDOio+5RXQ\",\"found\":false,\"valid\":false,\"printView\":\"0104607809596237215g%uDOio+5RXQ\",\"gtin\":\"04607809596237\",\"groupIds\":[],\"verified\":false,\"realizable\":false,\"utilised\":false,\"isBlocked\":true,\"ogvs\":[],\"sold\":false}],\"reqId\":\"c1d47c64-0244-44de-baca-9a50076dc61c\",\"reqTimestamp\":1790881487124,\"isCheckedOffline\":true,\"version\":\"1ebf3971-5b24-403b-ae6d-8bb5a0383c14\",\"inst\":\"6e7ff224-0e08-41ed-844c-d386675f4e50\"}]}"
+        },
+        {
+            "scenario": {
+                "id": "213",
+                "title": "5.13 Офлайн, в чёрном списке (ГИС МТ 5 с)",
+                "expect": "deny",
+                "reason": 6,
+                "offline": 1,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNWcldURPaW8rNVJMTR05MUZGRDAdOTJkR1Z6ZEtRa3gydEh5N3pEV1FSUHpOVGR5WWU3ZlJ3WElMTS80TzZaenBnPQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104607809596237215g%uDOio+5RLM\",\"found\":false,\"valid\":false,\"printView\":\"0104607809596237215g%uDOio+5RLM\",\"gtin\":\"04607809596237\",\"groupIds\":[],\"verified\":false,\"realizable\":false,\"utilised\":false,\"isBlocked\":true,\"ogvs\":[],\"sold\":false}],\"reqId\":\"9ca51b19-c6db-4ae0-804d-dc0f2f4f79df\",\"reqTimestamp\":1790881488950,\"isCheckedOffline\":true,\"version\":\"1ebf3971-5b24-403b-ae6d-8bb5a0383c14\",\"inst\":\"6e7ff224-0e08-41ed-844c-d386675f4e50\"}]}"
+        },
+        {
+            "scenario": {
+                "id": "214",
+                "title": "5.14 Ошибка 203 → аварийный режим",
+                "expect": "emergency",
+                "offline": 0,
+                "b64": "MDEwNDYwNzgwOTU5NjIzNzIxNWNocFZLdk1PRkl0TB05MUZGRDAdOTJkR1Z6ZEZ4dS9MOTYwTVc2SU5rbzhMWjBMbk1mQldwTmo0SHh1VlNSaDRZPQ=="
+            },
+            "http_code": 203,
+            "raw": "{\"code\":203,\"message\":\"Аварийный режим\",\"details\":[]}"
+        },
+        {
+            "scenario": {
+                "id": "215",
+                "title": "5.15 Продажа в поставарийном режиме (code 204)",
+                "expect": "allow",
+                "offline": 0,
+                "b64": "MDEwNDgxNTcxOTA2OTU0NzIxNWYsYU5vU0FrRTVrah05MUZGRDAdOTJkR1Z6ZENOZjB3eDZwTFJvNTVoOHdRMjVuYVZqY2d6djZudTZ1YWVBVzl3PQ=="
+            },
+            "http_code": 200,
+            "raw": "{\"codesResponse\":[{\"code\":204,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104815719069547215f,aNoSAkE5kj\\u001D91FFD0\\u001D92dGVzdCNf0wx6pLRo55h8wQ25naVjcgzv6nu6uaeAW9w=\",\"found\":true,\"valid\":true,\"printView\":\"0104815719069547215f,aNoSAkE5kj\",\"gtin\":\"04815719069547\",\"groupIds\":[1],\"verified\":true,\"realizable\":true,\"utilised\":true,\"isOwner\":true,\"isBlocked\":false,\"errorCode\":0,\"isTracking\":true,\"sold\":false,\"packageType\":\"UNIT\",\"producerInn\":\"7605016030\"}],\"reqId\":\"b920b986-01b1-4a36-8690-342b9e0909b6\",\"reqTimestamp\":1790881489574,\"isCheckedOffline\":false}]}"
+        },
+        {
+            "scenario": {
+                "id": "e203",
+                "title": "Общая: аварийный режим (HTTP 203)",
+                "expect": "emergency",
+                "offline": 0,
+                "b64": "MDEwNDY3MDU0MDE3NjA5OTIxNUxwR0t5HTkzZEdWeg=="
+            },
+            "http_code": 203,
+            "raw": "{\"code\":203,\"message\":\"Аварийный режим\",\"details\":[]}"
+        },
+        {
+            "scenario": {
+                "id": "e514",
+                "title": "Общая: нет ответа ГИС МТ/ЛМ ЧЗ за 1800 мс (514)",
+                "expect": "unavailable",
+                "offline": 0,
+                "b64": "MDEwNDgxMzQ0NTAwMzI5MzIxNVRtaVYsZ1x1MDAxZDkzZEdWeg=="
+            },
+            "http_code": 514,
+            "raw": "{\"code\":514,\"message\":\"Не удалось получить ответ от ГИС МТ или ЛМ ЧЗ за 1800mc\",\"details\":[]}"
+        },
+        {
+            "scenario": {
+                "id": "e500",
+                "title": "Общая: HTTP 500 от ТС ПИоТ",
+                "expect": "unavailable",
+                "offline": 0,
+                "b64": "MDEwNDY3MDU0MDE3NjA5OTIxNVBwR0t5HTkzZEdWeg=="
+            },
+            "http_code": 500,
+            "raw": "{\"codesResponse\":[{\"code\":0,\"description\":\"ok\",\"codes\":[{\"cis\":\"0104670540176099215PpGKy\",\"found\":false,\"valid\":false,\"printView\":\"0104670540176099215PpGKy\",\"gtin\":\"04670540176099\",\"groupIds\":[],\"verified\":false,\"realizable\":false,\"utilised\":false,\"isBlocked\":false,\"ogvs\":[]}],\"reqId\":\"3606e50e-65d4-460d-8aef-18231fad59fa\",\"reqTimestamp\":1790881490288,\"isCheckedOffline\":true,\"version\":\"1ebf3971-5b24-403b-ae6d-8bb5a0383c14\",\"inst\":\"6e7ff224-0e08-41ed-844c-d386675f4e50\"}]}"
+        }
+    ]
+}
