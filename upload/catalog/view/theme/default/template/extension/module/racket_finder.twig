@@ -1,0 +1,154 @@
+{{ header }}
+<div id="racket-finder" class="container">
+  <ul class="breadcrumb">
+    {% for breadcrumb in breadcrumbs %}
+    <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+    {% endfor %}
+  </ul>
+  <div class="row">{{ column_left }}
+    {% if column_left and column_right %}
+    {% set class = 'col-sm-6' %}
+    {% elseif column_left or column_right %}
+    {% set class = 'col-sm-9' %}
+    {% else %}
+    {% set class = 'col-sm-12' %}
+    {% endif %}
+    <div id="content" class="{{ class }}">{{ content_top }}
+      <div class="rf-root">
+
+<header class="top">
+  <svg class="court-lines" viewBox="0 0 1200 220" preserveAspectRatio="none" aria-hidden="true">
+    <g fill="none" stroke="currentColor" stroke-width="3">
+      <rect x="40" y="20" width="1120" height="260"/><line x1="600" y1="20" x2="600" y2="280"/>
+      <line x1="420" y1="20" x2="420" y2="280"/><line x1="780" y1="20" x2="780" y2="280"/>
+      <line x1="40" y1="60" x2="1160" y2="60"/><line x1="110" y1="20" x2="110" y2="280"/><line x1="1090" y1="20" x2="1090" y2="280"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <div class="lang" role="group" aria-label="Язык / Language"><button type="button" data-setlang="ru" aria-pressed="false">RU</button><button type="button" data-setlang="en" aria-pressed="false">EN</button></div>
+    <div class="eyebrow" data-i18n="eyebrow">Uniqsport</div>
+    <h1 data-i18n="h1">Подбор ракетки по характеру</h1>
+    <p class="lead" data-i18n="lead">Подбор ракетки по характеру игры — Li-Ning, Yonex и Victor. Учитываем не только вес, баланс и жёсткость, но и маховый вес, вес головы и технологии рамы и стержня.</p>
+    <nav class="tabs" aria-label="Разделы" data-i18n-attr="aria-label:a_sections">
+      <a href="#demo" id="t-demo" data-i18n="t_demo">Подбор</a>
+      <a href="#concept" id="t-concept" data-i18n="t_concept">Как подбираем</a>
+    </nav>
+  </div>
+</header>
+
+<dialog class="map viz-root" id="mapdlg" aria-labelledby="map-title">
+  <div class="map-h"><div><h2 id="map-title" data-i18n="map_title">Карты ракеток Li-Ning · Yonex · Victor</h2>
+    <div class="map-tabs" role="tablist" aria-label="Карта" data-i18n-attr="aria-label:a_map">
+      <button type="button" role="tab" id="map-k-char" aria-selected="true" data-i18n="map_char">Сходство: мощь · контроль · скорость</button>
+      <button type="button" role="tab" id="map-k-feel" aria-selected="false" data-i18n="map_feel">Ощущение в руке: тяжесть и жёсткость</button>
+    </div>
+    <p id="map-desc"></p></div>
+    <button type="button" class="map-x" id="map-close" aria-label="Закрыть" data-i18n-attr="aria-label:a_close">×</button></div>
+  <div class="map-f" id="map-f">
+    <label><input type="checkbox" data-br="Li-Ning" checked> Li-Ning</label>
+    <label><input type="checkbox" data-br="Yonex" checked> Yonex</label>
+    <label><input type="checkbox" data-br="Victor" checked> Victor</label>
+    <select id="map-u" aria-label="Вес" data-i18n-attr="aria-label:a_weight"><option value="" data-i18n="u_any">Любой вес</option><option value="3">3U</option><option value="4" selected>4U</option><option value="5">5U</option><option value="6" data-i18n="u_6">6U и легче</option></select>
+    <label><input type="checkbox" id="map-site"> <span data-i18n="map_site">Только в магазине</span></label>
+    <label><input type="checkbox" id="map-old"> <span data-i18n="map_old">Без моделей прошлых лет</span></label>
+    <input type="search" id="map-q" placeholder="Найти модель" aria-label="Найти модель" data-i18n-attr="placeholder:a_find;aria-label:a_find">
+    <span class="seg" role="group" aria-label="Вид" data-i18n-attr="aria-label:a_view"><button type="button" id="map-v-plot" aria-pressed="true" data-i18n="v_plot">Диаграмма</button><button type="button" id="map-v-tbl" aria-pressed="false" data-i18n="v_tbl">Списком</button></span>
+    <span class="cnt" id="map-cnt"></span>
+  </div>
+  <div class="map-b" id="map-b"><svg class="plot" id="map-svg" viewBox="0 0 1000 540" role="img" aria-label="Карта ракеток"></svg><div class="map-tip" id="map-tip" hidden></div></div>
+  <div class="map-sim" id="map-sim" hidden></div>
+  <div class="map-tbl" id="map-tbl" hidden></div>
+  <div class="map-legend" id="map-legend"></div>
+  <p class="map-note" id="map-note"></p>
+</dialog>
+
+<main>
+<div class="wrap">
+
+<section id="v-demo">
+  <div class="bench">
+    <aside class="panel quiz">
+      <button type="button" class="mapbtn" id="mapbtn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 3v14h14"/><circle cx="7" cy="12" r="1.6"/><circle cx="11" cy="8" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="14" cy="12" r="1.6"/></svg><span data-i18n="map_title">Карты ракеток Li-Ning · Yonex · Victor</span></button>
+      <div class="modes" role="group" aria-label="Способ подбора" data-i18n-attr="aria-label:a_modes">
+        <button type="button" id="m-quiz" aria-pressed="true" data-i18n="m_quiz">По вопросам</button>
+        <button type="button" id="m-like" aria-pressed="false" data-i18n="m_like">От моей ракетки</button>
+      </div>
+      <form id="quiz" autocomplete="off">
+        <fieldset><legend data-i18n="q_who">Для кого ракетка?</legend><div class="chips" data-q="who"></div></fieldset>
+        <fieldset><legend data-i18n="q_lvl">Как давно играете?</legend><div class="chips" data-q="lvl"></div></fieldset>
+        <fieldset><legend data-i18n="q_tier">Какую ракетку ищете?</legend><div class="chips" data-q="tier"></div><p class="hint" data-i18n="h_tier">Оптимальную — подбор из всех классов под ваш уровень. Или выберите класс: начальная, любительская, полупрофессиональная, профессиональная.</p></fieldset>
+        <fieldset><legend data-i18n="q_fmt">Где играете чаще?</legend><div class="chips" data-q="fmt"></div></fieldset>
+        <fieldset><legend data-i18n="q_style">Ваша игра</legend><div class="chips" data-q="style"></div></fieldset>
+        <fieldset><legend data-i18n="q_swing">Какой у вас замах?</legend><div class="chips" data-q="swing"></div><p class="hint" data-i18n="h_swing">Резкий — бьёте кистью, волан легко летит до задней линии.</p></fieldset>
+        <fieldset><legend data-i18n="q_arm">Устаёт рука или локоть?</legend><div class="chips" data-q="arm"></div></fieldset>
+        <fieldset><legend data-i18n="q_brand">Бренд</legend><div class="chips" data-q="brand"></div></fieldset>
+        <label class="toggle"><input type="checkbox" id="instock"> <span data-i18n="instock">Только в наличии</span></label>
+      </form>
+      <form id="like" hidden autocomplete="off">
+        <fieldset id="f-search"><legend><label for="ref-q" data-i18n="ref_q">Ваша ракетка или та, что понравилась</label></legend>
+          <div class="search">
+            <input id="ref-q" type="search" placeholder="Например: аксфорс 80 или Astrox 88D" data-i18n-attr="placeholder:a_refph" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ref-list" autocomplete="off" spellcheck="false">
+            <ul id="ref-list" class="sugg" role="listbox" hidden></ul>
+          </div>
+          <p class="picked" id="ref-picked"></p>
+          <button type="button" class="linkbtn" id="to-manual" data-i18n="to_manual">Моей ракетки нет — введу характеристики</button>
+        </fieldset>
+        <fieldset id="f-manual" class="manual" hidden><legend data-i18n="man_h">Характеристики вашей ракетки</legend>
+          <label class="mfield"><span data-i18n="man_name">Название (необязательно)</span><input id="man-name" type="text" placeholder="Например: Victor Thruster K 9900" data-i18n-attr="placeholder:a_manph"></label>
+          <div class="mfield"><span data-i18n="man_u">Вес</span><div class="chips" data-q="man_u"></div></div>
+          <div class="mrow">
+            <label class="mfield"><span data-i18n="man_bp">Баланс, мм</span><input id="man-bp" type="number" inputmode="numeric" min="270" max="340" placeholder="если знаете" data-i18n-attr="placeholder:a_ifknown"></label>
+            <label class="mfield"><span data-i18n="man_p">Цена, ₽</span><input id="man-p" type="number" inputmode="numeric" min="0" placeholder="для «Дешевле»" data-i18n-attr="placeholder:a_forcheap"></label>
+          </div>
+          <label class="mfield"><span data-i18n="man_sw">Маховый вес, кг·см² (если измеряли)</span><input id="man-sw" type="number" inputmode="decimal" step="0.5" min="70" max="100" placeholder="например 85" data-i18n-attr="placeholder:a_eg85"></label>
+          <div class="mfield"><span data-i18n="man_bt">Баланс, если мм не знаете</span><div class="chips" data-q="man_bt"></div></div>
+          <div class="mfield"><span data-i18n="man_f">Жёсткость стержня</span><div class="chips" data-q="man_f"></div></div>
+          <div class="mfield"><span data-i18n="man_s">Характер ракетки</span><div class="chips" data-q="man_s"></div></div>
+          <button type="button" class="linkbtn" id="to-search" data-i18n="to_search">Вернуться к поиску по каталогу</button>
+        </fieldset>
+        <fieldset><legend data-i18n="q_dir">Что хотите получить?</legend><div class="chips" data-q="dir"></div></fieldset>
+        <fieldset><legend data-i18n="q_tier">Какую ракетку ищете?</legend><div class="chips" data-q="ltier"></div><p class="hint" id="ltier-hint" data-i18n="h_ltier">Оптимальную — того же класса, что и ваша. Дешевле — похожие из класса ниже. Или выберите класс сами.</p></fieldset>
+        <fieldset><legend data-i18n="q_brand">Бренд</legend><div class="chips" data-q="brand2"></div></fieldset>
+        <label class="toggle"><input type="checkbox" id="instock2"> <span data-i18n="instock">Только в наличии</span></label>
+        <p class="hint" data-i18n="h_like">Ищем ракетки с похожим характером из других серий и брендов, со сдвигом в выбранную сторону.</p>
+      </form>
+    </aside>
+    <div style="min-width:0">
+      <section class="tune panel" id="tune" aria-labelledby="tune-h">
+        <div class="tune-head"><h2 id="tune-h">Ваш профиль игрока</h2><span class="tune-state" id="tune-state">по ответам</span><button type="button" class="linkbtn" id="tune-reset" hidden>Вернуть по ответам</button></div>
+        <p class="hint" id="tune-hint">Профиль собран по ответам. Двигайте ползунки, если хотите задать свои значения — например, мощь 9, скорость 5.</p>
+        <div class="sliders" id="sliders"></div>
+      </section>
+      <div id="results" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section id="v-concept" hidden>
+<div class="doc" data-only="ru">
+  <h2>Как подбираем</h2>
+  <p>Подборщик сравнивает ракетки не по таблице характеристик, а по <b>характеру игры</b> — пяти оценкам от 1 до 10: мощь, скорость, контроль, лёгкость освоения и комфорт для руки. Оценки считаются по замерам на станке магазина (вес, баланс и маховый вес), по весу головы и толщине стержня, а также по технологиям рамы и стержня каждой модели.</p>
+  <p>Там, где ракетку мы измеряли сами, стоит отметка <b>«Измерено в Uniqsport»</b>. Где данных по модели у нас нет, берём их из каталогов производителей и ставим отметку <b>«Измерения по каталогу»</b>. Натяжка везде указана в килограммах.</p>
+  <p>Ракетки делятся на четыре класса: начальная, любительская, полупрофессиональная и профессиональная. Самые высокие оценки мощи, скорости и контроля — только у топовых классов.</p>
+  <p>Можно подбирать двумя способами: ответить на несколько вопросов о себе и игре или начать от ракетки, которая уже нравится, и попросить «мощнее», «быстрее», «мягче, легче» или «бережнее к руке».</p>
+</div>
+<div class="doc" data-only="en">
+  <h2>How it works</h2>
+  <p>The finder compares rackets by how they <b>play</b>, not by a spec table: five scores from 1 to 10 — power, speed, control, ease of play and arm comfort. The scores come from in-store measurements (weight, balance and swing weight), head weight and shaft thickness, and each model's frame and shaft technologies.</p>
+  <p>Rackets we measured ourselves are marked <b>“Measured by Uniqsport”</b>. Where we have no data for a model, we take it from the manufacturer's catalogue and mark it <b>“Catalogue specs”</b>. String tension is given in kilograms.</p>
+  <p>There are four classes: entry-level, recreational, semi-pro and professional. The highest power, speed and control scores belong to the top classes only.</p>
+  <p>Match in two ways: answer a few questions about yourself and your game, or start from a racket you already like and ask for “more power”, “faster”, “softer, lighter” or “easier on the arm”.</p>
+</div>
+</section>
+</div>
+</main>
+      </div>
+      {{ content_bottom }}</div>
+    {{ column_right }}</div>
+</div>
+<script>
+window.RF = {lang:"{{ finder_lang }}", version:"{{ version }}", base:"{{ store_base }}", dataUrl:"{{ data_url }}", cartUrl:"{{ cart_url }}", live: {{ finder_live|raw }}};
+</script>
+<script src="catalog/view/javascript/racket_finder/finder-data.js?v={{ version }}"></script>
+<script src="catalog/view/javascript/racket_finder/widget.js?v={{ version }}"></script>
+{{ footer }}
