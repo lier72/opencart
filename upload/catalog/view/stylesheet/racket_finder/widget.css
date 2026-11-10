@@ -1,22 +1,28 @@
 /* Layout: court-plan header band, then a two-column fitting bench (questions | results); concept view is a single reading column */
 :root{
-  --bg:#F4F5F7; --surface:#FFFFFF; --sunk:#EBEDF2; --ink:#20242B; --muted:#5B6472; --line:#D7DBE2;
-  --band:#1B2A8E; --band-ink:#FFFFFF;
-  --court:#FF5A28; --court-ink:#FFFFFF; --court-soft:#FCE7DC; --cork:#238CD2; --cork-soft:#E7F1FB;
-  --good:#1E9E5B; --warn:#1F6FB0; --bad:#D14B3C;
+  --bg:#F8F7F3; --surface:#FFFFFF; --sunk:#EFEEE8; --ink:#252825; --muted:#646A63; --line:#E2E0D8;
+  --band:#2F4A40; --band-ink:#F3F1EC;
+  --court:#C2501D; --court-ink:#FFFFFF; --court-soft:#FBEBE2;
+  --sec:#35594A; --sec-soft:#E4EDE7; --sec-ink:#24402F;
+  --cork:var(--sec); --cork-soft:var(--sec-soft); --good:#3F7F55; --warn:var(--sec); --bad:#B4503D;
+  --lang-bg:rgba(255,255,255,.14); --lines:#FFFFFF; --lines-op:.1; --stock-bg:#E6F1E9;
   --f-display:"Unbounded","Manrope",system-ui,sans-serif; --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
   --r:10px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0E1016; --surface:#171A22; --sunk:#1F232D; --ink:#E9ECF2; --muted:#9AA3B2; --line:#2B303C;
-  --band:#2536A0; --band-ink:#EEF1FF;
-  --court:#FF7A4E; --court-ink:#1A0F08; --court-soft:#38261C; --cork:#4AA3E0; --cork-soft:#13273C;
-  --good:#45C987; --warn:#5BB0E8; --bad:#E07A6A; color-scheme:dark}}
+  --bg:#121410; --surface:#1C1E18; --sunk:#24271F; --ink:#ECEAE0; --muted:#9DA294; --line:#333730;
+  --band:#223730; --band-ink:#ECEAE0;
+  --court:#D9683A; --court-ink:#1A0F08; --court-soft:#3A251A;
+  --sec:#6FA588; --sec-soft:#22322A; --sec-ink:#CDE4D6;
+  --cork:var(--sec); --cork-soft:var(--sec-soft); --good:#5BB97A; --warn:var(--sec); --bad:#E07A6A;
+  --lang-bg:rgba(255,255,255,.12); --lines:#FFFFFF; --lines-op:.08; --stock-bg:rgba(91,185,122,.16); color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0E1016; --surface:#171A22; --sunk:#1F232D; --ink:#E9ECF2; --muted:#9AA3B2; --line:#2B303C;
-  --band:#2536A0; --band-ink:#EEF1FF;
-  --court:#FF7A4E; --court-ink:#1A0F08; --court-soft:#38261C; --cork:#4AA3E0; --cork-soft:#13273C;
-  --good:#45C987; --warn:#5BB0E8; --bad:#E07A6A; color-scheme:dark}
+  --bg:#121410; --surface:#1C1E18; --sunk:#24271F; --ink:#ECEAE0; --muted:#9DA294; --line:#333730;
+  --band:#223730; --band-ink:#ECEAE0;
+  --court:#D9683A; --court-ink:#1A0F08; --court-soft:#3A251A;
+  --sec:#6FA588; --sec-soft:#22322A; --sec-ink:#CDE4D6;
+  --cork:var(--sec); --cork-soft:var(--sec-soft); --good:#5BB97A; --warn:var(--sec); --bad:#E07A6A;
+  --lang-bg:rgba(255,255,255,.12); --lines:#FFFFFF; --lines-op:.08; --stock-bg:rgba(91,185,122,.16); color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 a{color:var(--court)}
@@ -187,9 +193,9 @@ code{font-family:var(--f-mono);font-size:12.5px;background:var(--sunk);padding:1
 .mapbtn svg{width:18px;height:18px}
 dialog.map{width:min(1180px,calc(100vw - 16px));max-height:calc(100dvh - 16px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink)}
 dialog.map::backdrop{background:rgba(10,20,15,.55)}
-.viz-root{--s-ln:#ff5a28;--s-yx:#238cd2;--s-vc:#26ab5e;--surface-1:var(--surface)}
-@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])) .viz-root{--s-ln:#ff7a4e;--s-yx:#4aa3e0;--s-vc:#3fcf84}}
-:root[data-theme="dark"] .viz-root{--s-ln:#ff7a4e;--s-yx:#4aa3e0;--s-vc:#3fcf84}
+.viz-root{--s-ln:#C2501D;--s-yx:#3F78A8;--s-vc:#4D8A5E;--surface-1:var(--surface)}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])) .viz-root{--s-ln:#D9683A;--s-yx:#6BA6D4;--s-vc:#6FBF8C}}
+:root[data-theme="dark"] .viz-root{--s-ln:#D9683A;--s-yx:#6BA6D4;--s-vc:#6FBF8C}
 .map-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px 6px}
 .map-h h2{margin:0;font:700 19px var(--f-head,var(--f-body))}
 .map-h p{margin:2px 0 0;color:var(--muted);font-size:13px;max-width:760px}
@@ -226,3 +232,43 @@ dialog.map::backdrop{background:rgba(10,20,15,.55)}
 .map-tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
 .map-note{padding:0 16px 14px;font-size:12px;color:var(--muted)}
 @media (max-width:640px){.map-f input[type=search]{width:120px}.map-f .cnt{margin-left:0}.map-b{overflow-x:auto}.map-b svg.plot:not(.sq){min-width:760px}.map-h p{font-size:12px}}
+/* Design overrides (Claude Design): type scale, spacing, two-colour wiring — green --sec as the interactive accent, terracotta --court for targets/highlights */
+body{font-size:16px;line-height:1.6}
+a{color:var(--sec)}
+header.top .wrap{padding-block:28px 0}
+h1{font-weight:600;letter-spacing:-.01em;margin:8px 0 10px}
+.lead{font-size:15.5px;line-height:1.6;max-width:66ch;opacity:.86;margin-bottom:22px}
+.lang{background:var(--lang-bg)}
+.court-lines{opacity:var(--lines-op);color:var(--lines)}
+.panel{padding:20px}
+legend{font-size:14px;margin-bottom:8px}
+.chip span{padding:7px 12px;font-size:13.5px}
+.chip input:checked+span{background:var(--sec-soft);border-color:var(--sec);color:var(--sec-ink);font-weight:600}
+.search input:focus,.mfield input:focus{outline-color:var(--sec);border-color:var(--sec)}
+.sugg li[aria-selected="true"],.sugg li:hover{background:var(--sunk)}
+.sugg li.add,.linkbtn,details.tech summary,.map-sim button.lnk{color:var(--sec)}
+.tune-state{background:var(--sunk);color:var(--muted)}
+.sl input[type=range]{accent-color:var(--sec)}
+.pill{background:var(--sunk)}
+.cards{gap:16px}
+.card{padding:20px 22px;gap:20px}
+.card.best{border-color:var(--court);box-shadow:none}
+.badge.stock,.tag.has{background:var(--stock-bg);color:var(--good)}
+.badge.meas{background:var(--sunk);color:var(--ink)}
+.essence{font-size:14.5px;line-height:1.55}
+.essence b{color:var(--ink)}
+.meta{font-size:13.5px}
+.why{font-size:14px;line-height:1.55}
+.why li{margin:4px 0}
+.hint,.note{font-size:13px}
+.score .n{color:var(--ink)}
+.card.best .score .n{color:var(--court)}
+.axis .fill,.lg-fill{background:var(--sec)}
+.axis .tgt,.lg-tgt{background:var(--court)}
+.btn.ghost{border-color:var(--line);color:var(--ink)}
+.row .pct{color:var(--ink)}
+.formula{border-left:1px solid var(--line)}
+.map-tabs button[aria-selected=true]{background:var(--sec);border-color:var(--sec)}
+.mapbtn{border-color:var(--line);color:var(--ink)}
+.mapbtn:hover{background:var(--sunk)}
+.stockpick{border:1px solid var(--line);background:var(--sunk)}
