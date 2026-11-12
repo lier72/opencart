@@ -559,42 +559,60 @@ class ModelExtensionModuleOdooProductMapping extends Model {
         if ($this->debug) $this->log->write("Info odoo_product_mapping updateOdooProduct: Updating template " . $template_id .
             "\nProduct data: " . serialize($product_data) . "\nTarget language: " . $lang_code);
 
+        // Use the stored sales price, not the context-dependent computed price.
+        if (array_key_exists('price', $product_data)) {
+            $product_data['list_price'] = $product_data['price'];
+            unset($product_data['price']);
+        }
+        $context = array('lang' => $lang_code, 'skip_oc_sync_state' => true);
+        $values_match = function ($key, $actual, $expected) {
+            if ($key === 'list_price') {
+                return is_numeric($actual) && is_numeric($expected)
+                    && abs((float)$actual - (float)$expected) < 0.00001;
+            }
+            // Odoo returns false for unset Char/Text fields.
+            return (string)$actual === (string)$expected;
+        };
+
         try {
             // First read the existing template data
             $existing_data = $models->execute_kw($db_name, $uid, $password,
                 'product.template', 'read',
                 array(array((int)$template_id)),
                 array('fields' => array(
-                    'name', 'default_code', 'price', 'type',
+                    'name', 'default_code', 'list_price', 'type',
                     'oc_description', 'oc_tag', 'oc_product_id',
                     'oc_sync_date', 'oc_sync_state',
                     'oc_website_meta_title', 'oc_website_meta_description',
                     'oc_website_meta_keyword',
                     'oc_seo_url',
                     'oc_category_ids'
-                ))
+                ), 'context' => $context)
             );
 
-            if (empty($existing_data)) {
+            if (isset($existing_data['faultCode'])) {
+                throw new Exception('Failed to read product: ' . $existing_data['faultString']);
+            }
+            if (empty($existing_data[0]) || !is_array($existing_data[0])) {
                 throw new Exception("Template ID " . $template_id . " not found in Odoo");
             }
 
             // Prepare update data - only include fields that have changed
             $update_data = array();
             foreach ($product_data as $key => $value) {
-                // Skip null values
+                // An empty OpenCart category aggregate is null; send an empty CSV to clear links.
+                if ($key === 'oc_category_ids' && is_null($value)) {
+                    $value = '';
+                }
+                // Skip other null values
                 if (is_null($value)) {
                     continue;
                 }
 
-                // Special handling for numeric fields
-                if (in_array($key, array('price'))) {
-                    if (!isset($existing_data[0][$key]) || abs($existing_data[0][$key] - $value) > 0.01) {
-                        $update_data[$key] = $value;
-                    }
-                }
-                // Normal comparison for other fields
-                else if (!isset($existing_data[0][$key]) || $existing_data[0][$key] !== $value) {
+                // Always resend the CSV so Odoo can repair stale category relations.
+                if ($key === 'oc_category_ids'
+                    || !array_key_exists($key, $existing_data[0])
+                    || !$values_match($key, $existing_data[0][$key], $value)) {
                     $update_data[$key] = $value;
                 }
             }
@@ -610,7 +628,7 @@ class ModelExtensionModuleOdooProductMapping extends Model {
                         array((int)$template_id),
                         $update_data
                     ),
-                    array('context' => array('lang' => $lang_code))
+                    array('context' => $context)
                 );
 
                 if (isset($result['faultCode'])) {
@@ -619,15 +637,33 @@ class ModelExtensionModuleOdooProductMapping extends Model {
                         'Failed to update product in Odoo: ' . serialize($update_data));
                 }
 
+                if ($result !== true) {
+                    throw new Exception('Odoo did not confirm the product update');
+                }
+
                 // Verify the update
                 $updated_data = $models->execute_kw($db_name, $uid, $password,
                     'product.template', 'read',
                     array(array((int)$template_id)),
-                    array('fields' => array_keys($update_data))
+                    array('fields' => array_keys($update_data), 'context' => $context)
                 );
 
                 if (isset($updated_data['faultCode'])) {
                     throw new Exception("Failed to verify update: " . $updated_data['faultString']);
+                }
+
+                if (empty($updated_data[0]) || !is_array($updated_data[0])) {
+                    throw new Exception('Failed to verify update: product was not returned');
+                }
+                $mismatched_fields = array();
+                foreach ($update_data as $key => $value) {
+                    if (!array_key_exists($key, $updated_data[0])
+                        || !$values_match($key, $updated_data[0][$key], $value)) {
+                        $mismatched_fields[] = $key;
+                    }
+                }
+                if ($mismatched_fields) {
+                    throw new Exception('Failed to verify update; fields differ: ' . implode(', ', $mismatched_fields));
                 }
 
                 if ($this->debug) $this->log->write("Info odoo_product_mapping updateOdooProduct: Update successful. Verification data: " .
