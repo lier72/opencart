@@ -29,3 +29,7 @@ define('DB_PASSWORD', getenv('DB_PASSWORD'));
 define('DB_DATABASE', getenv('DB_DATABASE') ?: 'opencart');
 define('DB_PORT', getenv('DB_PORT') ?: '3306');
 define('DB_PREFIX', getenv('DB_PREFIX') ?: 'ocus_');
+
+// Journal 3
+// Allow this PHP 7.4 deployment past Journal's version guard.
+define('JOURNAL3_DISABLE_PHP_CHECK', true);
