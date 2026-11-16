@@ -27,6 +27,23 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 	/** Guard so the fatal-error shutdown handler is registered only once. */
 	private static $shutdownRegistered = false;
 
+	/** Thumbnail size the widget cards use. */
+	const THUMB_W = 240;
+	const THUMB_H = 240;
+
+	/** Skip generating a thumbnail when the source image is larger than this
+	 *  many pixels: loading a huge source into GD is what exhausts the PHP
+	 *  memory limit (system/library/image.php). Such products keep the original. */
+	const MAX_SOURCE_PX = 12000000;
+
+	/** Most thumbnails to generate in a single request; the rest fall back to the
+	 *  original image and are generated on later requests. */
+	const GEN_BUDGET = 25;
+
+	/** Set by thumb() when a thumbnail was deferred to a later request, so the
+	 *  live-data cache is not frozen with fallback (original-size) image URLs. */
+	private $thumbsPending = false;
+
 	/** Absolute path of the shipped static character-data file. */
 	private function dataFile() {
 		return DIR_APPLICATION . '../catalog/view/javascript/racket_finder/finder-data.json';
@@ -100,7 +117,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 
 		// Inline the live price/stock map so the widget renders without an extra
 		// request. The data() endpoint stays for popup/category placements.
-		$data['finder_live'] = json_encode($this->liveData(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+		$data['finder_live'] = json_encode($this->liveDataCached($conf['cache_hours']), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 
 		$data['column_left']    = $this->load->controller('common/column_left');
 		$data['column_right']   = $this->load->controller('common/column_right');
@@ -136,22 +153,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		try {
 
 		$this->response->addHeader('Content-Type: application/json; charset=utf-8');
-
-		$cache_file = DIR_CACHE . 'racket_finder.json';
-		$ttl = max(0, $conf['cache_hours']) * 3600;
-
-		if ($ttl > 0 && is_file($cache_file) && (filemtime($cache_file) + $ttl) > time()) {
-			$this->response->setOutput(file_get_contents($cache_file));
-			return;
-		}
-
-		$json = json_encode($this->liveData(), JSON_UNESCAPED_UNICODE);
-
-		if ($ttl > 0) {
-			@file_put_contents($cache_file, $json);
-		}
-
-		$this->response->setOutput($json);
+		$this->response->setOutput(json_encode($this->liveDataCached($conf['cache_hours']), JSON_UNESCAPED_UNICODE));
 
 		} catch (\Throwable $e) {
 			$this->handleError($e, $conf['debug'], true);
@@ -170,6 +172,13 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		$this->load->model('catalog/product');
 		$this->load->model('tool/image');
 
+		// Generating a thumbnail loads the full-size source into GD, so a page
+		// that builds ~200 of them at once can exhaust the PHP memory limit (see
+		// thumb()). Give the generate path some headroom and a per-request
+		// budget; already-cached thumbnails cost nothing.
+		@ini_set('memory_limit', '512M');
+		$budget = self::GEN_BUDGET;
+
 		$out = array();
 		foreach ($ids as $product_id) {
 			$info = $this->model_catalog_product->getProduct($product_id);
@@ -184,9 +193,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 
 			$in_stock = (!$info['subtract'] || (int)$info['quantity'] > 0) ? 1 : 0;
 
-			$thumb = $info['image']
-				? $this->model_tool_image->resize($info['image'], 240, 240)
-				: '';
+			$thumb = $info['image'] ? $this->thumb($info['image'], $budget) : '';
 
 			$out[(string)$product_id] = array(
 				'p'       => (int)round($pay),
@@ -199,6 +206,93 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * liveData() wrapped in the on-disk cache (DIR_CACHE/racket_finder.json).
+	 * Used by both page() and data() so the price/stock/thumbnail map is built at
+	 * most once per cache_hours instead of on every page load (the per-load
+	 * rebuild, with its thumbnail generation, was what ran out of memory). The
+	 * map is cached only when every thumbnail was resolved; if thumb() deferred
+	 * any generation ($thumbsPending), the partial map is still returned but not
+	 * cached, so the rest are generated on later requests.
+	 */
+	private function liveDataCached($cache_hours) {
+		$cache_file = DIR_CACHE . 'racket_finder.json';
+		$ttl = max(0, (int)$cache_hours) * 3600;
+
+		if ($ttl > 0 && is_file($cache_file) && (filemtime($cache_file) + $ttl) > time()) {
+			$cached = json_decode(file_get_contents($cache_file), true);
+			if (is_array($cached)) {
+				return $cached;
+			}
+		}
+
+		$this->thumbsPending = false;
+		$map = $this->liveData();
+
+		if ($ttl > 0 && !$this->thumbsPending) {
+			@file_put_contents($cache_file, json_encode($map, JSON_UNESCAPED_UNICODE));
+		}
+
+		return $map;
+	}
+
+	/**
+	 * Resolve the card thumbnail URL for a product image, cheaply.
+	 *
+	 * When the resized thumbnail already exists in image/cache its URL is built
+	 * without touching GD. When it does not, generating it loads the full-size
+	 * source into memory (system/library/image.php line 47), which is what
+	 * exhausts the PHP memory limit when a page builds many at once — so
+	 * generation is guarded: a source larger than MAX_SOURCE_PX is left at
+	 * original size, and at most GEN_BUDGET thumbnails are generated per request
+	 * ($budget, by reference). Anything not generated falls back to the original
+	 * image URL this time and is generated on a later request. Call only from
+	 * liveData(), where tool/image is loaded.
+	 */
+	private function thumb($filename, &$budget) {
+		if (!is_file(DIR_IMAGE . $filename)) {
+			return '';
+		}
+
+		$dot = strrpos($filename, '.');
+		if ($dot === false) {
+			return $this->imageUrl($filename);
+		}
+
+		$ext    = strtolower(substr($filename, $dot + 1));
+		$cached = 'cache/' . substr($filename, 0, $dot) . '-' . (int)self::THUMB_W . 'x' . (int)self::THUMB_H . '.' . $ext;
+
+		// Thumbnail already built and not older than the source: cheap URL only.
+		if (is_file(DIR_IMAGE . $cached) && filemtime(DIR_IMAGE . $filename) <= filemtime(DIR_IMAGE . $cached)) {
+			return $this->model_tool_image->resize($filename, self::THUMB_W, self::THUMB_H);
+		}
+
+		$info = @getimagesize(DIR_IMAGE . $filename); // reads the header only, cheap
+		$px   = ($info && isset($info[0], $info[1])) ? ($info[0] * $info[1]) : PHP_INT_MAX;
+
+		if ($px <= self::MAX_SOURCE_PX && $budget > 0) {
+			$budget--;
+			return $this->model_tool_image->resize($filename, self::THUMB_W, self::THUMB_H);
+		}
+
+		if ($budget <= 0) {
+			$this->thumbsPending = true; // only the per-request budget cap is temporary
+		}
+
+		return $this->imageUrl($filename);
+	}
+
+	/**
+	 * URL of an original (un-resized) image under image/, built the same way as
+	 * model/tool/image so links stay consistent. Thumbnail fallback.
+	 */
+	private function imageUrl($filename) {
+		$file = str_replace(' ', '%20', $filename);
+		$base = !empty($this->request->server['HTTPS']) ? $this->config->get('config_ssl') : $this->config->get('config_url');
+
+		return $base . 'image/' . $file;
 	}
 
 	/**
