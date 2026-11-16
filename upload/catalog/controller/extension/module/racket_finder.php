@@ -74,7 +74,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		$this->document->setTitle($this->language->get('page_title'));
 		$this->document->setDescription($this->language->get('page_meta_description'));
 
-		$this->document->addStyle('catalog/view/javascript/racket_finder/widget.css');
+		$this->document->addStyle('catalog/view/stylesheet/racket_finder/widget.css');
 
 		$data['breadcrumbs'] = array();
 		$data['breadcrumbs'][] = array(
