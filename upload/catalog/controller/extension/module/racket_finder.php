@@ -24,6 +24,9 @@
  */
 class ControllerExtensionModuleRacketFinder extends Controller {
 
+	/** Guard so the fatal-error shutdown handler is registered only once. */
+	private static $shutdownRegistered = false;
+
 	/** Absolute path of the shipped static character-data file. */
 	private function dataFile() {
 		return DIR_APPLICATION . '../catalog/view/javascript/racket_finder/finder-data.json';
@@ -35,7 +38,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 	 * Used by page()/data() so both share one configuration.
 	 */
 	private function settings() {
-		$out = array('category_id' => 0, 'cache_hours' => 1);
+		$out = array('category_id' => 0, 'cache_hours' => 1, 'debug' => 0);
 
 		// The catalog setting/module model only fetches by id, so read the
 		// module table directly and take the first enabled racket_finder row.
@@ -45,6 +48,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 			if (!empty($s['status'])) {
 				$out['category_id'] = isset($s['category_id']) ? (int)$s['category_id'] : 0;
 				$out['cache_hours'] = isset($s['cache_hours']) ? (int)$s['cache_hours'] : 1;
+				$out['debug']       = !empty($s['debug']) ? 1 : 0;
 				break;
 			}
 		}
@@ -60,6 +64,11 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 	 * "add to cart".
 	 */
 	public function page() {
+		$conf = $this->settings();
+		$this->bootLogging($conf['debug']);
+
+		try {
+
 		$this->load->language('extension/module/racket_finder');
 
 		$this->document->setTitle($this->language->get('page_title'));
@@ -101,6 +110,10 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		$data['header']         = $this->load->controller('common/header');
 
 		$this->response->setOutput($this->load->view('extension/module/racket_finder', $data));
+
+		} catch (\Throwable $e) {
+			$this->handleError($e, $conf['debug'], false);
+		}
 	}
 
 	/**
@@ -117,9 +130,13 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 	 * and any product save should too (see install note / OCMOD).
 	 */
 	public function data() {
+		$conf = $this->settings();
+		$this->bootLogging($conf['debug']);
+
+		try {
+
 		$this->response->addHeader('Content-Type: application/json; charset=utf-8');
 
-		$conf = $this->settings();
 		$cache_file = DIR_CACHE . 'racket_finder.json';
 		$ttl = max(0, $conf['cache_hours']) * 3600;
 
@@ -135,6 +152,10 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		}
 
 		$this->response->setOutput($json);
+
+		} catch (\Throwable $e) {
+			$this->handleError($e, $conf['debug'], true);
+		}
 	}
 
 	/**
@@ -220,5 +241,70 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 	private function dataVersion() {
 		$file = $this->dataFile();
 		return is_file($file) ? (string)filemtime($file) : '0';
+	}
+
+	/**
+	 * Prepare error capture for page()/data(). Registers (once per request) a
+	 * shutdown handler that records PHP fatal errors the try/catch in page()/
+	 * data() cannot catch — out-of-memory, exceeded max_execution_time, and
+	 * other E_ERROR-class failures — to system/storage/logs/racket_finder.log.
+	 * When $debug is on it also turns on display_errors and appends the fatal to
+	 * the response, because those fatals never reach handleError(). Call at the
+	 * very start of any public entry point, before the work that may fail.
+	 */
+	private function bootLogging($debug) {
+		if ($debug) {
+			@ini_set('display_errors', '1');
+			error_reporting(E_ALL);
+		}
+
+		if (self::$shutdownRegistered) {
+			return;
+		}
+		self::$shutdownRegistered = true;
+
+		register_shutdown_function(function () use ($debug) {
+			$e = error_get_last();
+			$fatal = array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR);
+
+			if ($e && in_array($e['type'], $fatal, true)) {
+				$line = 'PHP Fatal: ' . $e['message'] . ' in ' . $e['file'] . ' on line ' . $e['line'];
+				@file_put_contents(DIR_LOGS . 'racket_finder.log', date('Y-m-d H:i:s') . ' - ' . $line . "\n", FILE_APPEND);
+
+				if ($debug) {
+					echo "\n\nRacket Finder fatal error\n\n" . $line . "\n";
+				}
+			}
+		});
+	}
+
+	/**
+	 * Handle a Throwable caught in page()/data(): always write the class,
+	 * message, file:line and stack trace to system/storage/logs/racket_finder.log.
+	 * With the module's Debug option OFF the error is then re-thrown, so the
+	 * storefront behaves exactly as before (OpenCart renders its error page).
+	 * With Debug ON the error text is sent to the browser instead of a blank
+	 * 500 — plain text for page(), JSON {"error": ...} for the data endpoint —
+	 * so the cause is visible without shell access to the container.
+	 * $json selects the response format; pass true only from data().
+	 */
+	private function handleError($e, $debug, $json) {
+		$detail = get_class($e) . ': ' . $e->getMessage()
+			. ' in ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString();
+
+		$log = new Log('racket_finder.log');
+		$log->write($detail);
+
+		if (empty($debug)) {
+			throw $e;
+		}
+
+		if ($json) {
+			$this->response->addHeader('Content-Type: application/json; charset=utf-8');
+			$this->response->setOutput(json_encode(array('error' => $detail), JSON_UNESCAPED_UNICODE));
+		} else {
+			$this->response->addHeader('Content-Type: text/plain; charset=utf-8');
+			$this->response->setOutput("Racket Finder error\n\n" . $detail);
+		}
 	}
 }

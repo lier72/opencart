@@ -120,6 +120,14 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 			$data['status'] = 0;
 		}
 
+		if (isset($this->request->post['debug'])) {
+			$data['debug'] = $this->request->post['debug'];
+		} elseif (isset($module_info['debug'])) {
+			$data['debug'] = $module_info['debug'];
+		} else {
+			$data['debug'] = 0;
+		}
+
 		// Flat category list (names carry the full path) for the picker.
 		$this->load->model('catalog/category');
 		$data['categories'] = $this->model_catalog_category->getCategories();
