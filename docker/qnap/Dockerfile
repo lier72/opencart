@@ -1,6 +1,14 @@
 FROM php:7.4-apache-bullseye
 
-RUN apt-get update \
+# Bullseye packages used by this legacy PHP image have moved to the archive.
+# Keep signature verification; archived metadata may have expired Valid-Until dates.
+RUN printf '%s\n' \
+      'deb [check-valid-until=no] https://archive.debian.org/debian bullseye main' \
+      'deb [check-valid-until=no] https://archive.debian.org/debian-security bullseye-security main' \
+      > /etc/apt/sources.list \
+    && rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get -o Acquire::Retries=3 update \
     && apt-get install -y --no-install-recommends \
        libfreetype6-dev libjpeg62-turbo-dev libpng-dev libwebp-dev \
        libzip-dev libonig-dev libxml2-dev unzip \
