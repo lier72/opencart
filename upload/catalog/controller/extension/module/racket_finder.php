@@ -12,10 +12,12 @@
  *
  * Methods:
  *  - page():   full storefront page (header/footer) that hosts the widget.
- *              Route: extension/module/racket_finder.page  ->  /podbor-raketki
+ *              Route: extension/module/racket_finder/page  (OpenCart 3 separates
+ *              the controller method with a slash, not a dot — a dot is stripped
+ *              by system/engine/action.php and the route 404s)
  *  - data():   JSON of live price/stock/image/href for every racket product,
  *              cached on disk for the configured number of hours.
- *              Route: extension/module/racket_finder.data (fetched by the widget)
+ *              Route: extension/module/racket_finder/data (fetched by the widget)
  *  - index($setting): small render used when the module is placed in a Journal3
  *              layout position (e.g. a button over the rackets category filter).
  *              Renders a button that opens the finder page.
@@ -72,7 +74,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		);
 		$data['breadcrumbs'][] = array(
 			'text' => $this->language->get('heading_title'),
-			'href' => $this->url->link('extension/module/racket_finder.page')
+			'href' => $this->url->link('extension/module/racket_finder/page')
 		);
 
 		$data['heading_title'] = $this->language->get('heading_title');
@@ -82,7 +84,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		$data['finder_lang'] = (strpos($lang_code, 'en') === 0) ? 'en' : 'ru';
 
 		// URLs the widget uses at runtime.
-		$data['data_url']    = $this->url->link('extension/module/racket_finder.data', '', true);
+		$data['data_url']    = $this->url->link('extension/module/racket_finder/data', '', true);
 		$data['cart_url']    = $this->url->link('checkout/cart/add', '', true);
 		$data['version']     = $this->dataVersion();
 		$data['store_base']  = HTTP_SERVER;
@@ -188,7 +190,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 
 		$data['heading_title'] = $this->language->get('heading_title');
 		$data['button_text']   = $this->language->get('button_open');
-		$data['page_href']     = $this->url->link('extension/module/racket_finder.page');
+		$data['page_href']     = $this->url->link('extension/module/racket_finder/page');
 
 		return $this->load->view('extension/module/racket_finder_button', $data);
 	}

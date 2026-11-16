@@ -125,7 +125,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		$data['categories'] = $this->model_catalog_category->getCategories();
 
 		// Public page URL, shown as a hint in the form.
-		$data['page_url'] = HTTPS_CATALOG . 'index.php?route=extension/module/racket_finder.page';
+		$data['page_url'] = HTTPS_CATALOG . 'index.php?route=extension/module/racket_finder/page';
 
 		$data['header'] = $this->load->controller('common/header');
 		$data['column_left'] = $this->load->controller('common/column_left');
