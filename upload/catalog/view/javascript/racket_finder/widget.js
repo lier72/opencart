@@ -26,12 +26,16 @@ const LIVE=RF.live||{};DATA.items.forEach(o=>{const l=LIVE[o.id];if(l){o.p=l.p;o
 const R=DATA.items.map((o,i)=>{
   const W=o.mw||UW[o.u]||80;
   const SW=o.sw||(FIT.sw[0]+FIT.sw[1]*W+FIT.sw[2]*o.bp);
-  const H=o.hd||(FIT.h[0]+FIT.h[1]*W+FIT.h[2]*o.bp);
+  // лёгкая пластиковая ручка (Victor FREE CORE и т. п.) сдвигает точку баланса к голове, а маховый вес почти не меняет:
+  // в расчётах берём «баланс как у ракетки с деревянной ручкой при том же маховом весе» (по нашей регрессии SW ~ вес + баланс)
+  const hp=o.hm==='plastic'&&!!o.sw;
+  const bpe=hp?(SW-FIT.sw[0]-FIT.sw[1]*W)/FIT.sw[2]:o.bp;
+  const H=(hp||!o.hd)?(FIT.h[0]+FIT.h[1]*W+FIT.h[2]*bpe):o.hd;
   const tw=/требует проверки/.test(o.tl||'')?.6:1;
   const sum=[0,0,0,0,0];
   (o.t||[]).forEach(ti=>{let m=tw;if(/^SHARP WIND/.test(TECH[ti].n)&&o.sharp)m*=o.sharp/100;TECH[ti].e.forEach((v,j)=>sum[j]+=v*m)});
   return {...o,uid:o.id?o.id+'-'+o.u:'r'+i, // один товар на сайте может быть в нескольких весах (Arcsaber 11 Tour 3U/4U) — uid по товару и весу
-    W,SW,H,swEst:!o.sw,tsum:sum,hasT:(o.t||[]).length>0,bp:Math.round(o.bp)};
+    W,SW,H,swEst:!o.sw,tsum:sum,hasT:(o.t||[]).length>0,bp:Math.round(o.bp),bpe:Math.round(bpe),hp};
 });
 const span=a=>[Math.min(...a),Math.max(...a)];
 // нормировка — только по нашей базе (сайт + замеры); ракетки, добавленные из каталогов, её не сдвигают
@@ -53,7 +57,7 @@ function rawAx(o){
   return {
     power:.5*swN+.1*hN+.1*stiff+.3*Dp,
     speed:.5*(1-swN)+.1*thin+.4*Ds,
-    control:.3*Wn+.15*clamp(1-Math.abs(o.bp-295)/25)+.15*stiff+.4*Dc,
+    control:.3*Wn+.15*clamp(1-Math.abs(o.bpe-295)/25)+.15*stiff+.4*Dc,
     ease:.4*(1-stiff)+.2*(1-Wn)+.1*lvE+.3*De,
     comfort:.3*(1-stiff)+.15*(1-Wn)+.55*Dk
   };
@@ -132,9 +136,9 @@ R.forEach(o=>{if(o.sLetter==='Instinct')AXK.forEach(k=>{if(o.ax[k]>9){o.ser0=o.s
 // ---- материал обода: алюминиевый обод не даёт мощи, сколько бы ни весила голова
 R.forEach(o=>{if(o.frame==='алюминий'){o.ser0=o.ser0||{...o.ax};o.ax.power=Math.min(o.ax.power,3.5)}});
 // ---- уровень ракетки (решение магазина 6 ноября 2026): коридоры, которые не перекрываются у топа и начального уровня.
-// Мощь, скорость и контроль: начальная 1–5, любительская 2,5–6,5, полупрофессиональная 4–8,5, профессиональная 5,5–10. Внутри коридора — по замерам и технологиям;
+// Мощь, скорость и контроль: начальная 1–5, средняя 2,5–6,5, продвинутая 4–8,5, профессиональная 5,5–10. Внутри коридора — по замерам и технологиям;
 // топовая ракетка никогда не слабее начальной ни по одной из трёх осей.
-const LV_BAND={1:[1,5],2:[2.5,6.5],3:[4,8.5],4:[5.5,10]},LV_RU={1:'начальная',2:'любительская',3:'полупрофессиональная',4:'профессиональная'},LV_EN={1:'entry-level',2:'recreational',3:'semi-pro',4:'professional'};
+const LV_BAND={1:[1,5],2:[2.5,6.5],3:[4,8.5],4:[5.5,10]},LV_RU={1:'начальная',2:'средняя',3:'продвинутая',4:'профессиональная'},LV_EN={1:'entry-level',2:'intermediate',3:'advanced',4:'professional'};
 const LVN=lv=>(LANG==='en'?LV_EN:LV_RU)[lv]||'';
 const band=(v,b)=>b[0]+(v-1)*(b[1]-b[0])/9;
 R.forEach(o=>{const b=LV_BAND[o.lv];if(!b)return;o.ser0=o.ser0||{...o.ax};['power','speed','control'].forEach(k=>{o.ax[k]=band(o.ax[k],b)})});
@@ -197,21 +201,21 @@ function essence(o){
 }
 // ---- questions
 const Q={
- lvl:[['beg','Только начинаю','Just starting'],['am','Любитель, 1–3 года, играю для себя','Recreational, 1–3 years, for fun'],['adv','Больше 3 лет, тренируюсь и играю турниры','3+ years, train and play tournaments'],['pro','Профессионал','Professional']],
+ lvl:[['beg','Только начинаю','Just starting'],['am','Любитель, 1–3 года, играю для себя','Intermediate, 1–3 years, for fun'],['adv','Больше 3 лет, тренируюсь и играю турниры','3+ years, train and play tournaments'],['pro','Профессионал','Professional']],
  who:[['m','Мужчина','Man'],['w','Женщина','Woman'],['teen','Подросток, 12–16 лет','Teenager, 12–16'],['kid','Ребёнок, до 12 лет','Child, under 12']],
- tier:[['opt','Оптимальную под мою игру','Best for my game'],['1','Начальную','Entry-level'],['2','Любительскую','Recreational'],['3','Полупрофессиональную','Semi-pro'],['4','Профессиональную','Professional']],
+ tier:[['opt','Оптимальную под мою игру','Best for my game'],['1','Начальную','Entry-level'],['2','Среднюю','Intermediate'],['3','Продвинутую','Advanced'],['4','Профессиональную','Professional']],
  fmt:[['single','Одиночка','Singles'],['back','Пара, сзади','Doubles, back court'],['net','Пара, у сетки','Doubles, at the net'],['mixd','Микст','Mixed doubles'],['mix','Всё подряд','A bit of everything']],
  style:[['atk','Атакую смэшем','Attack with smashes'],['def','Защита и контратака','Defence and counter-attack'],['all','Универсально','All-round']],
  swing:[['soft','Мягкий','Gentle'],['mid','Средний','Medium'],['fast','Резкий','Fast']],
  arm:[['no','Нет','No'],['some','Иногда','Sometimes'],['yes','Да, берегу руку','Yes, I need to protect it']],
- brand:[['any','Любой','Any'],['Li-Ning','Li-Ning'],['Yonex','Yonex']],
+ brand:[['any','Любой','Any'],['Li-Ning','Li-Ning'],['Yonex','Yonex'],['Victor','Victor']],
  man_u:[['3','3U'],['4','4U'],['5','5U'],['6','6U']],
  man_bt:[['K','В голову','Head-heavy'],['N','Нейтральный','Even'],['H','В ручку','Head-light'],['?','Не знаю','Not sure']],
  man_f:[['1','Гибкая','Flexible'],['3','Средняя','Medium'],['5','Жёсткая','Stiff'],['6','Очень жёсткая','Extra stiff'],['0','Не знаю','Not sure']],
  man_s:[['atk','Атакующая','Attacking'],['spd','Скоростная','Speed'],['uni','Универсальная','All-round'],['?','Не знаю','Not sure']],
- ltier:[['opt','Оптимальную','Best match'],['cheap','Дешевле','Cheaper'],['1','Начальную','Entry-level'],['2','Любительскую','Recreational'],['3','Полупрофессиональную','Semi-pro'],['4','Профессиональную','Professional']],
+ ltier:[['opt','Оптимальную','Best match'],['cheap','Дешевле','Cheaper'],['1','Начальную','Entry-level'],['2','Среднюю','Intermediate'],['3','Продвинутую','Advanced'],['4','Профессиональную','Professional']],
  dir:[['same','Такую же','The same'],['power','Мощнее','More power'],['speed','Быстрее','Faster'],['ease','Мягче, легче','Softer, lighter'],['comfort','Бережнее к руке','Easier on the arm']],
- brand2:[['any','Любой','Any'],['Li-Ning','Li-Ning'],['Yonex','Yonex']]
+ brand2:[['any','Любой','Any'],['Li-Ning','Li-Ning'],['Yonex','Yonex'],['Victor','Victor']]
 };
 const DEF={ltier:'opt',man_u:'4',man_bt:'?',man_f:'0',man_s:'?',who:'m',tier:'opt',lvl:'am',fmt:'back',style:'atk',swing:'mid',arm:'some',brand:'any',dir:'speed',brand2:'any'};
 document.querySelectorAll('.chips').forEach(box=>{
@@ -263,7 +267,7 @@ function manualRef(){
   const bpIn=+document.getElementById('man-bp').value;const bpOk=bpIn>=270&&bpIn<=340;const bp=bpOk?bpIn:({K:305,N:295,H:288}[bt]||298);
   const swIn=+document.getElementById('man-sw').value;const swOk=swIn>=70&&swIn<=100;
   const W=UW[u]||82;
-  const o={uid:'custom',b:'',m:document.getElementById('man-name').value.trim()||T('Ваша ракетка','Your racket'),s:{atk:'AXForce',spd:'BladeX',uni:'Halbertec'}[sv]||'',u,bp,f:fv||3,fe:0,d:null,lv:2,p:+document.getElementById('man-p').value||0,W,
+  const o={uid:'custom',b:'',m:document.getElementById('man-name').value.trim()||T('Ваша ракетка','Your racket'),s:{atk:'AXForce',spd:'BladeX',uni:'Halbertec'}[sv]||'',u,bp,bpe:bp,hp:false,f:fv||3,fe:0,d:null,lv:2,p:+document.getElementById('man-p').value||0,W,
     SW:swOk?swIn:(FIT.sw[0]+FIT.sw[1]*W+FIT.sw[2]*bp),H:FIT.h[0]+FIT.h[1]*W+FIT.h[2]*bp,swEst:!swOk,t:[],hasT:false,tsum:[0,0,0,0,0],custom:true,bpGuess:!bpOk,site:false};
   o.ax=stretch(rawAx(o));return o;
 }
@@ -298,7 +302,8 @@ const WGT={power:1,speed:1,control:.7,ease:1.2,comfort:.8};
 const KL={beg:1,am:.9,adv:.6,pro:.35};
 const ATK_TILT=new Set(['Halbertec 9000 Power']);
 const STYLE_BONUS=3;
-const LN_BONUS=3; // приоритет Li-Ning в выдаче, в баллах совпадения
+const LN_BONUS=3; // приоритет Li-Ning и Victor в выдаче, в баллах совпадения (Yonex — после)
+const PRI=new Set(['Li-Ning','Victor']);
 function dist(a,t){let d=0,w=0;for(const k in WGT){d+=WGT[k]*Math.abs(a[k]-t[k]);w+=WGT[k]}return d/w}
 function scoreQuiz(o,t){
   const lvl=val('lvl'),swing=val('swing'),arm=val('arm'),cls=val('tier'),top=cls!=='opt';
@@ -322,7 +327,7 @@ function scoreQuiz(o,t){
   if(ATK_TILT.has(o.m)&&val('style')!=='atk')s-=5;
   // классификация Li-Ning (атака / скорость / контроль): серия по направлению стиля игры получает небольшой плюс
   if(o.sAx&&o.sAx==={atk:'power',def:'speed',all:'control'}[val('style')])s+=STYLE_BONUS; // атакующая версия модели — универсалам и защитникам ниже базовой
-  if(o.b==='Li-Ning')s+=LN_BONUS;
+  if(PRI.has(o.b))s+=LN_BONUS;
   if((lvl==='beg'||lvl==='am')&&o.lv===4)tips.push(T('это флагман на вырост — ракетка будет расти вместе с вашей техникой','a flagship to grow into — the racket will keep up as your technique improves'));
   if(who==='kid'||who==='teen'||(who==='w'&&(lvl==='beg'||lvl==='am')))tips.push(T('если ладонь небольшая, возьмите ручку G6 — она тоньше и удобнее','for a smaller hand, choose a G6 grip — it is thinner and more comfortable'));
   return {s:Math.max(0,s),tips};
@@ -333,7 +338,7 @@ function reasons(o,t){
   const tl=(k,pre)=>{const x=leadTech(o,k);return x.length?(pre||'')+x.join(T(' и ',' and ')):''};
   const phrase={
     power:()=>T(`Мощный удар: ${o.swEst?'баланс '+o.bp+' мм':'маховый вес '+num1(o.SW)+' кг·см²'}${tl('power',', ')}`,`Powerful hitting: ${o.swEst?'balance '+o.bp+' mm':'swing weight '+num1(o.SW)+' kg·cm²'}${tl('power',', ')}`),
-    speed:()=>T(`Быстрая в руке: ${tl('speed')||(o.bp<=296?'вес смещён к ручке':'компактный маховый вес')}${o.swEst?'':', маховый вес '+num1(o.SW)}`,`Quick in the hand: ${tl('speed')||(o.bp<=296?'weight sits towards the handle':'compact swing weight')}${o.swEst?'':', swing weight '+num1(o.SW)}`),
+    speed:()=>T(`Быстрая в руке: ${tl('speed')||(o.bpe<=296?'вес смещён к ручке':'компактный маховый вес')}${o.swEst?'':', маховый вес '+num1(o.SW)}`,`Quick in the hand: ${tl('speed')||(o.bpe<=296?'weight sits towards the handle':'compact swing weight')}${o.swEst?'':', swing weight '+num1(o.SW)}`),
     control:()=>T(`Стабильная на ударе${tl('control',': ')||' — легче держать направление'}`,`Stable on impact${tl('control',': ')||' — easier to keep the direction'}`),
     ease:()=>T(`Легко разгонять волан: ${o.f?FX(o.f)+' стержень, ':''}вес ${o.u}U${tl('ease',', ')}`,`Easy to generate shuttle speed: ${o.f?FX(o.f)+' shaft, ':''}${o.u}U weight${tl('ease',', ')}`),
     comfort:()=>T(`Бережёт руку: ${tl('comfort')||flexTxt(o)}`,`Easy on the arm: ${tl('comfort')||flexTxt(o)}`)
@@ -352,7 +357,7 @@ function reasons(o,t){
   if(who==='kid'&&o.u>=5)r.unshift(T(`Лёгкая полноразмерная ракетка ${o.u}U — ребёнок сразу привыкает к правильной длине`,`A light full-size ${o.u}U racket — the child gets used to the right length from the start`));
   if((who==='w'||who==='teen')&&o.u>=5)r.push(T(`Вес ${o.u}U — легко управлять и долго играть без усталости`,`${o.u}U weight — easy to handle and comfortable for long sessions`));
   if(swing==='fast'&&o.f>=4)r.push(T(`${cap1(FX(o.f))} стержень отдаст энергию резкому замаху`,`The ${FX(o.f)} shaft returns the energy of a fast swing`));
-  if(fmt==='net'&&o.bp<=295)r.push(T('Хороша у сетки: быстро возвращается в стойку','Good at the net: quick to get back to the ready position'));
+  if(fmt==='net'&&o.bpe<=295)r.push(T('Хороша у сетки: быстро возвращается в стойку','Good at the net: quick to get back to the ready position'));
   return r.slice(0,3);
 }
 function filterBase(o,brandKey,stockId){
@@ -362,21 +367,26 @@ function filterBase(o,brandKey,stockId){
   return true;
 }
 // ---- приоритет в выдаче среди подходящих моделей (в пределах TIER_WIN баллов от лучшей)
-// основной товар — Li-Ning действующих серий; прошлые серии больше не поставляются
-const CURRENT={'Li-Ning':['AXForce','BladeX','Halbertec','WindStorm'],'Yonex':['Astrox','Nanoflare','Arcsaber']};
+// основной товар — Li-Ning и Victor действующих серий, затем Yonex; прошлые серии больше не поставляются
+const CURRENT={'Li-Ning':['AXForce','BladeX','Halbertec','WindStorm'],'Victor':['AuraSpeed','Thruster','DriveX'],'Yonex':['Astrox','Nanoflare','Arcsaber']};
 const isNew=o=>(CURRENT[o.b]||[]).includes(o.s);
 const TIER_WIN=12;
 // ---- основная выдача — только по совпадению: верный вес каждой модели; наличие на порядок не влияет.
 // новые серии получают небольшую поблажку в сортировке (не в проценте), чтобы при равном совпадении шли выше
 const NEW_BONUS=5,STOCK_WIN=8;
+// Yonex уступает место Li-Ning и Victor, если те отстают по совпадению не больше чем на YX_WIN баллов (решение магазина 14.11.2026)
+const YX_WIN=5;
+// на экране процент не растёт вниз по списку: ракетка, пропустившая Li-Ning или Victor вперёд, показывает не больше, чем у соседа выше
+const mono=arr=>{let p=Infinity;arr.forEach(x=>{x.d=Math.min(x.s,p);p=x.d});return arr};
 function fitSort(list){
   if(!list.length)return list;
   const bestOf=new Map();list.forEach(x=>{const k=x.o.b+x.o.m;if(!bestOf.has(k)||bestOf.get(k).s<x.s)bestOf.set(k,x)});
   list.forEach(x=>{const b=bestOf.get(x.o.b+x.o.m);x.right=b===x;x.rightU=b.o.u});
-  return list.filter(x=>x.right).sort((a,b)=>(b.s+(isNew(b.o)?NEW_BONUS:0))-(a.s+(isNew(a.o)?NEW_BONUS:0)));
+  const key=x=>x.s+(isNew(x.o)?NEW_BONUS:0)+(PRI.has(x.o.b)?YX_WIN:0);
+  return list.filter(x=>x.right).sort((a,b)=>key(b)-key(a));
 }
 // ---- отдельный блок «Есть в наличии»: ближайшие к лучшему совпадению ракетки со склада того же направления.
-// порядок: новые Li-Ning верного веса → новые Li-Ning другого веса → новые Yonex → остальные
+// порядок: новые Li-Ning и Victor верного веса → они же другого веса → новые Yonex → остальные
 function stockPicks(all,main,n=3){
   if(!main.length)return [];
   const lead=main[0],best=lead.s,shown=new Set(main.slice(0,3).map(x=>x.o.uid));
@@ -385,7 +395,7 @@ function stockPicks(all,main,n=3){
   let pool=all.filter(x=>x.o.q===1&&x.s>=best-STOCK_WIN&&!shown.has(x.o.uid)&&sameDir(x.o));
   const seen=new Map();pool.forEach(x=>{const k=x.o.b+x.o.m;if(!seen.has(k)||seen.get(k).s<x.s)seen.set(k,x)});
   pool=[...seen.values()];
-  const tier=x=>{const o=x.o,ln=o.b==='Li-Ning'&&isNew(o),yx=o.b==='Yonex'&&isNew(o);if(ln&&x.right)return 0;if(ln)return 1;if(yx)return 2;return 3};
+  const tier=x=>{const o=x.o,ln=PRI.has(o.b)&&isNew(o),yx=o.b==='Yonex'&&isNew(o);if(ln&&x.right)return 0;if(ln)return 1;if(yx)return 2;return 3};
   pool.forEach(x=>{if(!x.right&&x.rightU!==x.o.u)x.stockNote=T(`по ощущениям лучше подходит ${x.rightU}U — его нет в наличии, а ${x.o.u}U есть`,`${x.rightU}U suits you better, but it is out of stock — ${x.o.u}U is in stock`)});
   return pool.sort((a,b)=>tier(a)-tier(b)||b.s-a.s).slice(0,n);
 }
@@ -410,17 +420,17 @@ function cardHTML(x,t,i,extra){
   return `<article class="card${i===0?' best':''}">
     <div style="min-width:0">
       <h3>${label(o)} <span style="font-weight:500;color:var(--muted)">${o.u}U</span></h3>
-      <div class="meta"><span>${T('Баланс','Balance')} <b>${o.bp} ${T('мм','mm')}</b>${/^официальный/.test(o.bpsrc||'')?T(' (офиц.)',' (official)'):/^(оценка|как у)/.test(o.bpsrc||'')?T(' (оценка)',' (estimate)'):''}</span><span>${T('Маховый вес','Swing weight')} <b>${num1(o.SW)}</b>${o.swEst?T(' (оценка)',' (estimate)'):''}</span><span>${T('Стержень','Shaft')} <b>${o.f?FX(o.f):T('нет данных','no data')}</b></span>${o.d?`<span>Ø <b>${num1(o.d)} ${T('мм','mm')}</b></span>`:''}<span><b>${fmtP(o.p)}</b></span>
+      <div class="meta"><span>${T('Баланс','Balance')} <b>${o.bp} ${T('мм','mm')}</b>${/^официальный/.test(o.bpsrc||'')?T(' (офиц.)',' (official)'):/^(оценка|как у)/.test(o.bpsrc||'')?T(' (оценка)',' (estimate)'):''}${o.hp&&o.bp-o.bpe>=2?T(` (лёгкая пластиковая ручка: в замахе как ≈${o.bpe} мм)`,` (light plastic handle: swings like ≈${o.bpe} mm)`):''}</span><span>${T('Маховый вес','Swing weight')} <b>${num1(o.SW)}</b>${o.swEst?T(' (оценка)',' (estimate)'):''}</span><span>${T('Стержень','Shaft')} <b>${o.f?FX(o.f):T('нет данных','no data')}</b></span>${o.d?`<span>Ø <b>${num1(o.d)} ${T('мм','mm')}</b></span>`:''}<span><b>${fmtP(o.p)}</b></span>
       ${o.q===1?'<span class="badge stock">'+T('В наличии','In stock')+'</span>':o.q===0?'<span class="badge out">'+T('Нет в наличии','Out of stock')+'</span>':''}${o.st?'<span class="badge strung">'+T('Натянута','Strung')+'</span>':''}${o.lv?`<span class="badge">${cap1(LVN(o.lv))}</span>`:''}${o.swEst?`<span class="badge est" title="${T('Вес, баланс и жёсткость — из каталогов производителя; маховый вес рассчитан','Weight, balance and stiffness from the manufacturer’s catalogue; swing weight calculated')}">${T('Измерения по каталогу','Catalogue specs')}</span>`:`<span class="badge meas" title="${T('Без струн, с родным грипом','Unstrung, with the original grip')}">${T('Измерено в Uniqsport','Measured by Uniqsport')}${o.n>1?' · '+o.n+T(' шт.',' pcs'):''}</span>`}${o.cor?`<span class="badge est" title="${T('Видно только в прототипе','Visible in the prototype only')}">${T('С поправкой магазина','Store adjustment')}</span>`:''}</div>
       ${essence(o)}
       <ul class="why">${x.why.map(w=>`<li>${w}</li>`).join('')}${(x.tips||[]).slice(0,2).map(w=>`<li class="tip"><b>${T('Совет:','Tip:')}</b> ${w}</li>`).join('')}</ul>
       ${techHTML(o)}
       <div class="actions"><a class="btn" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><button type="button" class="btn ghost" data-like="${o.uid}">${T('Похожие по характеру','Similar rackets')}</button></div>
     </div>
-    <div><div class="score"><span class="n">${x.s}%</span><span class="l">${extra||T('совпадение с вашим профилем','match with your profile')}</span></div>${axesHTML(o,t)}</div>
+    <div><div class="score"><span class="n">${x.d??x.s}%</span><span class="l">${extra||T('совпадение с вашим профилем','match with your profile')}</span></div>${axesHTML(o,t)}</div>
   </article>`;
 }
-function rowHTML(x){const o=x.o;return `<div class="row"><span class="pct">${x.s}%</span><div style="min-width:0"><a href="${url(o)}" target="_blank" rel="noopener">${label(o)} ${o.u}U</a><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''} · ${o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online')}</div></div><span class="pr">${fmtP(o.p)}</span></div>`}
+function rowHTML(x){const o=x.o;return `<div class="row"><span class="pct">${x.d??x.s}%</span><div style="min-width:0"><a href="${url(o)}" target="_blank" rel="noopener">${label(o)} ${o.u}U</a><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''} · ${o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online')}</div></div><span class="pr">${fmtP(o.p)}</span></div>`}
 const out=document.getElementById('results');
 const slBox=document.getElementById('sliders');let own=null,ownMode=null;
 slBox.innerHTML=AXN().map(([k,l])=>`<label class="sl" for="sl-${k}"><span>${l}</span><input type="range" id="sl-${k}" min="1" max="10" step="0.5"><output id="so-${k}"></output></label>`).join('');
@@ -460,14 +470,14 @@ function renderQuiz(){
   const sp=document.getElementById('instock').checked?[]:stockPicks(allQ,list);
   sp.forEach(x=>{if(x.stockNote)x.tips=[x.stockNote,...(x.tips||[])]});
   [...list,...sp].forEach(x=>x.why=reasons(x.o,t));
-  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),tp=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,5);
+  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),tp=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,5);mono([...tp,...more]);mono(sp);
   const clsP=SITE.filter(o=>top&&o.lv===+cls&&o.p).map(o=>o.p),minP=clsP.length?Math.min(...clsP):0,maxP=clsP.length?Math.max(...clsP):0;
   out.innerHTML=`${top?`<p class="topnote">${T(`Показываем только класс «${LVN(+cls)}»${minP?` (от ${fmtP(minP)} до ${fmtP(maxP)})`:''} — из него выбраны ракетки, которые лучше всего подходят под вашу игру. «Оптимальную» — подбор из всех классов с учётом вашего уровня.`,`Showing ${LVN(+cls)} rackets only${minP?` (${fmtP(minP)} to ${fmtP(maxP)})`:''} — picked from this class to suit your game best. “Best for my game” searches all classes with your level in mind.`)}</p>`:''}
   <div class="legend"><span><i class="lg-fill"></i>${T('характер ракетки','racket character')}</span><span><i class="lg-tgt"></i>${T('ваш профиль','your profile')}</span></div>
   ${tp.length?`<div class="cards">${tp.map((x,i)=>cardHTML(x,t,i)).join('')}</div>`:'<div class="panel empty">'+T('Под эти условия ракеток не нашлось. Снимите «Только в наличии» или выберите другой класс.','No rackets match these conditions. Untick “In stock only” or choose another class.')+'</div>'}
   ${stockHTML(sp,t)}
   ${more.length?`<div class="more"><h4>${top?T('Ещё из этого класса','More from this class'):T('Ещё подходят','Also a good fit')}</h4><div class="rowlist">${more.map(rowHTML).join('')}</div></div>`:''}
-  <p class="note">${T('Маховый вес со звёздочкой — оценка по весу и балансу, остальные — замер на станке магазина. Где производитель указывает баланс в мм, используется он, а замеренный маховый вес пересчитан под него. Характер учитывает замеры, технологии рамы и стержня и ручные поправки магазина; при близком совпадении выше стоят ракетки Li-Ning.','Swing weights marked with an asterisk are estimated from weight and balance; the rest were measured on the store’s machine. Where the manufacturer states the balance in mm, that figure is used and the measured swing weight is adjusted to it. The character score combines measurements, frame and shaft technologies and the store’s own adjustments; on a close match, Li-Ning rackets rank higher.')}</p>`;
+  <p class="note">${T('Маховый вес со звёздочкой — оценка по весу и балансу, остальные — замер на станке магазина. Где производитель указывает баланс в мм, используется он, а замеренный маховый вес пересчитан под него. Характер учитывает замеры, технологии рамы и стержня и ручные поправки магазина; при близком совпадении выше стоят ракетки Li-Ning и Victor.','Swing weights marked with an asterisk are estimated from weight and balance; the rest were measured on the store’s machine. Where the manufacturer states the balance in mm, that figure is used and the measured swing weight is adjusted to it. The character score combines measurements, frame and shaft technologies and the store’s own adjustments; on a close match, Li-Ning and Victor rackets rank higher.')}</p>`;
 }
 function renderLike(){
   const ref=refMode==='manual'?manualRef():R.find(o=>o.uid===refId);if(!ref){document.getElementById('tune').hidden=true;out.innerHTML='<div class="panel empty">'+T('Начните вводить название ракетки — например, «аксфорс 80» или «Astrox 88D».','Start typing a racket name — for example, “AXForce 80” or “Astrox 88D”.')+'</div>';return}
@@ -483,7 +493,7 @@ function renderLike(){
   syncTune(t,T('Желаемый характер','Target character'),isOwn?T('Подбор идёт по вашим значениям, а не по выбранной ракетке.','Matching uses your values, not the selected racket.'):T('Характер выбранной ракетки с учётом пожелания. Двигайте ползунки, чтобы задать свои значения.','The selected racket’s character, shifted the way you asked. Move the sliders to set your own values.'));
   const tier=val('ltier'),fixCls=/^[1-4]$/.test(tier)?+tier:0,cheap=tier==='cheap';
   // «по ощущениям»: маховый вес, вес головы, баланс, вес и жёсткость
-  const phys=o=>Math.abs(o.SW-ref.SW)/1.0+Math.abs(o.H-ref.H)/0.8+Math.abs(o.bp-ref.bp)/5+Math.abs(o.W-ref.W)/3+((o.f&&ref.f)?Math.abs(o.f-ref.f)*.4:.4);
+  const phys=o=>Math.abs(o.SW-ref.SW)/1.0+Math.abs(o.H-ref.H)/0.8+Math.abs(o.bpe-ref.bpe)/5+Math.abs(o.W-ref.W)/3+((o.f&&ref.f)?Math.abs(o.f-ref.f)*.4:.4);
   // вес: «такую же» — только тот же вес; «мощнее» — тот же или на класс тяжелее (лучше — больше мощи в том же весе);
   // «быстрее», «мягче, легче», «бережнее к руке» — тот же или на класс легче, тяжелее — никогда
   const uOk=o=>{if(ref.custom||!ref.u)return true;if(dir==='same')return o.u===ref.u;if(dir==='power')return o.u===ref.u||o.u===ref.u-1;return o.u===ref.u||o.u===ref.u+1};
@@ -493,7 +503,7 @@ function renderLike(){
   const priceOk=o=>!cheap||!ref.p||(o.p&&o.p<ref.p);
   const base0=SITE.filter(o=>o.uid!==ref.uid&&!(o.b===ref.b&&o.m===ref.m)&&filterBase(o,'brand2','instock2')&&uOk(o)&&priceOk(o));
   const base=base0.some(lvOk)?base0.filter(lvOk):base0;
-  // сравниваем характер без коридора уровня — чтобы любительская могла быть «такой же, как топовая, но классом ниже»
+  // сравниваем характер без коридора уровня — чтобы средняя могла быть «такой же, как топовая, но классом ниже»
   const ub=(o,k)=>{const b=LV_BAND[o.lv];const v=o.ax[k];return b?1+(v-b[0])*9/(b[1]-b[0]):v};
   const P=o=>isOwn?{p:o.ax.power,s:o.ax.speed,c:o.ax.control}:{p:ub(o,'power'),s:ub(o,'speed'),c:ub(o,'control')};
   const r=P(ref),tg=isOwn?{p:t.power,s:t.speed,c:t.control}:{...r};
@@ -515,7 +525,7 @@ function renderLike(){
         else{const dk=o.ax.comfort-ref.ax.comfort;s+=Math.min(df,3)*8+Math.max(-2,Math.min(dsw,4))*2+Math.max(-2,Math.min(dk,4))*6;if(dk<=0)s-=20;if(leadTech(o,'comfort').length)s+=4}
       }
     }
-    if(o.b==='Li-Ning')s+=LN_BONUS;
+    if(PRI.has(o.b))s+=LN_BONUS;
     if(lineageOf(o,ref)&&dir==='same'&&!cheap)s+=6;
     if(cheap&&ref.p&&o.p)s+=Math.min(4,(ref.p-o.p)/3000);
     return {o,s};
@@ -537,7 +547,7 @@ function renderLike(){
     if(!ref.custom&&o.s!==ref.s)w.push(T(`Другая серия (${o.s}) — другая рама, проверьте ощущения в руке`,`Different series (${o.s}) — a different frame, try how it feels in your hand`));
     x.why=w.slice(0,3)});
   const sp=document.getElementById('instock2').checked?[]:stockPicks(all0,list);
-  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),top=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,5);
+  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),top=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,5);mono([...top,...more]);mono(sp);
   sp.forEach(x=>{const w=[];if(x.stockNote)w.push(x.stockNote);if(!ref.custom&&x.o.s!==ref.s)w.push(T(`Другая серия (${x.o.s}) — другая рама, проверьте ощущения в руке`,`Different series (${x.o.s}) — a different frame, try how it feels in your hand`));x.why=[...w,...(x.why||[])].slice(0,3)});
   const simL=T('похожесть с учётом пожелания','similarity, with your preference');
   out.innerHTML=`<div class="profile"><h2>${T('Характер','Character')}: ${label(ref)} ${ref.u}U${ref.custom?T(' (по вашим данным)',' (from your data)'):ref.site?'':T(' · нет в магазине',' · not sold in store')}</h2>${AXN().map(([k,l])=>`<span class="pill">${l} ${num1(ref.ax[k])}</span>`).join('')}</div>
@@ -562,13 +572,13 @@ function route(){const c=location.hash==='#concept';document.getElementById('v-d
 const I18N={
  eyebrow:'Uniqsport · racket finder',
  h1:'Find a racket by its character',
- lead:'Built on the real Uniqsport catalogue: __NSITE__ Li-Ning and Yonex rackets, __NMEAS__ of them measured on the store’s swing-weight machine and __NTECH__ with their technologies broken down. Another __NCAT__ Li-Ning, Yonex and Victor rackets come from the manufacturers’ catalogues — you can find them in search and on the racket maps. The finder looks not only at weight, balance and stiffness but at how a racket is built: swing weight, head weight, and frame and shaft technologies.',
+ lead:'Built on the real Uniqsport catalogue: __NSITE__ Li-Ning, Yonex and Victor rackets, __NMEAS__ of them measured on the store’s swing-weight machine and __NTECH__ with their technologies broken down. Another __NCAT__ Li-Ning, Yonex and Victor rackets come from the manufacturers’ catalogues — you can find them in search and on the racket maps. The finder looks not only at weight, balance and stiffness but at how a racket is built: swing weight, head weight, and frame and shaft technologies.',
  t_demo:'Racket finder',t_concept:'How it works',
  map_title:'Racket maps · Li-Ning · Yonex · Victor',map_char:'Similarity: power · control · speed',map_feel:'Feel in the hand: weight and stiffness',
  u_any:'Any weight',u_6:'6U and lighter',map_site:'Sold in store only',map_old:'Hide older models',v_plot:'Chart',v_tbl:'List',
  m_quiz:'By questions',m_like:'From my racket',
  q_who:'Who is the racket for?',q_lvl:'How long have you been playing?',q_tier:'Which racket are you looking for?',
- h_tier:'Best for my game — matching across all classes for your level. Or choose a class: entry-level, recreational, semi-pro, professional.',
+ h_tier:'Best for my game — matching across all classes for your level. Or choose a class: entry-level, intermediate, advanced, professional.',
  q_fmt:'What do you play most?',q_style:'Your game',q_swing:'How fast is your swing?',
  h_swing:'Fast — you hit with the wrist and the shuttle easily reaches the back line.',
  q_arm:'Does your arm or elbow get tired?',q_brand:'Brand',instock:'In stock only',
@@ -629,18 +639,18 @@ const shape=(o,x,y,r)=>{x=+x;y=+y;const c=COL[o.b],fill=o.swEst?'var(--surface)'
   return `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${st}" stroke-width="${sw}"/>`};
 const TXT_RU={
  char:{desc:'Как ракетка играет — по образцу диаграммы Yonex 2026. Слева мощные ракетки, справа скоростные, в пересечении — контроль и универсальные (у Yonex это одно и то же — серия Arcsaber). По горизонтали — чего у ракетки больше: мощи или скорости; по вертикали — контроль. Размер точки — класс. Нажмите на ракетку — покажем самые похожие на неё.',
-   note:'Оценки — те же, по которым работает подбор: замеры, технологии, характер серии и класс ракетки. У каждого класса свой коридор: начальная — 1–5, любительская — 2,5–6,5, полупрофессиональная — 4–8,5, профессиональная — 5,5–10, поэтому профессиональная ракетка не слабее начальной ни в мощи, ни в скорости, ни в контроле. Похожие ищутся только среди ракеток того же класса: прежде всего по мощи, скорости и контролю, с поправкой на ощущение в руке.'},
+   note:'Оценки — те же, по которым работает подбор: замеры, технологии, характер серии и класс ракетки. У каждого класса свой коридор: начальная — 1–5, средняя — 2,5–6,5, продвинутая — 4–8,5, профессиональная — 5,5–10, поэтому профессиональная ракетка не слабее начальной ни в мощи, ни в скорости, ни в контроле. Похожие ищутся только среди ракеток того же класса: прежде всего по мощи, скорости и контролю, с поправкой на ощущение в руке.'},
  feel:{desc:'Как ракетка ощущается в руке. По горизонтали — жёсткость (стержень и ощущение от удара), по вертикали — маховый вес: насколько ракетка тяжела в замахе. Рядом стоят ракетки, которые одинаково тяжелы в замахе и одинаково жёсткие. Это не значит, что они одинаково играют: мощь, скорость и контроль зависят ещё от распределения веса, формы и аэродинамики обода, толщины стержня и технологий. Как ракетки играют — на карте сходства.',
    note:'Положение считается по нашим данным: замеры на станке, а если их нет — вес, баланс и жёсткость из каталогов производителей. Позиции в фирменных диаграммах Li-Ning, Yonex и Victor показаны в подсказке к точке.'}};
 const TXT_EN={
  char:{desc:'How a racket plays, modelled on the Yonex 2026 chart. Power rackets on the left, speed rackets on the right, control and all-round rackets where they overlap (for Yonex these are the same thing — the Arcsaber series). Horizontally: whether the racket has more power or more speed; vertically: control. Dot size shows the class. Tap a racket to see the most similar ones.',
-   note:'The scores are the same ones the finder uses: measurements, technologies, series character and racket class. Each class has its own range: entry-level 1–5, recreational 2.5–6.5, semi-pro 4–8.5, professional 5.5–10, so a professional racket is never weaker than an entry-level one in power, speed or control. Similar rackets are searched within the same class only: mainly by power, speed and control, adjusted for feel in the hand.'},
+   note:'The scores are the same ones the finder uses: measurements, technologies, series character and racket class. Each class has its own range: entry-level 1–5, intermediate 2.5–6.5, advanced 4–8.5, professional 5.5–10, so a professional racket is never weaker than an entry-level one in power, speed or control. Similar rackets are searched within the same class only: mainly by power, speed and control, adjusted for feel in the hand.'},
  feel:{desc:'How a racket feels in the hand. Horizontally: stiffness (shaft and feel on impact); vertically: swing weight — how heavy the racket is to swing. Rackets next to each other are equally heavy to swing and equally stiff. That does not mean they play the same: power, speed and control also depend on weight distribution, frame shape and aerodynamics, shaft thickness and technologies. For how rackets play, see the similarity map.',
    note:'Positions come from our own data: measurements on the machine, or, where there are none, weight, balance and stiffness from the manufacturers’ catalogues. Positions on the official Li-Ning, Yonex and Victor charts are shown in the tooltip for each dot.'}};
 const TXT=()=>LANG==='en'?TXT_EN:TXT_RU;
 const legend=()=>BR.map(b=>`<span><svg viewBox="-8 -8 16 16">${shape({b,swEst:false},0,0,5)}</svg>${b}</span>`).join('')+
   `<span><svg viewBox="-8 -8 16 16"><circle r="5" fill="var(--muted)" stroke="var(--surface)"/></svg>${T('измерено в Uniqsport','measured by Uniqsport')}</span><span><svg viewBox="-8 -8 16 16"><circle r="5" fill="var(--surface)" stroke="var(--muted)" stroke-width="2"/></svg>${T('измерения по каталогу','catalogue specs')}</span>`+
-  (kind==='char'?`<span><svg viewBox="-12 -9 24 18" style="width:24px;height:18px"><circle r="2.5" cx="-10" fill="var(--muted)"/><circle r="3.5" cx="-4" fill="var(--muted)"/><circle r="4.5" cx="3" fill="var(--muted)"/><circle r="5.5" cx="11" fill="var(--muted)"/></svg>${T('размер точки — класс: начальная · любительская · полупрофи · профессиональная','dot size — class: entry-level · recreational · semi-pro · professional')}</span>`:'');
+  (kind==='char'?`<span><svg viewBox="-12 -9 24 18" style="width:24px;height:18px"><circle r="2.5" cx="-10" fill="var(--muted)"/><circle r="3.5" cx="-4" fill="var(--muted)"/><circle r="4.5" cx="3" fill="var(--muted)"/><circle r="5.5" cx="11" fill="var(--muted)"/></svg>${T('размер точки — класс: начальная · средняя · продвинутая · профессиональная','dot size — class: entry-level · intermediate · advanced · professional')}</span>`:'');
 const FE5_RU=['','мягкое','мягковатое','среднее','жестковатое','жёсткое'],FE5_EN=['','soft','slightly soft','medium','slightly firm','firm'];
 const FE5=i=>(LANG==='en'?FE5_EN:FE5_RU)[i];
 const n1=v=>num1(v);
@@ -648,7 +658,7 @@ const chartTxt=o=>{if(o.cx==null)return '';const sx=o.cx>.33?T('жёстче','s
 const st=()=>({br:new Set([...document.querySelectorAll('#map-f [data-br]')].filter(i=>i.checked).map(i=>i.dataset.br)),u:$('map-u').value,site:$('map-site').checked,old:$('map-old').checked,q:$('map-q').value.trim().toLowerCase()});
 const uOk=(o,u)=>!u||(u==='6'?o.u>=6:o.u===+u);
 // сходство — как в режиме «Похожую» (характер + ощущение в руке)
-const physD=(o,r)=>Math.abs(o.SW-r.SW)/1.0+Math.abs(o.H-r.H)/0.8+Math.abs(o.bp-r.bp)/5+Math.abs(o.W-r.W)/3+((o.f&&r.f)?Math.abs(o.f-r.f)*.4:.4);
+const physD=(o,r)=>Math.abs(o.SW-r.SW)/1.0+Math.abs(o.H-r.H)/0.8+Math.abs(o.bpe-r.bpe)/5+Math.abs(o.W-r.W)/3+((o.f&&r.f)?Math.abs(o.f-r.f)*.4:.4);
 // главное — характер (мощь, скорость, контроль): разница в 3 балла по одной оси — уже другая ракетка; ощущение в руке — поправка
 const charD=(o,r)=>Math.sqrt(((o.ax.power-r.ax.power)**2+(o.ax.speed-r.ax.speed)**2+(o.ax.control-r.ax.control)**2)/3);
 const simOf=(o,r)=>Math.max(0,Math.min(99,Math.round(100-charD(o,r)*15-Math.abs(o.ax.ease-r.ax.ease)*1.5-Math.abs(o.ax.comfort-r.ax.comfort)-physD(o,r)*1.5)));
