@@ -1,0 +1,45 @@
+name: Build QNAP PHP 7.4 image
+on:
+  push:
+    branches: [racket-finder]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: qnap-php74-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    if: github.ref == 'refs/heads/racket-finder'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image for runtime checks
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/qnap/Dockerfile
+          platforms: linux/arm64
+          load: true
+          tags: opencart-qnap:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Check PHP, configuration, libraries, and Apache
+        run: |
+          docker run --rm --entrypoint php opencart-qnap:test -v
+          docker run --rm --entrypoint php opencart-qnap:test -l /opt/opencart-config.php
+          docker run --rm --entrypoint php opencart-qnap:test -r 'require "/var/www/html/system/library/odoo_connector/vendor/autoload.php"; require "/var/www/html/system/library/cdek_official/vendor/autoload.php";'
+          docker run --rm --entrypoint apache2ctl opencart-qnap:test -t
+      - name: Publish tested image
+        run: |
+          docker tag opencart-qnap:test ghcr.io/lier72/opencart:racket-finder-php74
+          docker tag opencart-qnap:test ghcr.io/lier72/opencart:php74-${{ github.sha }}
+          docker push ghcr.io/lier72/opencart:php74-${{ github.sha }}
+          docker push ghcr.io/lier72/opencart:racket-finder-php74

@@ -1,0 +1,53 @@
+name: uniqsport-racket-finder
+services:
+  web:
+    image: ghcr.io/lier72/opencart:${IMAGE_TAG:-racket-finder-php74}
+    platform: linux/arm64
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "${NAS_BIND_IP:?Set NAS_BIND_IP}:${HTTP_PORT:-8090}:80"
+    environment:
+      OPENCART_URL: ${OPENCART_URL:?Set OPENCART_URL}
+      DB_HOSTNAME: db
+      DB_USERNAME: opencart
+      DB_DATABASE: opencart
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      DB_PREFIX: ${DB_PREFIX:-ocus_}
+    volumes:
+      - storage:/var/www/storage
+      - images:/var/www/html/image
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+  db:
+    image: mariadb:10.11
+    platform: linux/arm64
+    restart: unless-stopped
+    mem_limit: 384m
+    command: ["--innodb-buffer-pool-size=96M", "--max-connections=20"]
+    environment:
+      MARIADB_DATABASE: opencart
+      MARIADB_USER: opencart
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD}
+    volumes:
+      - database:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  storage:
+  images:
+  database:
