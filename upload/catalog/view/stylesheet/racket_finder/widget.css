@@ -100,7 +100,6 @@ select{width:100%;font:500 14px var(--f-body);padding:9px 10px;border-radius:8px
 .cards{display:grid;gap:14px}
 .card{background:var(--surface);border:1px solid rgba(255,90,40,1);border-radius:var(--r);padding:16px 18px;display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px}
 @media (max-width:640px){.card{grid-template-columns:1fr}}
-.card.best{border-color:var(--court);box-shadow:0 0 0 1px var(--court)}
 .card h3{margin:0;font-size:18px;font-weight:700;line-height:1.25}
 .meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin:6px 0 10px}
 .meta b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
@@ -256,7 +255,7 @@ legend{font-size:14px;margin-bottom:8px}
 .pill{background:var(--sunk)}
 .cards{gap:16px}
 .card{padding:20px 22px;gap:20px}
-.card.best{border-color:var(--court);box-shadow:none}
+.card.best{border-color:rgba(255,90,40,1);box-shadow:none}
 .badge.stock,.tag.has{background:var(--stock-bg);color:var(--good)}
 .badge.meas{background:var(--sunk);color:var(--ink)}
 .essence{font-size:14.5px;line-height:1.55}
@@ -266,7 +265,7 @@ legend{font-size:14px;margin-bottom:8px}
 .why li{margin:4px 0}
 .hint,.note{font-size:13px}
 .score .n{color:var(--ink)}
-.card.best .score .n{color:var(--court)}
+.card.best .score .n{color:rgba(255,90,40,1)}
 .axis .fill,.lg-fill{background:var(--sec)}
 .axis .tgt,.lg-tgt{background:var(--court)}
 .formula{border-left:1px solid var(--line)}
