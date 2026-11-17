@@ -28,8 +28,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .rf-root{width:100vw;max-width:100vw;margin-left:calc(50% - 50vw);overflow-x:hidden}
 a{color:var(--court)}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header.top{background:var(--band);color:var(--band-ink);position:relative;overflow:hidden}
-header.top .wrap{padding-block:22px 0;position:relative;z-index:1}
+header.top{position:relative}
+header.top .wrap{background:var(--band);color:var(--band-ink);padding-block:22px 0;position:relative;z-index:1;overflow:hidden}
 .court-lines{position:absolute;inset:0;opacity:.18;pointer-events:none}
 .lang{position:absolute;z-index:2;top:16px;right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:2px;background:rgba(255,255,255,.14);border-radius:8px;padding:2px}
 .lang button{border:0;background:transparent;color:var(--band-ink);font:600 12.5px var(--f-mono);letter-spacing:.04em;padding:5px 9px;border-radius:6px;cursor:pointer;opacity:.85}
@@ -136,9 +136,9 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .legend i{display:inline-block;vertical-align:middle;margin-right:5px}
 .lg-fill{width:16px;height:8px;background:var(--court);border-radius:3px}
 .lg-tgt{width:2px;height:12px;background:var(--cork)}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid var(--court);background:var(--court);color:var(--court-ink);cursor:pointer;text-decoration:none}
-.btn.ghost{background:transparent;color:var(--court)}
+.rf-root .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.rf-root .btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid var(--court);background:var(--court);color:var(--court-ink);cursor:pointer;text-decoration:none}
+.rf-root .btn.ghost{background:transparent;color:var(--court)}
 .stockpick{margin-top:18px;padding:14px;border:2px solid var(--cork);border-radius:var(--r);background:var(--cork-soft)}
 .stockpick h4{margin:0 0 4px;font-size:15px}
 .stockpick>p{margin:0 0 12px;font-size:13px;color:var(--muted)}
@@ -268,7 +268,7 @@ legend{font-size:14px;margin-bottom:8px}
 .card.best .score .n{color:var(--court)}
 .axis .fill,.lg-fill{background:var(--sec)}
 .axis .tgt,.lg-tgt{background:var(--court)}
-.btn.ghost{border-color:var(--line);color:var(--ink)}
+.rf-root .btn.ghost{border-color:var(--line);color:var(--ink)}
 .row .pct{color:var(--ink)}
 .formula{border-left:1px solid var(--line)}
 .map-tabs button[aria-selected=true]{background:var(--sec);border-color:var(--sec)}
