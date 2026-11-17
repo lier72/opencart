@@ -30,7 +30,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 a{color:var(--court)}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header.top{position:relative}
-header.top .wrap{background:var(--band);color:var(--band-ink);padding-block:22px 0;position:relative;z-index:1;overflow:hidden}
+header.top .wrap{background:var(--band);color:var(--band-ink);padding-block:0;position:relative;z-index:1;overflow:hidden}
 .court-lines{position:absolute;inset:0;opacity:.18;pointer-events:none}
 .lang{position:absolute;z-index:2;top:16px;right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:2px;background:rgba(255,255,255,.14);border-radius:8px;padding:2px}
 .lang button{border:0;background:transparent;color:var(--band-ink);font:600 12.5px var(--f-mono);letter-spacing:.04em;padding:5px 9px;border-radius:6px;cursor:pointer;opacity:.85}
@@ -240,7 +240,6 @@ dialog.map::backdrop{background:rgba(10,20,15,.55)}
 /* Design overrides (Claude Design): type scale, spacing, two-colour wiring — green --sec as the interactive accent, terracotta --court for targets/highlights */
 body{font-size:16px;line-height:1.6}
 a{color:var(--sec)}
-header.top .wrap{padding-block:28px 0}
 h1{font-weight:600;letter-spacing:-.01em;margin:8px 0 10px}
 .lead{font-size:15.5px;line-height:1.6;max-width:66ch;opacity:.86;margin-bottom:22px}
 .lang{background:var(--lang-bg)}
