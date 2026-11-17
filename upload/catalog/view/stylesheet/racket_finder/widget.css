@@ -48,8 +48,10 @@ main .wrap{padding-block:22px 48px}
 .bench{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:24px;align-items:start}
 @media (max-width:860px){.bench{grid-template-columns:1fr}}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
-.quiz{position:sticky;top:12px}
-@media (max-width:860px){.quiz{position:static}}
+.quiz{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto}
+@media (max-width:860px){.quiz{position:static;max-height:none;overflow-y:visible}}
+#results{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto}
+@media (max-width:860px){#results{position:static;max-height:none;overflow-y:visible}}
 .modes{display:flex;background:var(--sunk);border-radius:9px;padding:3px;margin-bottom:14px}
 .modes button{flex:1;border:0;background:transparent;color:var(--muted);font:600 13px var(--f-body);padding:8px;border-radius:7px;cursor:pointer}
 .modes button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
@@ -91,7 +93,7 @@ select{width:100%;font:500 14px var(--f-body);padding:9px 10px;border-radius:8px
 .sl{display:grid;grid-template-columns:72px 1fr 30px;align-items:center;gap:8px;font-size:13px}
 .sl input[type=range]{width:100%;accent-color:var(--court)}
 .sl output{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
-.profile{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:14px}
+.profile{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--surface);z-index:1;padding-top:2px;padding-bottom:8px}
 .profile h2{font-family:var(--f-display);font-size:17px;font-weight:500;margin:0;flex-basis:100%}
 .pill{font-family:var(--f-mono);font-size:12.5px;background:var(--court-soft);color:var(--ink);padding:4px 9px;border-radius:6px}
 .cards{display:grid;gap:14px}
