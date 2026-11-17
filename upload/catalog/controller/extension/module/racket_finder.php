@@ -74,6 +74,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		$this->document->setTitle($this->language->get('page_title'));
 		$this->document->setDescription($this->language->get('page_meta_description'));
 
+		$this->document->addStyle('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 		$this->document->addStyle('catalog/view/stylesheet/racket_finder/widget.css?v=' . $this->cssVersion());
 
 		$data['breadcrumbs'] = array();
