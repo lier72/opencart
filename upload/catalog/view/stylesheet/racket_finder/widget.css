@@ -137,8 +137,9 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .lg-fill{width:16px;height:8px;background:var(--court);border-radius:3px}
 .lg-tgt{width:2px;height:12px;background:var(--cork)}
 .rf-root .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.rf-root .btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid var(--court);background:var(--court);color:var(--court-ink);cursor:pointer;text-decoration:none}
-.rf-root .btn.ghost{background:transparent;color:var(--court)}
+.rf-root .btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,40,.8);background:rgba(255,90,40,.8);color:#fff;cursor:pointer;text-decoration:none;transition:background-color .15s ease,border-color .15s ease}
+.rf-root .btn:hover{background:rgba(255,90,40,1);border-color:rgba(255,90,40,1)}
+.rf-root .btn.ghost{background:transparent;color:rgba(255,90,40,1);border-color:rgba(255,90,40,1)}
 .stockpick{margin-top:18px;padding:14px;border:2px solid var(--cork);border-radius:var(--r);background:var(--cork-soft)}
 .stockpick h4{margin:0 0 4px;font-size:15px}
 .stockpick>p{margin:0 0 12px;font-size:13px;color:var(--muted)}
@@ -268,7 +269,6 @@ legend{font-size:14px;margin-bottom:8px}
 .card.best .score .n{color:var(--court)}
 .axis .fill,.lg-fill{background:var(--sec)}
 .axis .tgt,.lg-tgt{background:var(--court)}
-.rf-root .btn.ghost{border-color:var(--line);color:var(--ink)}
 .row .pct{color:var(--ink)}
 .formula{border-left:1px solid var(--line)}
 .map-tabs button[aria-selected=true]{background:var(--sec);border-color:var(--sec)}
