@@ -74,7 +74,7 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 		$this->document->setTitle($this->language->get('page_title'));
 		$this->document->setDescription($this->language->get('page_meta_description'));
 
-		$this->document->addStyle('catalog/view/stylesheet/racket_finder/widget.css');
+		$this->document->addStyle('catalog/view/stylesheet/racket_finder/widget.css?v=' . $this->cssVersion());
 
 		$data['breadcrumbs'] = array();
 		$data['breadcrumbs'][] = array(
@@ -238,6 +238,14 @@ class ControllerExtensionModuleRacketFinder extends Controller {
 	/** Cache-busting token for the static data file (its mtime). */
 	private function dataVersion() {
 		$file = $this->dataFile();
+		return is_file($file) ? (string)filemtime($file) : '0';
+	}
+
+	/** Cache-busting token for the stylesheet (its mtime). addStyle() has no
+	 *  version parameter, so without this the browser/proxy can keep serving a
+	 *  stale cached widget.css across deploys indefinitely. */
+	private function cssVersion() {
+		$file = DIR_APPLICATION . '../catalog/view/stylesheet/racket_finder/widget.css';
 		return is_file($file) ? (string)filemtime($file) : '0';
 	}
 
