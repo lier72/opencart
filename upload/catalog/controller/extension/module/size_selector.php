@@ -17,6 +17,7 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 		$this->load->model('catalog/product');
 		$this->load->model('extension/module/size_mapping');
 		$this->load->model('extension/module/size_converter');
+		$this->load->library('sizerus');
 
 		$product_id = (int)Arr::get($this->request->get, 'product_id');
 
@@ -44,6 +45,9 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 
 		// Get product options with values
 		$product_options = $this->model_catalog_product->getProductOptions($product_id);
+
+		// RUS: бренд нужен, чтобы для Victor показывать EU/UK/US с коробки Victor
+		$brand = $this->sizerus->brandOf($product_id);
 
 		$size_data = array();
 
@@ -76,6 +80,8 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 						$sizes[] = array(
 							'option_value_id' => $pov['product_option_value_id'],
 							'size' => $size_value,
+							// RUS/EU/US/UK/mm по длине стопы (null — не обувная опция или не распознано)
+							'labels' => $this->sizerus->resolve($option_id, $pov['name'], $brand),
 							'original_name' => $pov['name'],
 							'price' => $pov['price'],
 							'price_prefix' => $pov['price_prefix'],
@@ -139,9 +145,10 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 
 		$data = array(
 			'product_id' => $product_id,
+			'brand' => $brand,
 			'genders' => $genders,
 			'size_data' => $size_data,
-			'default_system' => $this->model_extension_module_size_mapping->getSetting('default_size_system', 'EU'),
+			'default_system' => $this->model_extension_module_size_mapping->getSetting('default_size_system', 'RUS'),
 			'show_stock' => $this->model_extension_module_size_mapping->getSetting('show_stock_status', '1') == '1',
 			'conversion_tables' => $conversion_tables,
 			'category_gender' => $category_gender,
@@ -200,6 +207,19 @@ class ControllerExtensionModuleSizeSelector extends Controller {
 			$table = $this->model_extension_module_size_mapping->getConversionTable($gender, $size_type);
 			if ($table && isset($table['table_data'])) {
 				$size_tables = $table['table_data'];
+			}
+		}
+
+		// RUS: таблица по сетке конкретного товара (Li-Ning / Victor), со столбцом RUS
+		$product_id = (int)Arr::get($this->request->get, 'product_id', 0);
+		$option_id = (int)Arr::get($this->request->get, 'option_id', 0);
+
+		if ($size_type === 'shoes' && $option_id) {
+			$this->load->library('sizerus');
+			$rus_table = $this->sizerus->guideTable($option_id, $product_id ? $this->sizerus->brandOf($product_id) : '');
+
+			if ($rus_table) {
+				$size_tables = $rus_table;
 			}
 		}
 

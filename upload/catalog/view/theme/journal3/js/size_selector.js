@@ -22,7 +22,7 @@
 
 	SizeSelector.DEFAULTS = {
 		productId: null,
-		defaultSystem: 'EU',
+		defaultSystem: 'RUS',
 		showStock: true,
 		ajaxUrl: 'index.php?route=extension/module/size_selector'
 	};
@@ -109,7 +109,7 @@
 			html += '<div class="form-group' + requiredClass + ' product-option-radio push-option">';
 
 			var optionLabel = genderData.option_name.replace(/\s*\([A-Z]+\)\s*$/, '');
-			html += '<label class="control-label">' + optionLabel + ' (' + this.currentSystem + ')</label>';
+			html += '<label class="control-label">' + optionLabel + ' (%%SYSTEM%%)</label>';
 
 			// Gender selector (if multiple genders)
 			if (this.sizeData.genders.length > 1) {
@@ -126,6 +126,11 @@
 
 			// Row 1: System selector + Size guide button
 			var availableSystems = this.getAvailableSystems(genderData.size_type, this.currentGender);
+
+			// Текущая система недоступна для этой сетки (например, UK у детских Li-Ning) — берём первую
+			if (availableSystems.indexOf(this.currentSystem) === -1) {
+				this.currentSystem = availableSystems[0];
+			}
 			var sizeGuideText = this.lang.size_guide || 'Таблица размеров';
 
 			html += '<div class="size-toolbar">';
@@ -154,6 +159,8 @@
 
 			html += '</div>';
 
+			html = html.replace('%%SYSTEM%%', this.currentSystem);
+
 			this.$element.html(html);
 		},
 
@@ -167,13 +174,16 @@
 					return;
 				}
 
-				var displaySize = this.convertSize(
-					sizeItem.size,
-					sourceSystem,
-					this.currentSystem,
-					this.currentGender,
-					this.currentSizeType
-				);
+				var labels = sizeItem.labels || null;
+				var displaySize = (labels && labels[this.currentSystem])
+					? labels[this.currentSystem]
+					: this.convertSize(
+						sizeItem.size,
+						sourceSystem,
+						this.currentSystem,
+						this.currentGender,
+						this.currentSizeType
+					);
 
 				if (!displaySize) {
 					displaySize = sizeItem.size;
@@ -187,6 +197,9 @@
 				html += 'data-size="' + displaySize + '" data-original-size="' + sizeItem.size + '" />';
 				html += '<span class="option-wrapper">';
 				html += '<span class="option-value">' + displaySize + '</span>';
+				if (labels && labels.cm && this.currentSystem === 'RUS') {
+					html += '<small class="size-sub">' + labels.cm + ' см</small>';
+				}
 				html += '</span>';
 				html += '</label>';
 				html += '</div>';
@@ -333,6 +346,22 @@
 
 		getAvailableSystems: function(sizeType, gender) {
 			if (sizeType === 'shoes') {
+				// RUS-подписи с сервера: показываем только системы, заполненные для всех размеров
+				var genderData = this.sizeData && this.sizeData.size_data[gender];
+				var sizes = genderData ? genderData.sizes : [];
+
+				if (sizes.length && sizes[0].labels) {
+					var systems = ['RUS', 'EU', 'US', 'UK', 'mm'].filter(function(system) {
+						return sizes.every(function(item) {
+							return item.labels && item.labels[system];
+						});
+					});
+
+					if (systems.length) {
+						return systems;
+					}
+				}
+
 				return ['EU', 'US', 'UK', 'mm'];
 			} else if (sizeType === 'apparel') {
 				return ['Asian', 'EU', 'US'];
@@ -443,7 +472,9 @@
 				data: {
 					gender: gender,
 					size_type: sizeType,
-					category_id: 0
+					category_id: 0,
+					product_id: this.productId,
+					option_id: (this.sizeData && this.sizeData.size_data[gender]) ? this.sizeData.size_data[gender].option_id : 0
 				},
 				dataType: 'json',
 				success: function(response) {

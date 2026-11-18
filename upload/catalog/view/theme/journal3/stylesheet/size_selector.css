@@ -218,6 +218,20 @@
     color: #fff;
 }
 
+/* RUS: длина стопы под размером, как на Спортмастере */
+#size-selector-container .radio .option-wrapper .size-sub {
+    display: block;
+    font-size: 11px;
+    line-height: 1.1;
+    color: #888;
+    font-weight: normal;
+}
+
+#size-selector-container .radio.selected .option-wrapper .size-sub,
+#size-selector-container .radio input[type="radio"]:checked + .option-wrapper .size-sub {
+    color: #ddd;
+}
+
 /* Also keep CSS-based :checked state as fallback */
 #size-selector-container .radio input[type="radio"]:checked + .option-wrapper {
     border-color: #333;
