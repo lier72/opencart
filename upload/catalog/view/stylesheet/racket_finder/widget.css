@@ -25,7 +25,16 @@
   --lang-bg:rgba(255,255,255,.12); --lines:#FFFFFF; --lines-op:.08; --stock-bg:rgba(91,185,122,.16); color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
-.rf-root{width:100vw;max-width:100vw;margin-left:calc(50% - 50vw);overflow-x:hidden}
+/* .rf-root breaks out of OpenCart's Bootstrap .container so .wrap below always gets its
+   full 1180px regardless of how narrow the theme's content column is. It must NOT also
+   set overflow here: .quiz and #results (further down) are position:sticky, and the
+   instant an ancestor of theirs gets any overflow other than visible — even just on one
+   axis — the browser makes the other axis "auto" too, turns that ancestor into its own
+   scroll container, and both panels silently stop sticking/scrolling independently and
+   just scroll away with the page instead. (This broke once already, live, before this
+   comment existed.) body already has overflow-x:hidden from the theme, which is enough
+   to swallow the few sub-pixel-rounding px that calc(50% - 50vw) can add. */
+.rf-root{width:100vw;max-width:100vw;margin-left:calc(50% - 50vw)}
 .desktop-main-menu-wrapper{position:relative;z-index:100000}
 a{color:var(--court)}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
