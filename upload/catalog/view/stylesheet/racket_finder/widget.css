@@ -284,6 +284,16 @@ dialog.map::backdrop{background:rgba(10,20,15,.55)}
    aren't plain variables are spacing/radii and the handful of hover/selected states the
    old green/terracotta pass had wired differently. */
 body{font-size:16px;line-height:1.6}
+/* The shop's own Bootstrap/Journal3 CSS sets body,legend,select{color:#333} with the same
+   specificity as (and loaded after) our base rules above, so it wins the tie — in light mode
+   #333 happens to look almost like --ink and nobody notices, but in dark mode it stays stuck
+   dark-gray instead of switching to the light --ink value. .rf-root{color:...} re-anchors
+   inheritance for every plain heading/span/div inside the widget that has no color of its
+   own (h1-h3, bare span, .card h3, …); legend/select need their own scoped rule since
+   Bootstrap targets them directly, not just via inheritance. */
+.rf-root{color:var(--ink)}
+.rf-root legend{color:var(--ink)}
+.rf-root select{color:var(--ink)!important}
 a{color:var(--ink)}a:hover{color:rgb(255,90,40)}
 header.top{border-bottom:1px solid var(--hdr-line)}
 header.top .wrap{padding-block:30px 0}
