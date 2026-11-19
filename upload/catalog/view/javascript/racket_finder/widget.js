@@ -17,7 +17,9 @@ const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
 const flexTxt=o=>o.f?T(FX(o.f)+' стержень',FX(o.f)+' shaft'):T('жёсткость стержня не указана производителем','shaft stiffness not stated by the manufacturer'); // неизвестная жёсткость — не «средняя»
 const AXK=['power','speed','control','ease','comfort'];
 const AXL={power:['Мощь','Power'],speed:['Скорость','Speed'],control:['Контроль','Control'],ease:['Прощает','Forgiving'],comfort:['Комфорт','Comfort']};
-const AXN=()=>AXK.map(k=>[k,T(...AXL[k])]);
+const AXD={ease:['Чем выше, тем меньше нужна точность удара: лёгкая и мягкая ракетка прощает промахи мимо центра струнной поверхности','The higher it is, the less precise your swing needs to be: a light, flexible racket forgives mistimed or off-centre hits']};
+// axis label with a "?" hint for axes that need one (currently just "Прощает") — click/tap/hover shows AXD's explanation
+const axLbl=k=>{const l=T(...AXL[k]);return AXD[k]?`${l}<i class="axhelp" tabindex="0" title="${T(...AXD[k])}">?</i>`:l};
 const clamp=v=>Math.max(0,Math.min(1,v));
 const num1=v=>String(Math.round(v*10)/10).replace('.',LANG==='en'?'.':',');
 // ---- items: measured data first, card data as fallback
@@ -406,8 +408,10 @@ const firstPerModel=list=>{const seen=new Set();return list.filter(x=>{const k=x
 const WOMEN_ONLY=new Set(['AXForce 80 Light']);
 // из весов одной модели берём лучший; вариант в наличии предпочитаем, если он хуже не больше чем на 5 баллов
 function bestPerModel(list){const seen=new Map(),v=x=>x.s+(x.o.q===1?5:0);for(const x of list){const k=x.o.b+x.o.m;if(!seen.has(k)||v(seen.get(k))<v(x))seen.set(k,x)}return [...seen.values()].sort((a,b)=>b.s-a.s)}
-function axesHTML(o,t){
-  return `<div class="axes">${AXN().map(([k,l])=>`<div class="axis"><span>${l}</span><div class="bar"><div class="fill" style="width:${o.ax[k]*10}%"></div>${t?`<div class="tgt" style="left:${t[k]*10}%" title="${T('Цель','Target')}: ${num1(t[k])}"></div>`:''}</div><span class="v">${o.ax[k].toFixed(0)}</span></div>`).join('')}</div>`;
+function axesHTML(o,t,compact){
+  // compact (mini cards): plain label, no "?" hint — too little room there, and the hint
+  // is already reachable from the sliders and the main cards' own axis bars.
+  return `<div class="axes">${AXK.map(k=>`<div class="axis"><span>${compact?T(...AXL[k]):axLbl(k)}</span><div class="bar"><div class="fill" style="width:${o.ax[k]*10}%"></div>${t?`<div class="tgt" style="left:${t[k]*10}%" title="${T('Цель','Target')}: ${num1(t[k])}"></div>`:''}</div><span class="v">${o.ax[k].toFixed(0)}</span></div>`).join('')}</div>`;
 }
 function techHTML(o){
   if(!o.hasT)return '';
@@ -431,10 +435,10 @@ function cardHTML(x,t,i,extra){
     <div class="price">${T('Цена','Price')}: ${fmtP(o.p)}</div>
   </article>`;
 }
-function rowHTML(x,t){const o=x.o;const stLabel=o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online');return `<article class="mini"><div class="mini-h"><span class="pct">${x.d??x.s}%</span><span class="mbar"><i style="width:${x.d??x.s}%"></i></span></div><div class="mini-top"><a class="mini-name" href="${url(o)}" target="_blank" rel="noopener">${label(o)} <span>${o.u}U</span></a><span class="st${o.q===1?' ok':''}">${stLabel}</span></div><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''}</div>${axesHTML(o,t)}<div class="mini-f"><a class="btn sm" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><span class="pr">${T('Цена','Price')}: ${fmtP(o.p)}</span></div></article>`}
+function rowHTML(x,t){const o=x.o;const stLabel=o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online');return `<article class="mini"><div class="mini-h"><span class="pct">${x.d??x.s}%</span><span class="mbar"><i style="width:${x.d??x.s}%"></i></span></div><div class="mini-top"><a class="mini-name" href="${url(o)}" target="_blank" rel="noopener">${label(o)} <span>${o.u}U</span></a><span class="st${o.q===1?' ok':''}">${stLabel}</span></div><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''}</div>${axesHTML(o,t,true)}<div class="mini-f"><a class="btn sm" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><span class="pr">${T('Цена','Price')}: ${fmtP(o.p)}</span></div></article>`}
 const out=document.getElementById('results');
 const slBox=document.getElementById('sliders');let own=null,ownMode=null;
-slBox.innerHTML=AXN().map(([k,l])=>`<label class="sl" for="sl-${k}"><span>${l}</span><input type="range" id="sl-${k}" min="1" max="10" step="0.5"><output id="so-${k}"></output></label>`).join('');
+slBox.innerHTML=AXK.map(k=>`<label class="sl" for="sl-${k}"><span>${axLbl(k)}</span><input type="range" id="sl-${k}" min="1" max="10" step="0.5"><output id="so-${k}"></output></label>`).join('');
 function effT(base){return own&&ownMode===mode?{...own}:base}
 function syncTune(t,title,hint){
   AXK.forEach(k=>{const i=document.getElementById('sl-'+k);if(document.activeElement!==i)i.value=t[k];document.getElementById('so-'+k).textContent=num1(+i.value)});
@@ -553,7 +557,7 @@ function renderLike(){
   const spU=new Set(sp.map(x=>x.o.b+x.o.m)),top=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,4);mono([...top,...more]);mono(sp);
   sp.forEach(x=>{const w=[];if(x.stockNote)w.push(x.stockNote);if(!ref.custom&&x.o.s!==ref.s)w.push(T(`Другая серия (${x.o.s}) — другая рама, проверьте ощущения в руке`,`Different series (${x.o.s}) — a different frame, try how it feels in your hand`));x.why=[...w,...(x.why||[])].slice(0,3)});
   const simL=T('похожесть с учётом пожелания','similarity, with your preference');
-  out.innerHTML=`<div class="profile"><h2>${T('Характер','Character')}: ${label(ref)} ${ref.u}U${ref.custom?T(' (по вашим данным)',' (from your data)'):ref.site?'':T(' · нет в магазине',' · not sold in store')}</h2>${AXN().map(([k,l])=>`<span class="pill">${l} ${num1(ref.ax[k])}</span>`).join('')}</div>
+  out.innerHTML=`<div class="profile"><h2>${T('Характер','Character')}: ${label(ref)} ${ref.u}U${ref.custom?T(' (по вашим данным)',' (from your data)'):ref.site?'':T(' · нет в магазине',' · not sold in store')}</h2>${AXK.map(k=>`<span class="pill">${axLbl(k)} ${num1(ref.ax[k])}</span>`).join('')}</div>
   ${!ref.custom&&ref.hasT?essence(ref):''}
   <div class="legend"><span><i class="lg-fill"></i>${T('характер ракетки','racket character')}</span><span><i class="lg-tgt"></i>${T('желаемый характер','target character')}</span></div>
   ${ref.custom?`<p class="topnote">${T('Характер рассчитан по введённым данным','Character calculated from the data you entered')}${ref.bpGuess?T(': точный баланс в мм не указан, взято типичное значение',': balance in mm not given, a typical value is used'):''}${ref.swEst?T('; маховый вес оценён по весу и балансу','; swing weight estimated from weight and balance'):''}. ${T('Чем больше вы укажете, тем точнее подбор.','The more you enter, the more accurate the match.')}</p>`:''}
@@ -603,7 +607,7 @@ function applyLang(){
   RU_HTML.forEach((ru,el)=>{const k=el.dataset.i18n;el.innerHTML=en&&I18N[k]?I18N[k]:ru});
   RU_ATTR.forEach((l,el)=>l.forEach(([a,k,ru])=>el.setAttribute(a,en&&I18N[k]?I18N[k]:ru)));
   document.querySelectorAll('.chips').forEach(box=>{const q=box.dataset.q;box.querySelectorAll('.chip span').forEach((sp,i)=>{const o=Q[q][i];if(o)sp.textContent=T(o[1],o[2]||o[1])})});
-  document.querySelectorAll('#sliders .sl>span').forEach((sp,i)=>{sp.textContent=AXN()[i][1]});
+  document.querySelectorAll('#sliders .sl>span').forEach((sp,i)=>{sp.innerHTML=axLbl(AXK[i])});
   document.querySelectorAll('[data-setlang]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.setlang===LANG));
   if(refMode==='catalog'&&refId)picked.textContent=pickedTxt();
 }

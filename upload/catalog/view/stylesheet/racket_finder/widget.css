@@ -112,7 +112,7 @@ select{width:100%;font:500 14px var(--f-body);padding:9px 10px;border-radius:8px
 .tune-state.own{background:var(--cork-soft);color:var(--warn)}
 .tune .hint{margin:4px 0 10px}
 .sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 18px}
-.sl{display:grid;grid-template-columns:72px 1fr 30px;align-items:center;gap:8px;font-size:13px}
+.sl{display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:8px;font-size:13px}
 .sl input[type=range]{width:100%;accent-color:var(--court)}
 .sl output{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
 .profile{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--surface);z-index:1;padding-top:2px;padding-bottom:8px}
@@ -151,11 +151,14 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .score .n{font-family:var(--f-display);font-size:30px;font-weight:700;color:var(--court);font-variant-numeric:tabular-nums}
 .score .l{font-size:12px;color:var(--muted)}
 .axes{display:grid;gap:7px}
-.axis{display:grid;grid-template-columns:78px 1fr 22px;gap:8px;align-items:center;font-size:12.5px}
+.axis{display:grid;grid-template-columns:88px 1fr 22px;gap:8px;align-items:center;font-size:12.5px}
 .axis .bar{position:relative;height:8px;background:var(--sunk);border-radius:4px}
 .axis .fill{position:absolute;left:0;top:0;bottom:0;background:var(--court);border-radius:4px}
 .axis .tgt{position:absolute;top:-4px;width:2px;height:16px;background:var(--cork);transform:translateX(-1px)}
 .axis .v{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+/* small "?" hint next to an axis label that isn't self-explanatory (just "Прощает" for now) */
+.axhelp{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:3px;border-radius:50%;background:var(--muted);color:var(--surface);font:700 9px/1 var(--f-body);font-style:normal;cursor:help;vertical-align:middle}
+.axhelp:hover,.axhelp:focus-visible{background:var(--court);outline:none}
 /* Sticks the same way .profile does (JS sets --profile-h to .profile's own height per
    render, 0 where there is no .profile, so .legend always sticks right under it), with a
    divider line underneath like the one "Ещё подходят" uses above its own rows. */
