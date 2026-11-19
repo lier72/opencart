@@ -259,7 +259,12 @@ code{font-family:var(--f-mono);font-size:12.5px;background:var(--sunk);padding:1
 .map-sim .pct{font-weight:700;font-variant-numeric:tabular-nums}
 @media (max-width:640px){.map-sim ol{columns:1}}
 
-.mapbtn{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;font:600 14px var(--f-body);padding:9px 14px;border-radius:10px;border:1px solid var(--court);background:var(--surface);color:var(--court);cursor:pointer}
+/* pinned the same way .profile pins the player-profile header in #results: a
+   full-width sticky bar with its own background, so the quiz's own scroll can't
+   carry the "Карты ракеток" button away, and scrolled fieldset content can't
+   show through beside it. */
+.quiz-pin{position:sticky;top:0;z-index:2;background:var(--surface);padding:2px 0 8px;margin:0 0 6px}
+.mapbtn{display:inline-flex;align-items:center;gap:8px;margin:0;font:600 14px var(--f-body);padding:9px 14px;border-radius:10px;border:1px solid var(--court);background:var(--surface);color:var(--court);cursor:pointer}
 .mapbtn:hover{background:var(--court-soft)}
 .mapbtn svg{width:18px;height:18px}
 dialog.map{width:min(1180px,calc(100vw - 16px));max-height:calc(100dvh - 16px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink)}
