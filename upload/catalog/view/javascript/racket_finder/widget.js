@@ -430,7 +430,7 @@ function cardHTML(x,t,i,extra){
     <div><div class="score"><span class="n">${x.d??x.s}%</span><span class="l">${extra||T('совпадение с вашим профилем','match with your profile')}</span></div>${axesHTML(o,t)}</div>
   </article>`;
 }
-function rowHTML(x){const o=x.o;return `<div class="row"><span class="pct">${x.d??x.s}%</span><div style="min-width:0"><a href="${url(o)}" target="_blank" rel="noopener">${label(o)} ${o.u}U</a><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''} · ${o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online')}</div></div><span class="pr">${fmtP(o.p)}</span></div>`}
+function rowHTML(x,t){const o=x.o;return `<article class="mini"><div class="mini-h"><span class="pct">${x.d??x.s}%</span><span class="mbar"><i style="width:${x.d??x.s}%"></i></span></div><a class="mini-name" href="${url(o)}" target="_blank" rel="noopener">${label(o)} <span>${o.u}U</span></a><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''}</div>${axesHTML(o,t)}<div class="mini-f"><span class="pr">${fmtP(o.p)}</span><span class="st${o.q===1?' ok':''}">${o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online')}</span></div></article>`}
 const out=document.getElementById('results');
 const slBox=document.getElementById('sliders');let own=null,ownMode=null;
 slBox.innerHTML=AXN().map(([k,l])=>`<label class="sl" for="sl-${k}"><span>${l}</span><input type="range" id="sl-${k}" min="1" max="10" step="0.5"><output id="so-${k}"></output></label>`).join('');
@@ -470,13 +470,13 @@ function renderQuiz(){
   const sp=document.getElementById('instock').checked?[]:stockPicks(allQ,list);
   sp.forEach(x=>{if(x.stockNote)x.tips=[x.stockNote,...(x.tips||[])]});
   [...list,...sp].forEach(x=>x.why=reasons(x.o,t));
-  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),tp=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,5);mono([...tp,...more]);mono(sp);
+  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),tp=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,4);mono([...tp,...more]);mono(sp);
   const clsP=SITE.filter(o=>top&&o.lv===+cls&&o.p).map(o=>o.p),minP=clsP.length?Math.min(...clsP):0,maxP=clsP.length?Math.max(...clsP):0;
   out.innerHTML=`${top?`<p class="topnote">${T(`Показываем только класс «${LVN(+cls)}»${minP?` (от ${fmtP(minP)} до ${fmtP(maxP)})`:''} — из него выбраны ракетки, которые лучше всего подходят под вашу игру. «Оптимальную» — подбор из всех классов с учётом вашего уровня.`,`Showing ${LVN(+cls)} rackets only${minP?` (${fmtP(minP)} to ${fmtP(maxP)})`:''} — picked from this class to suit your game best. “Best for my game” searches all classes with your level in mind.`)}</p>`:''}
   <div class="legend"><span><i class="lg-fill"></i>${T('характер ракетки','racket character')}</span><span><i class="lg-tgt"></i>${T('ваш профиль','your profile')}</span></div>
   ${tp.length?`<div class="cards">${tp.map((x,i)=>cardHTML(x,t,i)).join('')}</div>`:'<div class="panel empty">'+T('Под эти условия ракеток не нашлось. Снимите «Только в наличии» или выберите другой класс.','No rackets match these conditions. Untick “In stock only” or choose another class.')+'</div>'}
   ${stockHTML(sp,t)}
-  ${more.length?`<div class="more"><h4>${top?T('Ещё из этого класса','More from this class'):T('Ещё подходят','Also a good fit')}</h4><div class="rowlist">${more.map(rowHTML).join('')}</div></div>`:''}
+  ${more.length?`<div class="more"><h4>${top?T('Ещё из этого класса','More from this class'):T('Ещё подходят','Also a good fit')}</h4><div class="rowlist">${more.map(x=>rowHTML(x,t)).join('')}</div></div>`:''}
   <p class="note">${T('Маховый вес со звёздочкой — оценка по весу и балансу, остальные — замер на станке магазина. Где производитель указывает баланс в мм, используется он, а замеренный маховый вес пересчитан под него. Характер учитывает замеры, технологии рамы и стержня и ручные поправки магазина; при близком совпадении выше стоят ракетки Li-Ning и Victor.','Swing weights marked with an asterisk are estimated from weight and balance; the rest were measured on the store’s machine. Where the manufacturer states the balance in mm, that figure is used and the measured swing weight is adjusted to it. The character score combines measurements, frame and shaft technologies and the store’s own adjustments; on a close match, Li-Ning and Victor rackets rank higher.')}</p>`;
 }
 function renderLike(){
@@ -547,7 +547,7 @@ function renderLike(){
     if(!ref.custom&&o.s!==ref.s)w.push(T(`Другая серия (${o.s}) — другая рама, проверьте ощущения в руке`,`Different series (${o.s}) — a different frame, try how it feels in your hand`));
     x.why=w.slice(0,3)});
   const sp=document.getElementById('instock2').checked?[]:stockPicks(all0,list);
-  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),top=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,5);mono([...top,...more]);mono(sp);
+  const spU=new Set(sp.map(x=>x.o.b+x.o.m)),top=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,4);mono([...top,...more]);mono(sp);
   sp.forEach(x=>{const w=[];if(x.stockNote)w.push(x.stockNote);if(!ref.custom&&x.o.s!==ref.s)w.push(T(`Другая серия (${x.o.s}) — другая рама, проверьте ощущения в руке`,`Different series (${x.o.s}) — a different frame, try how it feels in your hand`));x.why=[...w,...(x.why||[])].slice(0,3)});
   const simL=T('похожесть с учётом пожелания','similarity, with your preference');
   out.innerHTML=`<div class="profile"><h2>${T('Характер','Character')}: ${label(ref)} ${ref.u}U${ref.custom?T(' (по вашим данным)',' (from your data)'):ref.site?'':T(' · нет в магазине',' · not sold in store')}</h2>${AXN().map(([k,l])=>`<span class="pill">${l} ${num1(ref.ax[k])}</span>`).join('')}</div>
@@ -557,7 +557,7 @@ function renderLike(){
   ${fixCls?`<p class="topnote">${T(`Показываем только класс «${LVN(fixCls)}». «Оптимальную» — того же класса, что и ваша ракетка, «Дешевле» — похожие из класса ниже.`,`Showing ${LVN(fixCls)} rackets only. “Best match” keeps the class of your racket, “Cheaper” looks one class lower.`)}</p>`:''}
   ${top.length?`<div class="cards">${top.map((x,i)=>cardHTML(x,t,i,simL)).join('')}</div>`:'<div class="panel empty">'+T('Ничего не нашлось — снимите фильтр по наличию или бренду.','Nothing found — remove the stock or brand filter.')+'</div>'}
   ${stockHTML(sp,t,simL)}
-  ${more.length?`<div class="more"><h4>${T('Ещё варианты','More options')}</h4><div class="rowlist">${more.map(rowHTML).join('')}</div></div>`:''}`;
+  ${more.length?`<div class="more"><h4>${T('Ещё варианты','More options')}</h4><div class="rowlist">${more.map(x=>rowHTML(x,t)).join('')}</div></div>`:''}`;
 }
 let mode='quiz';
 function render(){document.getElementById('tune').hidden=false;mode==='quiz'?renderQuiz():renderLike()}
