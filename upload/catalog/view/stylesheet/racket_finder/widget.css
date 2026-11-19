@@ -25,21 +25,31 @@
   --lang-bg:rgba(255,255,255,.12); --lines:#FFFFFF; --lines-op:.08; --stock-bg:rgba(91,185,122,.16); color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
-/* .rf-root breaks out of OpenCart's Bootstrap .container so .wrap below always gets its
-   full 1180px regardless of how narrow the theme's content column is. It must NOT also
-   set overflow here: .quiz and #results (further down) are position:sticky, and the
-   instant an ancestor of theirs gets any overflow other than visible — even just on one
-   axis — the browser makes the other axis "auto" too, turns that ancestor into its own
-   scroll container, and both panels silently stop sticking/scrolling independently and
-   just scroll away with the page instead. (This broke once already, live, before this
-   comment existed.) body already has overflow-x:hidden from the theme, which is enough
-   to swallow the few sub-pixel-rounding px that calc(50% - 50vw) can add. */
-.rf-root{width:100vw;max-width:100vw;margin-left:calc(50% - 50vw)}
+/* .rf-root is stretched to the edges of .row's own padding box (not the viewport), so
+   the hero band below reaches .row's sides/top exactly — never the page edges. This is
+   a small, bounded offset (not vw-based), so it can never create horizontal page
+   overflow and needs no overflow-x of its own. That matters because .quiz and #results
+   (further down) are position:sticky: the instant an ancestor of theirs gets ANY
+   overflow other than visible — even just on one axis — the browser makes the other
+   axis "auto" too, turns that ancestor into its own scroll container, and both panels
+   silently stop sticking/scrolling independently and just scroll away with the page
+   instead. (This broke once already, live, from an earlier overflow-x:hidden here.)
+   The 12px/20px/8px below match .row's and #content's own padding in this theme. */
+.rf-root{width:calc(100% + 24px);margin-left:-12px;margin-top:-28px}
+/* Belt-and-suspenders: keep the site's sticky menu above us even if something here ever
+   gets a stray high z-index. Not load-bearing for the point above — header.top (next)
+   is what was actually competing with the menu for the same sticky slot. */
 .desktop-main-menu-wrapper{position:relative;z-index:100000}
 a{color:var(--court)}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header.top{position:relative}
-header.top .wrap{background:var(--band);color:var(--band-ink);padding-block:0;position:relative;z-index:1;overflow:hidden}
+/* The theme styles EVERY bare <header> tag as its own sticky site header
+   (".desktop-header-active.sticky-menu header{position:sticky;top:...}"), and our
+   <header class="top"> hero band matches that generic selector too. Left alone, our
+   header inherits that sticky/pinned behaviour and slides up over the real site menu
+   on scroll instead of staying below it. !important + the extra .rf-root ancestor is
+   needed to out-rank the theme's own (also 2-class-plus-element) selector. */
+.rf-root header.top{position:relative!important;top:auto!important;z-index:1!important;background:var(--band);color:var(--band-ink);overflow:hidden}
+header.top .wrap{padding-block:20px 0;position:relative;z-index:1}
 .court-lines{position:absolute;inset:0;opacity:.18;pointer-events:none}
 .lang{position:absolute;z-index:2;top:16px;right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:2px;background:rgba(255,255,255,.14);border-radius:8px;padding:2px}
 .lang button{border:0;background:transparent;color:var(--band-ink);font:600 12.5px var(--f-mono);letter-spacing:.04em;padding:5px 9px;border-radius:6px;cursor:pointer;opacity:.85}
@@ -107,7 +117,7 @@ select{width:100%;font:500 14px var(--f-body);padding:9px 10px;border-radius:8px
 .profile h2{font-family:var(--f-display);font-size:17px;font-weight:500;margin:0;flex-basis:100%}
 .pill{font-family:var(--f-mono);font-size:12.5px;background:var(--court-soft);color:var(--ink);padding:4px 9px;border-radius:6px}
 .cards{display:grid;gap:14px}
-.card{background:var(--surface);border:1px solid rgba(255,90,40,1);border-radius:var(--r);padding:16px 18px;display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px}
 @media (max-width:640px){.card{grid-template-columns:1fr}}
 .card h3{margin:0;font-size:18px;font-weight:700;line-height:1.25}
 .meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin:6px 0 10px}
@@ -148,7 +158,10 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .rf-root .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .rf-root .btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,40,.8);background:rgba(255,90,40,.8);color:#fff;cursor:pointer;text-decoration:none;transition:background-color .15s ease,border-color .15s ease}
 .rf-root .btn:hover{background:rgba(255,90,40,1);border-color:rgba(255,90,40,1)}
-.rf-root .btn.ghost{background:transparent;color:#000;border-color:var(--line)}
+/* !important: the theme has an inline, site-wide ".btn, .btn:visited{color:#fff!important}"
+   rule (same generic ".btn" class we use), which otherwise always wins over this and
+   turns the ghost button's text white. */
+.rf-root .btn.ghost{background:transparent;color:#000!important;border-color:var(--line)}
 .stockpick{margin-top:18px;padding:14px;border:2px solid var(--cork);border-radius:var(--r);background:var(--cork-soft)}
 .stockpick h4{margin:0 0 4px;font-size:15px}
 .stockpick>p{margin:0 0 12px;font-size:13px;color:var(--muted)}
