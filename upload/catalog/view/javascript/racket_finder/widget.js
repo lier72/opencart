@@ -18,8 +18,35 @@ const flexTxt=o=>o.f?T(FX(o.f)+' стержень',FX(o.f)+' shaft'):T('жёст
 const AXK=['power','speed','control','ease','comfort'];
 const AXL={power:['Мощь','Power'],speed:['Скорость','Speed'],control:['Контроль','Control'],ease:['Прощает','Forgiving'],comfort:['Комфорт','Comfort']};
 const AXD={ease:['Чем выше, тем меньше нужна точность удара: лёгкая и мягкая ракетка прощает промахи мимо центра струнной поверхности','The higher it is, the less precise your swing needs to be: a light, flexible racket forgives mistimed or off-centre hits']};
-// axis label with a "?" hint for axes that need one (currently just "Прощает") — click/tap/hover shows AXD's explanation
-const axLbl=k=>{const l=T(...AXL[k]);return AXD[k]?`${l}<i class="axhelp" tabindex="0" title="${T(...AXD[k])}">?</i>`:l};
+// axis label with a "?" hint for axes that need one (currently just "Прощает").
+// Tap/click opens a small popover with AXD's explanation — a native title="" tooltip
+// only shows after a hover delay, so a click never revealed it in time.
+const axLbl=k=>{const l=T(...AXL[k]);return AXD[k]?`${l}<i class="axhelp" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" data-hint="${T(...AXD[k]).replace(/"/g,'&quot;')}">?</i>`:l};
+const axPop=document.createElement('div');
+axPop.className='axhelp-pop';axPop.setAttribute('role','tooltip');axPop.hidden=true;
+document.body.appendChild(axPop);
+let axPopIcon=null;
+function closeAxPop(){axPop.hidden=true;if(axPopIcon)axPopIcon.setAttribute('aria-expanded','false');axPopIcon=null}
+function openAxPop(icon){
+  axPop.textContent=icon.dataset.hint;axPop.hidden=false;
+  const r=icon.getBoundingClientRect(),pw=axPop.offsetWidth;
+  axPop.style.left=Math.min(Math.max(8,r.left+r.width/2-pw/2),window.innerWidth-pw-8)+'px';
+  axPop.style.top=(r.bottom+8)+'px';
+  icon.setAttribute('aria-expanded','true');axPopIcon=icon;
+}
+document.addEventListener('click',e=>{
+  const icon=e.target.closest('.axhelp');
+  // the "?" sits inside the quiz sliders' <label>, so a plain click would also bubble
+  // into a synthetic click on the <label>'s own range input, which the outside-click
+  // branch below then treats as "clicked away" and closes the popover right back up.
+  if(icon){e.preventDefault();icon===axPopIcon?closeAxPop():openAxPop(icon);return}
+  if(!e.target.closest('.axhelp-pop'))closeAxPop();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeAxPop();
+  else if((e.key==='Enter'||e.key===' ')&&e.target.closest&&e.target.closest('.axhelp')){e.preventDefault();e.target.closest('.axhelp').click()}
+});
+window.addEventListener('scroll',()=>{if(!axPop.hidden)closeAxPop()},true);
 const clamp=v=>Math.max(0,Math.min(1,v));
 const num1=v=>String(Math.round(v*10)/10).replace('.',LANG==='en'?'.':',');
 // ---- items: measured data first, card data as fallback
@@ -453,7 +480,7 @@ document.getElementById('tune-reset').onclick=()=>{own=null;render()};
 function renderQuiz(){
   {const w=val('who'),fs=document.querySelector('[data-q="fmt"]').closest('fieldset');fs.hidden=(w==='teen'||w==='kid')} // подростки и дети играют всё подряд — вопрос не задаём
   const t=effT(targetProfile());const cls=val('tier'),top=cls!=='opt';
-  syncTune(t,T('Ваш профиль игрока','Your player profile'),own&&ownMode==='quiz'?T('Подбор идёт по вашим значениям. Ответы слева сейчас не влияют на профиль.','Matching uses your values. The answers on the left do not affect the profile right now.'):T('Профиль собран по ответам. Двигайте ползунки, если хотите задать свои значения — например, мощь 9, скорость 5.','The profile is built from your answers. Move the sliders to set your own values — for example, power 9, speed 5.'));
+  syncTune(t,T('Ваш профиль игрока','Your player profile'),own&&ownMode==='quiz'?T('Подбор идёт по вашим значениям. Ответы слева сейчас не влияют на профиль.','Matching uses your values. The answers on the left do not affect the profile right now.'):T('Профиль собран по ответам. Двигайте ползунки, если хотите задать свои значения.','The profile is built from your answers. Move the sliders to set your own values.'));
   const men=val('who')==='m',armCare=val('arm')==='yes',swingQ=val('swing'),elbow=val('arm')!=='no';
   // вес по замаху и локтю (решение магазина 5 ноября 2026):
   // 3U — только резкий (сильный) замах и локоть не болит; локоть болит («иногда» тоже) и резкий замах — 4U;
@@ -482,7 +509,7 @@ function renderQuiz(){
   ${tp.length?`<div class="cards">${tp.map((x,i)=>cardHTML(x,t,i)).join('')}</div>`:'<div class="panel empty">'+T('Под эти условия ракеток не нашлось. Снимите «Только в наличии» или выберите другой класс.','No rackets match these conditions. Untick “In stock only” or choose another class.')+'</div>'}
   ${stockHTML(sp,t)}
   ${more.length?`<div class="more"><h4>${top?T('Ещё из этого класса','More from this class'):T('Ещё подходят','Also a good fit')}</h4><div class="rowlist">${more.map(x=>rowHTML(x,t)).join('')}</div></div>`:''}
-  <p class="note">${T('Маховый вес со звёздочкой — оценка по весу и балансу, остальные — замер на станке магазина. Где производитель указывает баланс в мм, используется он, а замеренный маховый вес пересчитан под него. Характер учитывает замеры, технологии рамы и стержня и ручные поправки магазина; при близком совпадении выше стоят ракетки Li-Ning и Victor.','Swing weights marked with an asterisk are estimated from weight and balance; the rest were measured on the store’s machine. Where the manufacturer states the balance in mm, that figure is used and the measured swing weight is adjusted to it. The character score combines measurements, frame and shaft technologies and the store’s own adjustments; on a close match, Li-Ning and Victor rackets rank higher.')}</p>`;
+  <p class="note">${T('Маховый вес — замеряется в Uniqsport на специализированном станке Li-Ning IS1000. Маховый вес со звездочкой — оценка по весу и балансу. Характер учитывает замеры, технологии рамы и стержня.','Swing weight is measured in-house at Uniqsport on a dedicated Li-Ning IS1000 machine. A swing weight marked with an asterisk is estimated from weight and balance instead. The character score combines these measurements with the frame and shaft technologies.')}</p>`;
   // .legend sticks right under .profile (quiz mode has no .profile, so this is 0px there)
   out.style.setProperty('--profile-h',(document.querySelector('.profile')?.offsetHeight||0)+'px');
 }
@@ -580,15 +607,15 @@ function route(){const c=location.hash==='#concept';document.getElementById('v-d
 const I18N={
  eyebrow:'Uniqsport · racket finder',
  h1:'Find a racket by its character',
- lead:'Built on the real Uniqsport catalogue: __NSITE__ Li-Ning, Yonex and Victor rackets, __NMEAS__ of them measured on the store’s swing-weight machine and __NTECH__ with their technologies broken down. Another __NCAT__ Li-Ning, Yonex and Victor rackets come from the manufacturers’ catalogues — you can find them in search and on the racket maps. The finder looks not only at weight, balance and stiffness but at how a racket is built: swing weight, head weight, and frame and shaft technologies.',
+ lead:'The finder runs on the store’s real product listings: 194 Li-Ning, Yonex and Victor rackets, 123 of them measured on our swing-weight machine and 172 with their technologies broken down. Another 153 Li-Ning, Yonex and Victor rackets come from the manufacturers’ catalogues — you’ll find them in search and on the racket maps too. The finder looks not only at weight, balance and stiffness, but at how a racket is built: swing weight, head weight, and frame and shaft technologies.',
  t_demo:'Racket finder',t_concept:'How it works',
  map_title:'Racket maps · Li-Ning · Yonex · Victor',map_char:'Similarity: power · control · speed',map_feel:'Feel in the hand: weight and stiffness',
  u_any:'Any weight',u_6:'6U and lighter',map_site:'Sold in store only',map_old:'Hide older models',v_plot:'Chart',v_tbl:'List',
  m_quiz:'By questions',m_like:'From my racket',
  q_who:'Who is the racket for?',q_lvl:'How long have you been playing?',q_tier:'Which racket are you looking for?',
- h_tier:'Best for my game — matching across all classes for your level. Or choose a class: entry-level, intermediate, advanced, professional.',
+ h_tier:'Best for my game — matching across all classes for your level.',
  q_fmt:'What do you play most?',q_style:'Your game',q_swing:'How fast is your swing?',
- h_swing:'Fast — you hit with the wrist and the shuttle easily reaches the back line.',
+ h_swing:'Fast — the hit comes from the wrist alone, and the shuttle still reaches the back line with ease.',
  q_arm:'Does your arm or elbow get tired?',q_brand:'Brand',instock:'In stock only',
  ref_q:'Your racket, or one you like',to_manual:'My racket isn’t listed — I’ll enter the specs',man_h:'Your racket’s specs',
  man_name:'Name (optional)',man_u:'Weight',man_bp:'Balance, mm',man_p:'Price, ₽',man_sw:'Swing weight, kg·cm² (if measured)',

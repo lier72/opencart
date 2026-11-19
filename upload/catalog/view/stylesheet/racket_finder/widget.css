@@ -64,7 +64,11 @@ h1{font-family:var(--f-display);font-weight:700;font-size:clamp(24px,4vw,36px);l
 nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
 nav.tabs a{color:var(--band-ink);text-decoration:none;padding:10px 16px;border-radius:10px 10px 0 0;font-weight:600;opacity:.8}
 nav.tabs a[aria-current="page"]{background:var(--bg);color:var(--ink);opacity:1}
-nav.tabs a:focus-visible,button:focus-visible,.chip:focus-within{outline:2px solid var(--cork);outline-offset:2px}
+nav.tabs a:focus-visible,button:focus-visible{outline:2px solid var(--cork);outline-offset:2px}
+/* chip's real input sits invisibly over the whole pill (see .chip input below), so a
+   plain mouse click focuses it too — outlining on :focus-within would ring the chip on
+   every click. :focus-visible on the input itself only fires for keyboard navigation. */
+.chip input:focus-visible+span{outline:2px solid var(--cork);outline-offset:2px;border-radius:999px}
 main .wrap{padding-block:22px 48px}
 /* bench */
 .bench{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:24px;align-items:start}
@@ -147,7 +151,7 @@ details.tech li b{font-weight:700}
 details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .sugg li .ref{color:var(--warn)}
 .topnote{font-size:13px;background:var(--cork-soft);color:var(--ink);border-radius:8px;padding:9px 12px;margin:-4px 0 12px}
-.score{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.score{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .score .n{font-family:var(--f-display);font-size:30px;font-weight:700;color:var(--court);font-variant-numeric:tabular-nums}
 .score .l{font-size:12px;color:var(--muted)}
 .axes{display:grid;gap:7px}
@@ -156,9 +160,16 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .axis .fill{position:absolute;left:0;top:0;bottom:0;background:var(--court);border-radius:4px}
 .axis .tgt{position:absolute;top:-4px;width:2px;height:16px;background:var(--cork);transform:translateX(-1px)}
 .axis .v{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+/* main result cards: give the 5 axis rows a visible "table" frame — a shaded panel with
+   a divider between rows — so the block reads as one spec table, not loose text lines. */
+.card .axes{background:var(--sunk);border-radius:10px;padding:1px 10px;gap:0}
+.card .axis{padding:6px 0}
+.card .axis+.axis{border-top:1px solid var(--line)}
 /* small "?" hint next to an axis label that isn't self-explanatory (just "Прощает" for now) */
-.axhelp{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:3px;border-radius:50%;background:var(--muted);color:var(--surface);font:700 9px/1 var(--f-body);font-style:normal;cursor:help;vertical-align:middle}
+.axhelp{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:3px;border-radius:50%;background:var(--muted);color:var(--surface);font:700 9px/1 var(--f-body);font-style:normal;cursor:pointer;vertical-align:middle}
 .axhelp:hover,.axhelp:focus-visible{background:var(--court);outline:none}
+/* clickable popover opened from an .axhelp "?" icon (see widget.js) */
+.axhelp-pop{position:fixed;z-index:50;max-width:260px;background:var(--surface);color:var(--ink);font:500 12.5px/1.45 var(--f-body);padding:9px 11px;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 20px var(--sh)}
 /* Sticks the same way .profile does (JS sets --profile-h to .profile's own height per
    render, 0 where there is no .profile, so .legend always sticks right under it), with a
    divider line underneath like the one "Ещё подходят" uses above its own rows. */

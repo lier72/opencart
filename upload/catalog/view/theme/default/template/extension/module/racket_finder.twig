@@ -27,7 +27,7 @@
     </svg>
     <div class="lang" role="group" aria-label="Язык / Language"><button type="button" data-setlang="ru" aria-pressed="false">RU</button><button type="button" data-setlang="en" aria-pressed="false">EN</button></div>
     <h1 data-i18n="h1">Подбор ракетки по характеру</h1>
-    <p class="lead" data-i18n="lead">Прототип на реальных карточках магазина: 194 ракеток Li-Ning, Yonex и Victor, из них 123 измерены на станке магазина и у 172 разобраны технологии. Ещё 153 ракеток Li-Ning, Yonex и Victor добавлены из каталогов производителей — они есть в поиске и на карте ракеток. Подборщик учитывает не только вес, баланс и жёсткость, но и то, как ракетка устроена: маховый вес, вес головы и технологии рамы и стержня.</p>
+    <p class="lead" data-i18n="lead">Подбор строится на карточках реальных товаров магазина: 194 ракетки Li-Ning, Yonex и Victor, из них 123 измерены на станке магазина, а у 172 разобраны технологии. Ещё 153 ракетки Li-Ning, Yonex и Victor добавлены из каталогов производителей — их можно найти в поиске и на карте ракеток. Подборщик учитывает не только вес, баланс и жёсткость, но и то, как устроена ракетка: маховый вес, вес головы, технологии рамы и стержня.</p>
     <nav class="tabs" aria-label="Разделы" data-i18n-attr="aria-label:a_sections">
       <a href="#demo" id="t-demo" data-i18n="t_demo">Подбор</a>
       <a href="#concept" id="t-concept" data-i18n="t_concept">Как подбираем</a>
@@ -75,10 +75,10 @@
       <form id="quiz" autocomplete="off">
         <fieldset><legend data-i18n="q_who">Для кого ракетка?</legend><div class="chips" data-q="who"></div></fieldset>
         <fieldset><legend data-i18n="q_lvl">Как давно играете?</legend><div class="chips" data-q="lvl"></div></fieldset>
-        <fieldset><legend data-i18n="q_tier">Какую ракетку ищете?</legend><div class="chips" data-q="tier"></div><p class="hint" data-i18n="h_tier">Оптимальную — подбор из всех классов под ваш уровень. Или выберите класс: начальная, любительская, полупрофессиональная, профессиональная.</p></fieldset>
+        <fieldset><legend data-i18n="q_tier">Какую ракетку ищете?</legend><div class="chips" data-q="tier"></div><p class="hint" data-i18n="h_tier">Оптимальную — подбор из всех классов под ваш уровень.</p></fieldset>
         <fieldset><legend data-i18n="q_fmt">Где играете чаще?</legend><div class="chips" data-q="fmt"></div></fieldset>
         <fieldset><legend data-i18n="q_style">Ваша игра</legend><div class="chips" data-q="style"></div></fieldset>
-        <fieldset><legend data-i18n="q_swing">Какой у вас замах?</legend><div class="chips" data-q="swing"></div><p class="hint" data-i18n="h_swing">Резкий — бьёте кистью, волан легко летит до задней линии.</p></fieldset>
+        <fieldset><legend data-i18n="q_swing">Какой у вас замах?</legend><div class="chips" data-q="swing"></div><p class="hint" data-i18n="h_swing">Резкий — ударом только кистью, волан легко долетает до задней линии.</p></fieldset>
         <fieldset><legend data-i18n="q_arm">Устаёт рука или локоть?</legend><div class="chips" data-q="arm"></div></fieldset>
         <fieldset><legend data-i18n="q_brand">Бренд</legend><div class="chips" data-q="brand"></div></fieldset>
         <label class="toggle"><input type="checkbox" id="instock"> <span data-i18n="instock">Только в наличии</span></label>
@@ -115,7 +115,7 @@
     <div style="min-width:0">
       <section class="tune panel" id="tune" aria-labelledby="tune-h">
         <div class="tune-head"><h2 id="tune-h">Ваш профиль игрока</h2><span class="tune-state" id="tune-state">по ответам</span><button type="button" class="linkbtn" id="tune-reset" hidden>Вернуть по ответам</button></div>
-        <p class="hint" id="tune-hint">Профиль собран по ответам. Двигайте ползунки, если хотите задать свои значения — например, мощь 9, скорость 5.</p>
+        <p class="hint" id="tune-hint">Профиль собран по ответам. Двигайте ползунки, если хотите задать свои значения.</p>
         <div class="sliders" id="sliders"></div>
       </section>
       <div id="results" aria-live="polite"></div>
