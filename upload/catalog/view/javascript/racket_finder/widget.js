@@ -420,7 +420,7 @@ function cardHTML(x,t,i,extra){
   return `<article class="card${i===0?' best':''}">
     <div style="min-width:0">
       <h3>${label(o)} <span style="font-weight:500;color:var(--muted)">${o.u}U</span></h3>
-      <div class="meta"><span>${T('Баланс','Balance')} <b>${o.bp} ${T('мм','mm')}</b>${/^официальный/.test(o.bpsrc||'')?T(' (офиц.)',' (official)'):/^(оценка|как у)/.test(o.bpsrc||'')?T(' (оценка)',' (estimate)'):''}${o.hp&&o.bp-o.bpe>=2?T(` (лёгкая пластиковая ручка: в замахе как ≈${o.bpe} мм)`,` (light plastic handle: swings like ≈${o.bpe} mm)`):''}</span><span>${T('Маховый вес','Swing weight')} <b>${num1(o.SW)}</b>${o.swEst?T(' (оценка)',' (estimate)'):''}</span><span>${T('Стержень','Shaft')} <b>${o.f?FX(o.f):T('нет данных','no data')}</b></span>${o.d?`<span>Ø <b>${num1(o.d)} ${T('мм','mm')}</b></span>`:''}<span><b>${fmtP(o.p)}</b></span>
+      <div class="meta"><span>${T('Баланс','Balance')} <b>${o.bp} ${T('мм','mm')}</b>${/^официальный/.test(o.bpsrc||'')?T(' (офиц.)',' (official)'):/^(оценка|как у)/.test(o.bpsrc||'')?T(' (оценка)',' (estimate)'):''}${o.hp&&o.bp-o.bpe>=2?T(` (лёгкая пластиковая ручка: в замахе как ≈${o.bpe} мм)`,` (light plastic handle: swings like ≈${o.bpe} mm)`):''}</span><span>${T('Маховый вес','Swing weight')} <b>${num1(o.SW)}</b>${o.swEst?T(' (оценка)',' (estimate)'):''}</span><span>${T('Стержень','Shaft')} <b>${o.f?FX(o.f):T('нет данных','no data')}</b></span>${o.d?`<span>Ø <b>${num1(o.d)} ${T('мм','mm')}</b></span>`:''}
       ${o.q===1?'<span class="badge stock">'+T('В наличии','In stock')+'</span>':o.q===0?'<span class="badge out">'+T('Нет в наличии','Out of stock')+'</span>':''}${o.st?'<span class="badge strung">'+T('Натянута','Strung')+'</span>':''}${o.lv?`<span class="badge">${cap1(LVN(o.lv))}</span>`:''}${o.swEst?`<span class="badge est" title="${T('Вес, баланс и жёсткость — из каталогов производителя; маховый вес рассчитан','Weight, balance and stiffness from the manufacturer’s catalogue; swing weight calculated')}">${T('Измерения по каталогу','Catalogue specs')}</span>`:`<span class="badge meas" title="${T('Без струн, с родным грипом','Unstrung, with the original grip')}">${T('Измерено в Uniqsport','Measured by Uniqsport')}${o.n>1?' · '+o.n+T(' шт.',' pcs'):''}</span>`}${o.cor?`<span class="badge est" title="${T('Видно только в прототипе','Visible in the prototype only')}">${T('С поправкой магазина','Store adjustment')}</span>`:''}</div>
       ${essence(o)}
       <ul class="why">${x.why.map(w=>`<li>${w}</li>`).join('')}${(x.tips||[]).slice(0,2).map(w=>`<li class="tip"><b>${T('Совет:','Tip:')}</b> ${w}</li>`).join('')}</ul>
@@ -428,9 +428,10 @@ function cardHTML(x,t,i,extra){
       <div class="actions"><a class="btn" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><button type="button" class="btn ghost" data-like="${o.uid}">${T('Похожие по характеру','Similar rackets')}</button></div>
     </div>
     <div><div class="score"><span class="n">${x.d??x.s}%</span><span class="l">${extra||T('совпадение с вашим профилем','match with your profile')}</span></div>${axesHTML(o,t)}</div>
+    <div class="price">${T('Цена','Price')}: ${fmtP(o.p)}</div>
   </article>`;
 }
-function rowHTML(x,t){const o=x.o;return `<article class="mini"><div class="mini-h"><span class="pct">${x.d??x.s}%</span><span class="mbar"><i style="width:${x.d??x.s}%"></i></span></div><a class="mini-name" href="${url(o)}" target="_blank" rel="noopener">${label(o)} <span>${o.u}U</span></a><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''}</div>${axesHTML(o,t)}<div class="mini-f"><span class="pr">${fmtP(o.p)}</span><span class="st${o.q===1?' ok':''}">${o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online')}</span></div></article>`}
+function rowHTML(x,t){const o=x.o;const stLabel=o.q===1?T('в наличии','in stock'):o.q===0?T('нет в наличии','out of stock'):T('наличие на сайте','check stock online');return `<article class="mini"><div class="mini-h"><span class="pct">${x.d??x.s}%</span><span class="mbar"><i style="width:${x.d??x.s}%"></i></span></div><div class="mini-top"><a class="mini-name" href="${url(o)}" target="_blank" rel="noopener">${label(o)} <span>${o.u}U</span></a><span class="st${o.q===1?' ok':''}">${stLabel}</span></div><div class="sub">${o.bp} ${T('мм','mm')} · ${T('маховый','swing weight')} ${num1(o.SW)}${o.swEst?'*':''}</div>${axesHTML(o,t)}<div class="mini-f"><a class="btn sm" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><span class="pr">${T('Цена','Price')}: ${fmtP(o.p)}</span></div></article>`}
 const out=document.getElementById('results');
 const slBox=document.getElementById('sliders');let own=null,ownMode=null;
 slBox.innerHTML=AXN().map(([k,l])=>`<label class="sl" for="sl-${k}"><span>${l}</span><input type="range" id="sl-${k}" min="1" max="10" step="0.5"><output id="so-${k}"></output></label>`).join('');
@@ -478,6 +479,8 @@ function renderQuiz(){
   ${stockHTML(sp,t)}
   ${more.length?`<div class="more"><h4>${top?T('Ещё из этого класса','More from this class'):T('Ещё подходят','Also a good fit')}</h4><div class="rowlist">${more.map(x=>rowHTML(x,t)).join('')}</div></div>`:''}
   <p class="note">${T('Маховый вес со звёздочкой — оценка по весу и балансу, остальные — замер на станке магазина. Где производитель указывает баланс в мм, используется он, а замеренный маховый вес пересчитан под него. Характер учитывает замеры, технологии рамы и стержня и ручные поправки магазина; при близком совпадении выше стоят ракетки Li-Ning и Victor.','Swing weights marked with an asterisk are estimated from weight and balance; the rest were measured on the store’s machine. Where the manufacturer states the balance in mm, that figure is used and the measured swing weight is adjusted to it. The character score combines measurements, frame and shaft technologies and the store’s own adjustments; on a close match, Li-Ning and Victor rackets rank higher.')}</p>`;
+  // .legend sticks right under .profile (quiz mode has no .profile, so this is 0px there)
+  out.style.setProperty('--profile-h',(document.querySelector('.profile')?.offsetHeight||0)+'px');
 }
 function renderLike(){
   const ref=refMode==='manual'?manualRef():R.find(o=>o.uid===refId);if(!ref){document.getElementById('tune').hidden=true;out.innerHTML='<div class="panel empty">'+T('Начните вводить название ракетки — например, «аксфорс 80» или «Astrox 88D».','Start typing a racket name — for example, “AXForce 80” or “Astrox 88D”.')+'</div>';return}
@@ -558,6 +561,7 @@ function renderLike(){
   ${top.length?`<div class="cards">${top.map((x,i)=>cardHTML(x,t,i,simL)).join('')}</div>`:'<div class="panel empty">'+T('Ничего не нашлось — снимите фильтр по наличию или бренду.','Nothing found — remove the stock or brand filter.')+'</div>'}
   ${stockHTML(sp,t,simL)}
   ${more.length?`<div class="more"><h4>${T('Ещё варианты','More options')}</h4><div class="rowlist">${more.map(x=>rowHTML(x,t)).join('')}</div></div>`:''}`;
+  out.style.setProperty('--profile-h',(document.querySelector('.profile')?.offsetHeight||0)+'px');
 }
 let mode='quiz';
 function render(){document.getElementById('tune').hidden=false;mode==='quiz'?renderQuiz():renderLike()}
