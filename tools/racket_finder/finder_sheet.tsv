@@ -1,0 +1,369 @@
+id	brand	series	model	U	in_store	source	W_g	H_g	bp_meas_mm	SW	bp_official_mm	flex_1_6	flex_label	feel_1_5	diam_mm	class_1_4	balance_type	tech	status	note
+	Felet		TJ1000 Control	4	нет	замер	83.1	37.4	290.0	82.5										
+	Felet		Voven TJ1000	4	нет	замер	83.9	38.2	292.0	84.5										
+	Li-Ning		HC1000	4	нет	каталог						1	Гибкая	1		1				
+20730	Li-Ning	AXForce	AXForce 10	4	да	замер	82.7	39.9	303.0	84.5	303	1	Гибкая	1	7.0	1	В голову	SONIC BOOM SYSTEM ; STD-MODULUS SHAFT ; HIGH CARBON		
+20731	Li-Ning	AXForce	AXForce 10	5	да	замер	81.8	41.8	314.0	87.0	308	1	Гибкая	1	7.0	1	В голову	SONIC BOOM SYSTEM ; STD-MODULUS SHAFT ; HIGH CARBON		
+20201	Li-Ning	AXForce	AXForce 100	3	да	замер	89.1	44.2	308.0	91.0	308	6	Очень жёсткая	5	6.0	4	В голову	FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; BOX SHAPED FRAME ; DYNAMIC OPTIMUM FRAME ; TB NANO ; M40X / M46 / M46X / M50 / T1100		
+20202	Li-Ning	AXForce	AXForce 100	4	да	замер	82.9	41.2	309.0	86.0	308	6	Очень жёсткая	4	6.0	4	В голову	FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; BOX SHAPED FRAME ; DYNAMIC OPTIMUM FRAME ; TB NANO ; M40X / M46 / M46X / M50 / T1100		
+20994	Li-Ning	AXForce	AXForce 100 II	3	да	замер	89.4	43.1	303.0	90.5		4	Средне-жёсткая	3	6.2	4	В голову	FRTP TECH ; BOX WING FRAME ; HDF SHOCK ABSORPTION SYSTEM ; POLYMER ENERGY ; ULTRA-MODULUS SLIM SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20936	Li-Ning	AXForce	AXForce 100 II	4	да	замер	83.1	40.7	306.0	87.0		4	Средне-жёсткая	3	6.2	4	В голову	FRTP TECH ; BOX WING FRAME ; HDF SHOCK ABSORPTION SYSTEM ; POLYMER ENERGY ; ULTRA-MODULUS SLIM SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+	Li-Ning	AXForce	AXForce 100 II MAX	4	нет	каталог						6	Очень жёсткая	5	6.2	4	В голову			
+20155	Li-Ning	AXForce	AXForce 20	3	да	замер	85.1	39.2	294.0	84.5	295	1	Гибкая	1	6.8	1	В голову	BOX WING FRAME ; SONIC BOOM SYSTEM		
+20156	Li-Ning	AXForce	AXForce 20	4	да	замер	81.8	38.0	295.0	84.5	302	1	Гибкая	1	6.8	1	В голову	BOX WING FRAME ; SONIC BOOM SYSTEM		
+20831	Li-Ning	AXForce	AXForce 30 EX-Light	5	да	замер	79.3	37.7	300.0	81.3	300	1	Гибкая	1	7.0	2	В голову	SONIC BOOM SYSTEM ; STD-MODULUS SHAFT ; HIGH CARBON		
+20832	Li-Ning	AXForce	AXForce 30 EX-Strong	4	да	замер	83.0	40.7	306.0	86.8	305	1	Гибкая	3	7.0	2	В голову	SONIC BOOM SYSTEM ; STD-MODULUS SHAFT ; HIGH CARBON		
+	Li-Ning	AXForce	AXForce 40	3	нет	каталог						1	Гибкая	2	6.8	2	В голову	UHB SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; BOX SHAPED FRAME ; TB NANO ; SUPERB CARBON		
+20498	Li-Ning	AXForce	AXForce 40	4	да	замер	85.3	40.8	301.0	88.5	302	1	Гибкая	3	6.8	2	В голову	UHB SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; BOX SHAPED FRAME ; TB NANO ; SUPERB CARBON		
+20154	Li-Ning	AXForce	AXForce 50	4	да	замер	81.6	38.3	298.0	83.5	302	2	Средне-гибкая	3	6.6	3	В голову	BOX WING FRAME ; UHB SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT		
+	Li-Ning	AXForce	AXForce 50	5	нет	каталог						2	Средне-гибкая	1	6.6	3	В голову	BOX WING FRAME ; UHB SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT		
+20187	Li-Ning	AXForce	AXForce 60	4	да	замер	85.9	41.2	302.0	87.0	302	1	Гибкая	1	6.8	3	В голову	BOX WING FRAME ; BOX SHAPED FRAME ; UHB SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; POWER CONE CAP		
+	Li-Ning	AXForce	AXForce 60	5	нет	каталог						1	Гибкая	1	6.8	3	В голову	BOX WING FRAME ; BOX SHAPED FRAME ; UHB SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; POWER CONE CAP		
+20188	Li-Ning	AXForce	AXForce 70	4	да	замер	83.0	40.1	303.0	86.0	302	2	Средне-гибкая	2	6.6	4	В голову	BOX WING FRAME ; FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; HDF DAMPING MATERIAL ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; POWER CONE CAP ; M40X / M46 / M46X / M50 / T1100		
+	Li-Ning	AXForce	AXForce 70	5	нет	каталог						1	Гибкая	1	6.6	4	В голову	BOX WING FRAME ; FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; HDF DAMPING MATERIAL ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; POWER CONE CAP ; M40X / M46 / M46X / M50 / T1100		
+20093	Li-Ning	AXForce	AXForce 80	3	да	каталог					300	3	Средняя	3	6.6	4	В голову	BOX WING FRAME ; DYNAMIC OPTIMUM FRAME ; WING STABILIZER ; HDF SHOCK ABSORPTION SYSTEM ; FRTP TECH ; UHB SHAFT ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; SUPERB CARBON		
+20094	Li-Ning	AXForce	AXForce 80	4	да	замер	84.4	40.1	300.0	85.5	302	3	Средняя	3	6.6	4	В голову	BOX WING FRAME ; DYNAMIC OPTIMUM FRAME ; WING STABILIZER ; HDF SHOCK ABSORPTION SYSTEM ; FRTP TECH ; UHB SHAFT ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; SUPERB CARBON		
+	Li-Ning	AXForce	AXForce 80	5	нет	каталог						3	Средняя	3	6.6	4	В голову	BOX WING FRAME ; DYNAMIC OPTIMUM FRAME ; WING STABILIZER ; HDF SHOCK ABSORPTION SYSTEM ; FRTP TECH ; UHB SHAFT ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; SUPERB CARBON		
+	Li-Ning	AXForce	AXForce 80 II	3	нет	каталог						3	Средняя	3	6.6	4	В голову			
+	Li-Ning	AXForce	AXForce 80 II	4	нет	каталог						3	Средняя	3	6.6	4	В голову			
+	Li-Ning	AXForce	AXForce 80 II	5	нет	каталог						3	Средняя	3	6.6	4	В голову			
+	Li-Ning	AXForce	AXForce 80 Light	4	нет	каталог						3	Средняя	2	6.6	4	В голову	BOX WING FRAME ; DYNAMIC OPTIMUM FRAME ; HDF SHOCK ABSORPTION SYSTEM		
+20937	Li-Ning	AXForce	AXForce 80 Light	5	да	замер	79.2	38.2	303.0	83.0	304	3	Средняя	2	6.6	4	В голову	BOX WING FRAME ; DYNAMIC OPTIMUM FRAME ; HDF SHOCK ABSORPTION SYSTEM		
+20835	Li-Ning	AXForce	AXForce 9	3	да	замер	89.2	48.7	328.0	97.0	328	1	Гибкая			1	В голову			
+20733	Li-Ning	AXForce	AXForce 90 MAX Dragon	3	да	замер	88.0	42.5	303.0	88.0	300	5	Жёсткая	5	6.2	4	В голову	FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; BOX SHAPED FRAME ; WING STABILIZER ; HDF SHOCK ABSORPTION SYSTEM ; DYNAMIC OPTIMUM FRAME ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; SUPERB CARBON		
+20203	Li-Ning	AXForce	AXForce 90 MAX Dragon	4	да	замер	84.2	41.2	306.0	86.0	309	5	Жёсткая	4	6.2	4	В голову	FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; BOX SHAPED FRAME ; WING STABILIZER ; HDF SHOCK ABSORPTION SYSTEM ; DYNAMIC OPTIMUM FRAME ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; SUPERB CARBON		
+20816	Li-Ning	AXForce	AXForce 90 MAX Tiger	3	да	замер	87.2	41.2	299.0	87.0	302	3	Средняя	2	6.2	4	В голову	FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; BOX SHAPED FRAME ; WING STABILIZER ; HDF SHOCK ABSORPTION SYSTEM ; DYNAMIC OPTIMUM FRAME ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; SUPERB CARBON		
+20204	Li-Ning	AXForce	AXForce 90 MAX Tiger	4	да	замер	82.4	40.0	306.0	84.7	305	3	Средняя	2	6.2	4	В голову	FRTP TECH ; UHB SHAFT ; STABILIZED ELASTIC SHAFT ; BOX SHAPED FRAME ; WING STABILIZER ; HDF SHOCK ABSORPTION SYSTEM ; DYNAMIC OPTIMUM FRAME ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; SUPERB CARBON		
+21085	Li-Ning	AXForce	AXForce 90 New	3	да	каталог						5	Жёсткая	5	6.4	4	В голову	FRTP TECH ; STABILIZED ELASTIC SHAFT ; BOX WING FRAME ; HDF SHOCK ABSORPTION SYSTEM ; COMPOSITE POWER ; POLYMER ENERGY ; ULTRA-MODULUS SLIM SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+21084	Li-Ning	AXForce	AXForce 90 New	4	да	каталог						3	Средняя	3	6.4	4	В голову	FRTP TECH ; STABILIZED ELASTIC SHAFT ; BOX WING FRAME ; HDF SHOCK ABSORPTION SYSTEM ; COMPOSITE POWER ; POLYMER ENERGY ; ULTRA-MODULUS SLIM SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20815	Li-Ning	AXForce	AXForce 90 New	5	да	замер	79.3	39.1	304.0	83.0	304	3	Средняя	3	6.4	4	В голову	FRTP TECH ; STABILIZED ELASTIC SHAFT ; BOX WING FRAME ; HDF SHOCK ABSORPTION SYSTEM ; COMPOSITE POWER ; POLYMER ENERGY ; ULTRA-MODULUS SLIM SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20938	Li-Ning	AXForce	AXForce BIGBANG	4	да	замер	83.8	39.6	299.0	86.5	299	1	Гибкая	3		2	В голову	BOX WING FRAME ; SONIC BOOM SYSTEM		
+20939	Li-Ning	AXForce	AXForce BIGBANG	5	да	замер	76.7	37.5	306.0	82.0	306	1	Гибкая	1		2	В голову	BOX WING FRAME ; SONIC BOOM SYSTEM		
+20189	Li-Ning	AXForce	AXForce BIGBANG	7	да	замер	69.7	34.4	307.0	77.5	315	1	Гибкая	1		2	В голову	BOX WING FRAME ; SONIC BOOM SYSTEM		
+20273	Li-Ning	AXForce	AXForce CANNON	4	да	замер	82.2	39.3	301.0	85.0	300	1	Гибкая	1	6.8	1	В голову	DYNAMIC OPTIMUM FRAME ; HIGH CARBON		
+	Li-Ning	AXForce	AXForce CANNON JR	6	нет	каталог						1	Гибкая	1		1	В голову			
+21015	Li-Ning	AXForce	AXForce CANNON New	4	да	замер	89.6	44.3	308.0	92.0		1	Гибкая		7.0	1	В голову	DYNAMIC OPTIMUM FRAME ; STD-MODULUS SHAFT		
+21018	Li-Ning	AXForce	AXForce CANNON New	5	да	замер	82.5	41.3	310.0	87.0		1	Гибкая		7.0	1	В голову	DYNAMIC OPTIMUM FRAME ; STD-MODULUS SHAFT		
+	Li-Ning	AXForce	AXForce CANNON PRO	4	нет	каталог						3	Средняя	1		2	В голову	DYNAMIC OPTIMUM FRAME ; HIGH CARBON		
+20734	Li-Ning	AXForce	AXForce CANNON PRO	5	да	замер	78.9	37.7	301.0	83.0	301	3	Средняя	2		2	В голову	DYNAMIC OPTIMUM FRAME ; HIGH CARBON		
+	Li-Ning	AXForce	AXForce Cannon	5	нет	каталог						1	Гибкая	1	6.8	1	В голову	DYNAMIC OPTIMUM FRAME ; HIGH CARBON		
+	Li-Ning	AXForce	AXForce Cannon	6	нет	каталог						1	Гибкая	1	6.8	1	В голову	DYNAMIC OPTIMUM FRAME ; HIGH CARBON		
+	Li-Ning	Aeronaut	Aeronaut 4000	4	нет	каталог						2	Средне-гибкая	2		2	В голову			
+	Li-Ning	Aeronaut	Aeronaut 4000B	3	нет	каталог						2	Средне-гибкая	2		2	В голову			
+	Li-Ning	Aeronaut	Aeronaut 4000C	3	нет	каталог						2	Средне-гибкая	2		2	В голову			
+	Li-Ning	Aeronaut	Aeronaut 6000	3	нет	каталог						1	Гибкая	1		3	В голову			
+10304	Li-Ning	Aeronaut	Aeronaut 6000C	3	да	замер	87.6	40.1	293.0	87.5		4	Средне-жёсткая	1		3	В ручку	AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; STABILIZED TORSION ANGLE ; WING STABILIZER ; UHB SHAFT ; HIGH TENSILE SLIM SHAFT ; TB NANO		
+20036	Li-Ning	Aeronaut	Aeronaut 6000D	3	да	замер	85.8	39.7	295.0	84.5		3	Средняя	3		3		AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; STABILIZED TORSION ANGLE ; WING STABILIZER ; UHB SHAFT ; HIGH TENSILE SLIM SHAFT ; TB NANO		
+	Li-Ning	Aeronaut	Aeronaut 6000I	5	нет	каталог						2	Средне-гибкая	2		3	В голову			
+	Li-Ning	Aeronaut	Aeronaut 7000B	3	нет	каталог						5	Жёсткая	4		4	В голову			
+	Li-Ning	Aeronaut	Aeronaut 7000I	5	нет	каталог						3	Средняя	3		4	В голову			
+10173	Li-Ning	Aeronaut	Aeronaut 9000	3	да	замер	88.0	43.2	306.0	90.0	305	1	Гибкая	3		4	В голову	AIR STREAM FRAME ; AERO TEC-BEAM SYSTEM ; NANO-ALLOY TECHNOLOGY ; SONIC BOOM SYSTEM ; HOT MELT ; M40X / M46 / M46X / M50 / T1100		
+20729	Li-Ning	Aeronaut	Aeronaut 9000	4	да	каталог					305	3	Средняя			4	В голову	AIR STREAM FRAME ; AERO TEC-BEAM SYSTEM ; NANO-ALLOY TECHNOLOGY ; SONIC BOOM SYSTEM ; HOT MELT ; M40X / M46 / M46X / M50 / T1100		
+10410	Li-Ning	Aeronaut	Aeronaut 9000C	3	да	замер	90.0	42.5	299.0	89.5	298	3	Средняя	3		4	В голову	AIR STREAM FRAME ; AERO TEC-BEAM SYSTEM ; NANO-ALLOY TECHNOLOGY ; SONIC BOOM SYSTEM ; HOT MELT ; M40X / M46 / M46X / M50 / T1100		
+	Li-Ning	Aeronaut	Aeronaut 9000C	4	нет	каталог						3	Средняя			4	В голову	AIR STREAM FRAME ; AERO TEC-BEAM SYSTEM ; NANO-ALLOY TECHNOLOGY ; SONIC BOOM SYSTEM ; HOT MELT ; M40X / M46 / M46X / M50 / T1100		
+10174	Li-Ning	Aeronaut	Aeronaut 9000D	4	да	каталог					314	5	Жёсткая	3		4	В голову			
+20200	Li-Ning	Aeronaut	Aeronaut 9000I	5	да	замер	80.0	43.5	321.0	88.7	327	1	Гибкая	1		4	В голову	AIR STREAM FRAME ; AERO TEC-BEAM SYSTEM ; NANO-ALLOY TECHNOLOGY ; SONIC BOOM SYSTEM ; HOT MELT ; M40X / M46 / M46X / M50 / T1100		
+5013	Li-Ning	AirStream	AirStream N55 III	3	да	замер	86.8	44.7	316.0	93.0		4	Средне-жёсткая			4	В голову	AIR STREAM SYSTEM ; AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; STABILIZED TORSION ANGLE ; WING STABILIZER ; BIO INNER CONE ; UHB SHAFT ; TB NANO		
+5051	Li-Ning	AirStream	AirStream N99	3	да	замер	87.4	43.4	309.0	90.5		4	Средне-жёсткая			4		AIR STREAM SYSTEM ; AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME		
+21010	Li-Ning	BladeX	BladeX 100	4	да	замер	86.7	41.6	302.0	88.0		1	Гибкая			1	В ручку			
+21011	Li-Ning	BladeX	BladeX 100	5	да	замер	84.1	42.5	312.0	88.0		1	Гибкая			1	В ручку			
+	Li-Ning	BladeX	BladeX 200	3	нет	каталог						5	Жёсткая	3	6.8	1	В ручку	FLUID FRAME ; SONIC BOOM SYSTEM		
+20096	Li-Ning	BladeX	BladeX 200	4	да	замер	85.0	38.3	290.0	85.0	292	5	Жёсткая	3	6.8	1	В ручку	FLUID FRAME ; SONIC BOOM SYSTEM		
+	Li-Ning	BladeX	BladeX 500	3	нет	каталог						3	Средняя	3	6.8	3	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; TB NANO		
+20097	Li-Ning	BladeX	BladeX 500	4	да	замер	84.3	38.3	292.0	82.5	295	3	Средняя	2	6.8	3	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; TB NANO		
+	Li-Ning	BladeX	BladeX 600	4	нет	каталог						2	Средне-гибкая	1	6.8	3	Нейтральный	FLUID FRAME ; AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; ACCELE TECH ; RESIL SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; EXTREMELY LOW WIND RESISTANCE CONE CAP		
+20191	Li-Ning	BladeX	BladeX 600	5	да	замер	79.9	37.5	298.0	82.5	296	2	Средне-гибкая	1	6.8	3	Нейтральный	FLUID FRAME ; AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; ACCELE TECH ; RESIL SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; EXTREMELY LOW WIND RESISTANCE CONE CAP		
+	Li-Ning	BladeX	BladeX 700	3	нет	каталог						5	Жёсткая	5	6.8	4	В ручку	HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH		
+20916	Li-Ning	BladeX	BladeX 700	4	да	замер	82.2	37.5	292.3	82.8	295	5	Жёсткая	3	6.8	4	В ручку	HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH		
+20500	Li-Ning	BladeX	BladeX 700	5	да	замер	79.5	37.8	300.0	83.0	292	5	Жёсткая	3	6.8	4	В ручку	HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH		
+	Li-Ning	BladeX	BladeX 73 Light	6	нет	каталог						1	Гибкая	2		2	В ручку			
+20098	Li-Ning	BladeX	BladeX 800	3	да	замер	88.3	39.9	291.0	86.5	293	5	Жёсткая	4	6.8	4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20099	Li-Ning	BladeX	BladeX 800	4	да	замер	83.6	38.3	293.0	83.5	295	5	Жёсткая	3	6.8	4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+	Li-Ning	BladeX	BladeX 800 Power	3	нет	каталог						3	Средняя	3		4	В голову	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; STABILIZED ELASTIC SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+21019	Li-Ning	BladeX	BladeX 800 Power	4	да	замер	84.3	39.8	299.0	84.5		3	Средняя	2		4	В голову	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; STABILIZED ELASTIC SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+	Li-Ning	BladeX	BladeX 800 Power	5	нет	каталог						3	Средняя	2		4	В голову	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; STABILIZED ELASTIC SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+	Li-Ning	BladeX	BladeX 800 Speed	3	нет	каталог						5	Жёсткая	3		4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; STABILIZED ELASTIC SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+	Li-Ning	BladeX	BladeX 800 Speed	4	нет	каталог						3	Средняя	3		4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; STABILIZED ELASTIC SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+21020	Li-Ning	BladeX	BladeX 800 Speed	5	да	замер	79.2	38.3	303.0	82.5		5	Жёсткая	2		4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; STABILIZED ELASTIC SHAFT ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+	Li-Ning	BladeX	BladeX 880 Shida	4	нет	каталог						3	Средняя	3		4	В ручку			
+	Li-Ning	BladeX	BladeX 900	3	нет	каталог						3	Средняя	3	6.8	4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+21012	Li-Ning	BladeX	BladeX 900	4	да	замер	84.5	39.6	297.7	85.2	295	5	Жёсткая	3	6.8	4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACCELE TECH ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+	Li-Ning	BladeX	BladeX 900 MAX Blue	3	нет	каталог						5	Жёсткая	5	6.6	4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; AERO TEC-BEAM SYSTEM ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20193	Li-Ning	BladeX	BladeX 900 MAX Blue	4	да	замер	84.3	38.6	293.0	83.5	293	5	Жёсткая	5	6.6	4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; AERO TEC-BEAM SYSTEM ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20192	Li-Ning	BladeX	BladeX 900 MAX Gold	3	да	замер	89.2	41.2	295.0	88.0	298	5	Жёсткая	3	6.6	4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; AERO TEC-BEAM SYSTEM ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20194	Li-Ning	BladeX	BladeX 900 MAX Gold	4	да	замер	84.5	39.0	295.0	84.0		5	Жёсткая	3		4	В ручку	SHARP WIND FRAME ; HDF SHOCK ABSORPTION SYSTEM ; AERO TEC-BEAM SYSTEM ; TB NANO ; M40X / M46 / M46X / M50 / T1100 ; ULTRA CARBON		
+20735	Li-Ning	BladeX	BladeX SPIRAL	4	да	замер	89.5	45.5	313.0	93.5		1	Гибкая	2		1	В ручку	SONIC BOOM SYSTEM ; DYNAMIC OPTIMUM FRAME		
+20736	Li-Ning	BladeX	BladeX SPIRAL	5	да	замер	85.6	45.4	322.0	92.5		1	Гибкая	2		1	В ручку	SONIC BOOM SYSTEM ; DYNAMIC OPTIMUM FRAME		
+	Li-Ning	BladeX	BladeX Sonar	3	нет	каталог						5	Жёсткая	3	7.0	2	В ручку	FLUID FRAME ; AERO TEC-BEAM SYSTEM ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; EXTREMELY LOW WIND RESISTANCE CONE CAP		
+20195	Li-Ning	BladeX	BladeX Sonar	4	да	замер	82.6	37.1	290.0	81.0	295	5	Жёсткая	3	7.0	2	В ручку	FLUID FRAME ; AERO TEC-BEAM SYSTEM ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; EXTREMELY LOW WIND RESISTANCE CONE CAP		
+	Li-Ning	BladeX	BladeX Whirlwind	4	нет	каталог						1	Гибкая	1		1	В ручку			
+	Li-Ning	BladeX	BladeX Whirlwind	5	нет	каталог						1	Гибкая	1		1	В ручку			
+	Li-Ning	Calibar	Calibar 001	4	нет	каталог						3	Средняя	3		1	Нейтральный			
+	Li-Ning	Calibar	Calibar 001C	3	нет	каталог						3	Средняя	3		1	Нейтральный			
+9100	Li-Ning	Calibar	Calibar 300	4	да	замер	82.6	38.1	296.0	82.5		1	Гибкая	1		2		SHARP WIND FRAME ; AERO TEC-BEAM SYSTEM ; SONIC BOOM SYSTEM		
+20090	Li-Ning	Calibar	Calibar 300B	4	да	замер	83.8	39.0	296.0	84.0		3	Средняя	3		2		AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; STABILIZED TORSION ANGLE ; UHB SHAFT ; TB NANO		
+10171	Li-Ning	Calibar	Calibar 300C	3	да	замер	85.1	40.7	302.0	88.5		3	Средняя	1		2		SHARP WIND FRAME ; AERO TEC-BEAM SYSTEM ; SONIC BOOM SYSTEM		
+	Li-Ning	Calibar	Calibar 600	4	нет	каталог						5	Жёсткая	4		3	Нейтральный			
+10172	Li-Ning	Calibar	Calibar 600B	3	да	замер	89.6	40.4	290.0	89.5		1	Гибкая	3		3		SHARP WIND FRAME ; AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; SONIC BOOM SYSTEM ; HOT MELT		
+	Li-Ning	Calibar	Calibar 600C	3	нет	каталог						3	Средняя	3		3	Нейтральный			
+	Li-Ning	Calibar	Calibar 600I	5	нет	каталог						2	Средне-гибкая	2		3	Нейтральный			
+9101	Li-Ning	Calibar	Calibar 900	4	да	замер	84.8	42.0	303.0	90.4	308	5	Жёсткая	3		4	В голову	SHARP WIND FRAME ; AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; SONIC BOOM SYSTEM ; HOT MELT		
+9102	Li-Ning	Calibar	Calibar 900B	3	да	замер	88.1	40.4	293.0	88.5	292	3	Средняя	3		4	Нейтральный	UHB SHAFT ; TB NANO ; AERO TEC-BEAM SYSTEM ; DYNAMIC OPTIMUM FRAME ; STABILIZED ELASTIC SHAFT ; WING STABILIZER ; CUBIC LOCKING		
+9103	Li-Ning	Calibar	Calibar 900C	3	да	каталог					302	6	Очень жёсткая			4	В голову			
+10008	Li-Ning	Calibar	Calibar 900I	5	да	каталог					312	1	Гибкая	2		4	В голову			
+20940	Li-Ning	Halbertec	Halbertec 1000	4	да	замер	82.6	38.8	298.0	84.0	293	1	Гибкая	1	7.0	1	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; SWING WEIGHT BALANCE TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+21026	Li-Ning	Halbertec	Halbertec 1000	5	да	каталог						1	Гибкая		7.0	1	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; SWING WEIGHT BALANCE TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+	Li-Ning	Halbertec	Halbertec 2000	3	нет	каталог						3	Средняя	3	6.8	1	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; SWING WEIGHT BALANCE TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+20275	Li-Ning	Halbertec	Halbertec 2000	4	да	замер	84.0	38.6	294.0	82.5	302	3	Средняя	3	6.8	1	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; SWING WEIGHT BALANCE TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+	Li-Ning	Halbertec	Halbertec 3000	4	нет	каталог						3	Средняя	1	6.8	2	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; SWING WEIGHT BALANCE TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+20837	Li-Ning	Halbertec	Halbertec 3000	5	да	замер	80.7	38.6	301.0	83.0	296	3	Средняя	1	6.8	2	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; SWING WEIGHT BALANCE TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+	Li-Ning	Halbertec	Halbertec 4000	3	нет	каталог						2	Средне-гибкая	2		2	Нейтральный			
+	Li-Ning	Halbertec	Halbertec 4000	4	нет	каталог						2	Средне-гибкая	2		2	Нейтральный			
+	Li-Ning	Halbertec	Halbertec 5000	3	нет	каталог						3	Средняя	3		3	Нейтральный			
+	Li-Ning	Halbertec	Halbertec 5000	4	нет	каталог						3	Средняя	3		3	Нейтральный			
+	Li-Ning	Halbertec	Halbertec 6000	4	нет	каталог						3	Средняя	3		3	Нейтральный			
+	Li-Ning	Halbertec	Halbertec 6000	5	нет	каталог						3	Средняя	3		3	Нейтральный			
+	Li-Ning	Halbertec	Halbertec 7000	3	нет	каталог						5	Жёсткая	4	6.5	4	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; HDF SHOCK ABSORPTION SYSTEM ; ACC-RIF TECH		
+21013	Li-Ning	Halbertec	Halbertec 7000	4	да	замер	83.8	38.7	295.0	84.5	296	3	Средняя	3	6.5	4	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; HDF SHOCK ABSORPTION SYSTEM ; ACC-RIF TECH		
+20196	Li-Ning	Halbertec	Halbertec 8000	3	да	замер	88.0	40.0	292.0	86.0	302	5	Жёсткая	3	6.8	4	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; HDF SHOCK ABSORPTION SYSTEM ; ACC-RIF TECH ; TB NANO ; M40X / M46 / M46X / M50 / T1100		
+20276	Li-Ning	Halbertec	Halbertec 8000	4	да	замер	82.6	38.9	298.0	84.0	302	5	Жёсткая	3	6.8	4	Нейтральный	STABILIZED LAYOUT TECHNOLOGY ; HDF SHOCK ABSORPTION SYSTEM ; ACC-RIF TECH ; TB NANO ; M40X / M46 / M46X / M50 / T1100		
+20814	Li-Ning	Halbertec	Halbertec 9000	3	да	замер	88.2	40.9	295.0	87.5	295	5	Жёсткая	3	6.6	4	Нейтральный	FLUID FRAME ; ACC-RIF TECH ; NANO-ALLOY TECHNOLOGY ; HIGH TENSILE SLIM SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; STABILIZED CONE CAP ; M40X / M46 / M46X / M50 / T1100		
+20502	Li-Ning	Halbertec	Halbertec 9000	4	да	замер	84.5	39.5	298.0	85.0	298	5	Жёсткая	3	6.6	4	Нейтральный	FLUID FRAME ; ACC-RIF TECH ; NANO-ALLOY TECHNOLOGY ; HIGH TENSILE SLIM SHAFT ; HDF SHOCK ABSORPTION SYSTEM ; HOT MELT ; STABILIZED CONE CAP ; M40X / M46 / M46X / M50 / T1100		
+20995	Li-Ning	Halbertec	Halbertec 9000 Power	3	да	замер	87.2	40.5	296.0	87.0		5	Жёсткая	3	6.6	4	Нейтральный	DYNAMIC OPTIMUM FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACC-RIF TECH ; HIGH-MODULUS SLIM SHAFT ; TB NANO ; M40X / M46 / M46X / M50 / T1100		
+20996	Li-Ning	Halbertec	Halbertec 9000 Power	4	да	замер	83.1	39.2	299.0	84.5		5	Жёсткая	2	6.6	4	Нейтральный	DYNAMIC OPTIMUM FRAME ; HDF SHOCK ABSORPTION SYSTEM ; ACC-RIF TECH ; HIGH-MODULUS SLIM SHAFT ; TB NANO ; M40X / M46 / M46X / M50 / T1100		
+	Li-Ning	Halbertec	Halbertec Motor	4	нет	каталог						1	Гибкая	1		1	Нейтральный			
+20100	Li-Ning	Tectonic	Tectonic 1	3	да	каталог					297	1	Гибкая			1	В голову			
+20101	Li-Ning	Tectonic	Tectonic 1	4	да	каталог					297	1	Гибкая			1	В голову			
+10305	Li-Ning	Tectonic	Tectonic 7	4	да	замер	84.1	38.6	294.0	85.5		1	Гибкая			4	Нейтральный	TECTONIC SYSTEM ; DYNAMIC OPTIMUM FRAME ; ENERGY ABSORPTION REBOUND TECHNOLOGY ; M40X / M46 / M46X / M50 / T1100		
+10175	Li-Ning	Tectonic	Tectonic 7D	4	да	замер	82.3	40.1	305.0	86.5		5	Жёсткая		7.0	4	В голову	TECTONIC SYSTEM ; DYNAMIC OPTIMUM FRAME ; THUNDERBOLT CLOUD TECHNOLOGY ; ENERGY ABSORPTION REBOUND TECHNOLOGY ; M40X / M46 / M46X / M50 / T1100		
+20102	Li-Ning	Tectonic	Tectonic 9	3	да	замер	89.0	43.8	299.0	91.7	307	1	Гибкая			4	В голову	TECTONIC SYSTEM ; DYNAMIC OPTIMUM FRAME ; ENERGY ABSORPTION REBOUND TECHNOLOGY ; M40X / M46 / M46X / M50 / T1100		
+20152	Li-Ning	Tectonic	Tectonic 9	5	да	замер	79.5	39.5	309.0	85.0	310	1	Гибкая			4	В голову	TECTONIC SYSTEM ; DYNAMIC OPTIMUM FRAME ; ENERGY ABSORPTION REBOUND TECHNOLOGY ; M40X / M46 / M46X / M50 / T1100		
+10636	Li-Ning	TurboCharging	Turbo Charging 10B	4	да	каталог						2	Средне-гибкая			1	В голову	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10177	Li-Ning	TurboCharging	Turbo Charging 20	3	да	каталог						1	Гибкая			1	Нейтральный	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10532	Li-Ning	TurboCharging	Turbo Charging 40	3	да	каталог						3	Средняя			2	Нейтральный	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10637	Li-Ning	TurboCharging	Turbo Charging 50	3	да	каталог						1	Гибкая			3	Нейтральный	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+20035	Li-Ning	TurboCharging	Turbo Charging 50C	3	да	каталог						3	Средняя			3	В голову	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10178	Li-Ning	TurboCharging	Turbo Charging 50D	4	да	каталог						3	Средняя			3	В голову	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10139	Li-Ning	TurboCharging	Turbo Charging 70C	3	да	каталог						5	Жёсткая			4	Нейтральный	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10079	Li-Ning	TurboCharging	Turbo Charging 75I	5	да	каталог						3	Средняя			4	В голову	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10308	Li-Ning	TurboCharging	Turbo Charging 80	3	да	каталог						5	Жёсткая			4	В голову	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+	Li-Ning	TurboCharging	Turbo Charging Black Knight	3	нет	каталог						3	Средняя	3		2	Нейтральный			
+	Li-Ning	TurboCharging	Turbo Charging Black Knight	4	нет	каталог						3	Средняя	3		2	Нейтральный			
+20737	Li-Ning	TurboCharging	Turbo Charging Marshal	3	да	замер	88.1	40.6	294.0	87.0		1	Гибкая			2	В ручку	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+20941	Li-Ning	TurboCharging	Turbo Charging Marshal	4	да	замер	83.4	38.8	296.0	84.5		1	Гибкая			2	В ручку	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+20738	Li-Ning	TurboCharging	Turbo Charging Marshal White	4	да	замер	83.4	38.8	296.0	84.5		1	Гибкая			2	В ручку	TURBO CHARGING SYSTEM ; DYNAMIC OPTIMUM FRAME		
+10309	Li-Ning	TurboCharging	Turbo Force 1000	3	да	каталог						3	Средняя			1	В голову	DYNAMIC OPTIMUM FRAME		
+5007	Li-Ning	WindStorm	WindStorm 300	6	да	каталог					310	1	Гибкая			2	В голову			
+5110	Li-Ning	WindStorm	WindStorm 500	5	да	каталог					298	2	Средне-гибкая			2	В голову			
+5006	Li-Ning	WindStorm	WindStorm 700	5	да	каталог					298	1	Гибкая			2	В голову			
+8072	Li-Ning	WindStorm	WindStorm 72	6	да	замер	74.4	37.7	313.0	81.5	315	1	Гибкая	2		2	В голову	SUPER LIGHT TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+20739	Li-Ning	WindStorm	WindStorm 72 Power	6	да	замер	73.2	37.6	315.0	82.0	315	1	Гибкая	1		2	В голову	SUPER LIGHT TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+20740	Li-Ning	WindStorm	WindStorm 72 Speed	6	да	замер	72.8	36.6	311.0	79.8		1	Гибкая		6.8	2		SUPER LIGHT TECHNOLOGY ; SONIC BOOM SYSTEM ; TB NANO		
+10539	Li-Ning	WindStorm	WindStorm 72S	6	да	замер	73.5	37.5	314.0	81.0		1	Гибкая	1		2		SUPER LIGHT TECHNOLOGY ; DYNAMIC OPTIMUM FRAME		
+10224	Li-Ning	WindStorm	WindStorm 74	6	да	замер	76.4	38.4	311.0	82.3	310	1	Гибкая	1		2	В голову	UHB SHAFT ; SUPER LIGHT TECHNOLOGY ; DYNAMIC OPTIMUM FRAME ; AERO TEC-BEAM SYSTEM ; TB NANO		
+10638	Li-Ning	WindStorm	WindStorm 79H	5	да	замер	79.9	37.0	295.3	81.2	298	5	Жёсткая	3		2	Нейтральный	UHB SHAFT ; SUPER LIGHT TECHNOLOGY ; DYNAMIC OPTIMUM FRAME ; AERO TEC-BEAM SYSTEM		
+10639	Li-Ning	WindStorm	WindStorm 79S	5	да	замер	80.6	37.6	296.3	82.3	298	1	Гибкая	1		2	Нейтральный	UHB SHAFT ; SUPER LIGHT TECHNOLOGY ; DYNAMIC OPTIMUM FRAME ; AERO TEC-BEAM SYSTEM		
+	Ling Mei		C9	3	нет	замер	88.1	41.0	296.0	87.0										
+	Ling Mei		Sharp Dagger 99	6	нет	замер	74.5	37.2	310.0	81.5										
+	MAX Bolt		Galant Tour	3	нет	замер	87.0	41.2	299.0	89.0										
+	MAX Bolt		Super Star10	3	нет	замер	87.9	40.9	296.0	87.5										
+	MAXX		Aventador	4	нет	замер	82.2	37.8	294.0	82.5										
+	MAXX		Batman 85	4	нет	замер	86.1	40.0	296.0	86.0										
+	MAXX		Cobra	4	нет	замер	84.3	40.5	302.0	86.5										
+	MAXX		Dark Knight	4	нет	замер	85.2	43.1	312.0	89.5										
+	MAXX		Tornado IP	4	нет	замер	85.6	42.9	310.0	91.0										
+	MAXX		Tornado Light M6	6	нет	замер	76.4	37.6	307.0	81.0										
+	MAXX		Tornado tron Pro	4	нет	замер	83.3	38.1	293.0	83.5										
+	MAXX		Vireal V2	5	нет	замер	81.3	39.3	303.0	84.0										
+	Victor	AuraSpeed	Aura Speed 70K	4	нет	замер	85.4	39.0	293.0	84.0		5	Жёсткая		6.8	3	Нейтральный	COMPOUND-SWORD FRAME ; HARD CORED TECHNOLOGY ; REBOUND TRANSITION CONSTRUCTION ; SONIC-REBOUND TECHNOLOGY ; SEVEN-SIX 76 / SEVENTYSIX-76		
+	Victor	AuraSpeed	Auraspeed 100X TD	3	нет	каталог						4	Средне-жёсткая		6.8	3	В ручку			
+	Victor	AuraSpeed	Auraspeed 100X TD	4	нет	каталог						4	Средне-жёсткая		6.8	3	В ручку			
+	Victor	AuraSpeed	Auraspeed 100X Ultra	4	нет	каталог						4	Средне-жёсткая		5.8	4	Нейтральный			
+	Victor	AuraSpeed	Auraspeed 11	4	нет	каталог						1	Гибкая			1	В ручку			
+	Victor	AuraSpeed	Auraspeed 9	4	нет	каталог						2	Средне-гибкая			2	Нейтральный			
+	Victor	AuraSpeed	Auraspeed 90K Metallic	3	нет	каталог						6	Очень жёсткая		6.8	4	Нейтральный			
+	Victor	AuraSpeed	Auraspeed 90K Metallic	4	нет	каталог						6	Очень жёсткая		6.8	4	Нейтральный			
+	Victor	AuraSpeed	Auraspeed 99	3	нет	каталог						6	Очень жёсткая		6.8	4	В ручку			
+	Victor	AuraSpeed	Auraspeed 99	4	нет	каталог						6	Очень жёсткая		6.8	4	В ручку			
+	Victor	AuraSpeed	Auraspeed Fantôme	4	нет	каталог						4	Средне-жёсткая		6.8	4	Нейтральный			
+	Victor	AuraSpeed	Auraspeed Fantôme F	4	нет	каталог						4	Средне-жёсткая		6.6	4	В ручку			
+	Victor	AuraSpeed	Auraspeed HS Plus	4	нет	каталог						6	Очень жёсткая			4	Нейтральный			
+	Victor	AuraSpeed	Auraspeed Light Fighter 70	5	нет	каталог						3	Средняя			2	Нейтральный			
+	Victor	AuraSpeed	Auraspeed PGS	4	нет	каталог						4	Средне-жёсткая			2	Нейтральный			
+	Victor	AuraSpeed	Auraspeed Panther	3	нет	каталог						4	Средне-жёсткая		6.8	3	В ручку			
+	Victor	AuraSpeed	Auraspeed Panther	4	нет	каталог						4	Средне-жёсткая		6.8	3	В ручку			
+	Victor	DriveX	DriveX 1	5	нет	каталог						2	Средне-гибкая			2	Нейтральный			
+	Victor	DriveX	DriveX 10 Metallic	3	нет	каталог						5	Жёсткая			4	Нейтральный			
+	Victor	DriveX	DriveX 12	3	нет	каталог						5	Жёсткая		6.6	4	Нейтральный	DYNAMIC-HEX FRAME ; NANO AEROGEL ; WES 3.0 ; PYROFIL ; METALLIC CARBON FIBER ; NANO FORTIFY TR / TR+ ; FREE CORE ; POWER RING ; HARD CORED TECHNOLOGY ; HIGH RESILIENCE MODULUS GRAPHITE ; SEVEN-SIX 76 / SEVENTYSIX-76 ; VICTOR ANTI-TORSION SYSTEM		
+	Victor	DriveX	DriveX 12	4	нет	замер	84.3	41.3	306.0	86.5		5	Жёсткая		6.6	4	Нейтральный	DYNAMIC-HEX FRAME ; NANO AEROGEL ; WES 3.0 ; PYROFIL ; METALLIC CARBON FIBER ; NANO FORTIFY TR / TR+ ; FREE CORE ; POWER RING ; HARD CORED TECHNOLOGY ; HIGH RESILIENCE MODULUS GRAPHITE ; SEVEN-SIX 76 / SEVENTYSIX-76 ; VICTOR ANTI-TORSION SYSTEM		
+	Victor	DriveX	DriveX F	5	нет	каталог						4	Средне-жёсткая			3	В голову			
+	Victor	DriveX	DriveX Light Fighter 50	5	нет	каталог						4	Средне-жёсткая			1	Нейтральный			
+	Victor	Thruster	THRUSTER F	4	нет	замер	84.6	41.1	304.0	86.0		4	Средне-жёсткая		6.4	4		TRI-FORMATION ; DYNAMIC-SWORD FRAME ; VICTOR ANTI-TORSION SYSTEM ; SEVEN-SIX 76 / SEVENTYSIX-76 ; PYROFIL ; HARD CORED TECHNOLOGY ; HIGH RESILIENCE MODULUS GRAPHITE ; FREE CORE		
+	Victor	Thruster	THRUSTER F Ultra	3	нет	каталог						5	Жёсткая		5.8	4	В голову	TRI-FORMATION ; NANO FORTIFY TR / TR+ ; FREE CORE ; SEVEN-SIX 76 / SEVENTYSIX-76 ; METALLIC CARBON FIBER ; PYROFIL		
+	Victor	Thruster	THRUSTER F Ultra	4	нет	замер	84.3	39.6	298.0	85.0		5	Жёсткая		5.8	4	В голову	TRI-FORMATION ; NANO FORTIFY TR / TR+ ; FREE CORE ; SEVEN-SIX 76 / SEVENTYSIX-76 ; METALLIC CARBON FIBER ; PYROFIL		
+	Victor	Thruster	THRUSTER TTY	4	нет	замер	84.7	40.1	299.0	83.0		5	Жёсткая		6.5	4	В голову	HARD CORED TECHNOLOGY ; VICTOR ANTI-TORSION SYSTEM ; FREE CORE ; POWER RING ; TRI-FORMATION ; PYROFIL ; HIGH RESILIENCE MODULUS GRAPHITE		
+	Victor	Thruster	Thruster F C Ultra	3	нет	каталог						6	Очень жёсткая		6.0	4	Нейтральный			
+	Victor	Thruster	Thruster F C Ultra	4	нет	каталог						5	Жёсткая		5.8	4	Нейтральный			
+	Victor	Thruster	Thruster F C Ultra	5	нет	каталог						4	Средне-жёсткая		5.6	4	Нейтральный			
+	Victor	Thruster	Thruster F C Ultra CX	4	нет	каталог						6	Очень жёсткая		6.0	4	В голову			
+	Victor	Thruster	Thruster K 12	4	нет	каталог						2	Средне-гибкая			1	В голову			
+	Victor	Thruster	Thruster K 1H	4	нет	каталог						3	Средняя			2	Нейтральный			
+	Victor	Thruster	Thruster Light Fighter 90	5	нет	каталог						4	Средне-жёсткая			3	Нейтральный			
+	Victor	Thruster	Thruster Merak	4	нет	каталог						5	Жёсткая			3	В голову			
+	Victor	Thruster	Thruster Raptor	4	нет	каталог						5	Жёсткая			3	В голову			
+	Victor	Thruster	Thruster Ryuga CLS	4	нет	каталог						4	Средне-жёсткая			1	Нейтральный			
+	Victor	Thruster	Thruster Ryuga II Pro	3	нет	каталог						6	Очень жёсткая			4	В голову			
+	Victor	Thruster	Thruster Ryuga II Pro	4	нет	каталог						5	Жёсткая		6.6	4	В голову			
+	Victor	Thruster	Thruster Ryuga Metallic	3	нет	каталог						6	Очень жёсткая			4	В голову			
+	Victor	Thruster	Thruster Ryuga Muse II	5	нет	каталог						6	Очень жёсткая		6.6	4	В голову			
+	Victor	Thruster	Thruster Ryuga TD	4	нет	каталог						5	Жёсткая			3	В голову			
+	Victor	Thruster	Thruster TTY Ultima	4	нет	каталог						5	Жёсткая		6.5	4	В голову			
+20016	Yonex	Arcsaber	Arcsaber 11	3	да	каталог					305	5	Жёсткая			4	Нейтральный			
+20294	Yonex	Arcsaber	Arcsaber 11 Play	4	да	замер	82.5	41.3	305.0	85.5	294	3	Средняя	3		1	Нейтральный	ISOMETRIC ; BOX FRAME ; CONTROL-ASSIST BUMPER ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Arcsaber	Arcsaber 11 Pro	3	нет	замер	89.2	40.2	290.0	85.5		5	Жёсткая	4		4		ISOMETRIC ; BOX FRAME ; POCKETING BOOSTER ; CONTROL-ASSIST BUMPER ; SUPER HMG / EX-HMG / EX-HYPER MG ; SOLID FEEL CORE ; ULTRA PE FIBER		
+	Yonex	Arcsaber	Arcsaber 11 Pro	4	нет	каталог						5	Жёсткая	4		4	Нейтральный	ISOMETRIC ; BOX FRAME ; POCKETING BOOSTER ; CONTROL-ASSIST BUMPER ; SUPER HMG / EX-HMG / EX-HYPER MG ; SOLID FEEL CORE ; ULTRA PE FIBER		
+20295	Yonex	Arcsaber	Arcsaber 11 Tour	3	да	каталог						5	Жёсткая	4		3	Нейтральный	ISOMETRIC ; BOX FRAME ; CONTROL-ASSIST BUMPER ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; T-ANCHOR ; BUILT-IN T-JOINT ; POCKETING BOOSTER ; SUPER HMG / EX-HMG / EX-HYPER MG ; SUPER NMG ; 10 MM / 5 MM LONGER DESIGN		
+20295	Yonex	Arcsaber	Arcsaber 11 Tour	4	да	замер	84.6	41.6	306.5	88.0		5	Жёсткая	4		3	Нейтральный	ISOMETRIC ; BOX FRAME ; CONTROL-ASSIST BUMPER ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; T-ANCHOR ; BUILT-IN T-JOINT ; POCKETING BOOSTER ; SUPER HMG / EX-HMG / EX-HYPER MG ; SUPER NMG ; 10 MM / 5 MM LONGER DESIGN		
+20787	Yonex	Arcsaber	Arcsaber 2 Ability	4	да	каталог						1	Гибкая	2		1	Нейтральный	ISOMETRIC ; AERO+BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; CONTROL SUPPORT CAP ; 10 MM / 5 MM LONGER DESIGN		
+20788	Yonex	Arcsaber	Arcsaber 2 Clear	4	да	каталог						1	Гибкая	2		1	Нейтральный	ISOMETRIC ; AERO+BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; CONTROL SUPPORT CAP ; 10 MM / 5 MM LONGER DESIGN		
+20789	Yonex	Arcsaber	Arcsaber 2 Feel	4	да	каталог						1	Гибкая	2		1	Нейтральный	ISOMETRIC ; AERO+BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; CONTROL SUPPORT CAP ; 10 MM / 5 MM LONGER DESIGN		
+20997	Yonex	Arcsaber	Arcsaber 7 Play	4	да	каталог					294	1	Гибкая	2		1	Нейтральный	ISOMETRIC ; BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; T-ANCHOR ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Arcsaber	Arcsaber 7 Pro	4	нет	каталог						3	Средняя	4		4	Нейтральный	ISOMETRIC ; BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; T-ANCHOR ; BUILT-IN T-JOINT ; POCKETING BOOSTER ; 10 MM / 5 MM LONGER DESIGN		
+20299	Yonex	Arcsaber	Arcsaber 7 Tour	4	да	каталог					305	3	Средняя	4		3	Нейтральный	ISOMETRIC ; BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; T-ANCHOR ; BUILT-IN T-JOINT ; POCKETING BOOSTER ; 10 MM / 5 MM LONGER DESIGN		
+20792	Yonex	Arcsaber	Arcsaber 8	5	да	каталог						3	Средняя			2	Нейтральный	ISOMETRIC ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 01	4	нет	каталог						1	Гибкая	2		1	В голову			
+	Yonex	Astrox	Astrox 02	4	нет	каталог						1	Гибкая	2		1	В голову			
+21124	Yonex	Astrox	Astrox 1 DG	4	да	каталог					300	1	Гибкая			2	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; CONTROL SUPPORT CAP ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; 10 MM / 5 MM LONGER DESIGN		
+21001	Yonex	Astrox	Astrox 10	4	да	каталог						4	Средне-жёсткая			1	В голову	ISOMETRIC ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+20300	Yonex	Astrox	Astrox 100 Game	4	да	замер	83.2	39.0	297.7	83.8	292	3	Средняя	4		2	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; 10 MM / 5 MM LONGER DESIGN		
+21003	Yonex	Astrox	Astrox 100 Game VA	4	да	замер	84.2	39.1	295.7	84.0	298	3	Средняя			2	В голову	ISOMETRIC ; AERO+BOX FRAME ; VOLUME CUT RESIN ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 100 Tour	3	нет	замер	85.9	40.4	300.0	86.5		6	Очень жёсткая	5		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; 10 MM / 5 MM LONGER DESIGN		
+20301	Yonex	Astrox	Astrox 100 Tour	4	да	замер	82.6	41.3	310.0	87.5	315	6	Очень жёсткая	5		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 100 ZX	4	нет	каталог						6	Очень жёсткая	5		4	В голову			
+21134	Yonex	Astrox	Astrox 100VA ZZ	3	да	каталог					300	6	Очень жёсткая			4	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; BLACK MICRO CORE ; 10 MM / 5 MM LONGER DESIGN		
+21135	Yonex	Astrox	Astrox 100VA ZZ	4	да	каталог					300	6	Очень жёсткая			4	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; BLACK MICRO CORE ; 10 MM / 5 MM LONGER DESIGN		
+20017	Yonex	Astrox	Astrox 100ZZ	3	да	каталог					300	6	Очень жёсткая	5		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; BLACK MICRO CORE ; 10 MM / 5 MM LONGER DESIGN		
+20017	Yonex	Astrox	Astrox 100ZZ	4	да	замер	86.1	41.5	303.0	86.0		6	Очень жёсткая	5		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; BLACK MICRO CORE ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 22	7	нет	каталог						5	Жёсткая	5		3	В голову			
+	Yonex	Astrox	Astrox 22 F	8	нет	каталог						3	Средняя	3		3	Нейтральный			
+20302	Yonex	Astrox	Astrox 22 LT	8	да	каталог					324	3	Средняя	3		3	В голову			
+	Yonex	Astrox	Astrox 22 RX	7	нет	каталог						5	Жёсткая	4		3	Нейтральный			
+	Yonex	Astrox	Astrox 3 DG HF	4	нет	каталог						1	Гибкая			2	В голову			
+	Yonex	Astrox	Astrox 3 DG ST	4	нет	каталог						5	Жёсткая			2	В голову			
+	Yonex	Astrox	Astrox 39	4	нет	каталог						5	Жёсткая	5		2	В голову			
+	Yonex	Astrox	Astrox 55	5	нет	каталог						3	Средняя	3		3	В голову			
+	Yonex	Astrox	Astrox 6	4	нет	каталог						1	Гибкая	2		1	В голову			
+	Yonex	Astrox	Astrox 66	4	нет	каталог						1	Гибкая	2		3	В голову			
+	Yonex	Astrox	Astrox 69	4	нет	каталог						5	Жёсткая	5		2	В голову			
+	Yonex	Astrox	Astrox 7	4	нет	каталог						3	Средняя	3		1	В голову			
+21125	Yonex	Astrox	Astrox 7 DG	4	да	каталог					305	3	Средняя			2	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; CONTROL SUPPORT CAP ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; 10 MM / 5 MM LONGER DESIGN		
+20303	Yonex	Astrox	Astrox 70	4	да	замер	85.8	40.0	296.0	85.5	285	1	Гибкая	2		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; VDM ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 77	3	нет	каталог						3	Средняя	4		4	В голову			
+	Yonex	Astrox	Astrox 77	4	нет	каталог						3	Средняя	4		4	В голову			
+21126	Yonex	Astrox	Astrox 77 Play	4	да	замер	83.1	38.1	293.0	83.5	298	1	Гибкая	2		1	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 77 Pro	3	нет	каталог						3	Средняя	4		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; FLEX FUSE ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+20793	Yonex	Astrox	Astrox 77 Pro	4	да	замер	84.3	40.6	303.0	86.5	303	3	Средняя	4		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; FLEX FUSE ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 77 Tour	3	нет	каталог						3	Средняя	4		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; LIGHT FEEL CARBON NEO ; 10 MM / 5 MM LONGER DESIGN		
+20305	Yonex	Astrox	Astrox 77 Tour	4	да	замер	84.1	38.9	295.0	83.5	300	3	Средняя	4		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; LIGHT FEEL CARBON NEO ; 10 MM / 5 MM LONGER DESIGN		
+20795	Yonex	Astrox	Astrox 88 Play	4	да	каталог						3	Средняя	2		1	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+20011	Yonex	Astrox	Astrox 88D	3	да	каталог					300	5	Жёсткая	5		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; STABILITY WEIGHT DISTRIBUTION ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88D	4	нет	каталог						5	Жёсткая	5		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; STABILITY WEIGHT DISTRIBUTION ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88D 1Gen	3	нет	каталог						5	Жёсткая	5		4	В голову			
+	Yonex	Astrox	Astrox 88D 1Gen	4	нет	каталог						5	Жёсткая	5		4	В голову			
+20306	Yonex	Astrox	Astrox 88D Game	3	да	замер	89.3	41.9	298.0	87.0	300	3	Средняя	4		2	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; STABILITY WEIGHT DISTRIBUTION ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+20794	Yonex	Astrox	Astrox 88D Game	4	да	замер	84.2	41.2	306.0	87.0	301	3	Средняя	4		2	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; STABILITY WEIGHT DISTRIBUTION ; CONCENTRATED / FOCUSED SWEET SPOT ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88D Game 2 Gen	4	нет	замер	84.0	40.1	301.0	84.5		3	Средняя	4		2		ISOMETRIC ; ROTATIONAL GENERATOR SYSTEM ; POWER-ASSIST BUMPER ; CSR		
+	Yonex	Astrox	Astrox 88D Pro 2Gen	3	нет	каталог						5	Жёсткая	5		4	В голову	ISOMETRIC ; NAMD ; ROTATIONAL GENERATOR SYSTEM ; AERO+BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT		
+	Yonex	Astrox	Astrox 88D Pro 2Gen	4	нет	замер	84.9	41.4	305.0	87.5		5	Жёсткая	5		4		ISOMETRIC ; NAMD ; ROTATIONAL GENERATOR SYSTEM ; AERO+BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT		
+	Yonex	Astrox	Astrox 88D Pro 3Gen	4	нет	замер	83.6	39.9	301.0	85.0						4		ISOMETRIC ; 2G-NAMD FLEX FORCE ; ROTATIONAL GENERATOR SYSTEM ; POWER-ASSIST BUMPER ; STABILITY WEIGHT DISTRIBUTION ; CONCENTRATED / FOCUSED SWEET SPOT ; BUILT-IN T-JOINT ; ULTRA PE FIBER		
+20308	Yonex	Astrox	Astrox 88D Tour	3	да	каталог					300	5	Жёсткая	5		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; STABILITY WEIGHT DISTRIBUTION ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+20917	Yonex	Astrox	Astrox 88D Tour	4	да	замер	83.0	38.9	297.0	83.0	300	5	Жёсткая	5		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; STABILITY WEIGHT DISTRIBUTION ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88D Tour 2Gen	4	нет	замер	82.8	39.8	302.0	84.0		5	Жёсткая	5		3		ISOMETRIC ; 2G-NAMD FLEX FORCE ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; DOUBLE SLOT SYSTEM ; NAMD		
+20012	Yonex	Astrox	Astrox 88S	3	да	каталог					300	5	Жёсткая	4		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; EXPANDED SWEET SPOT ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88S	4	нет	каталог						5	Жёсткая	4		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; EXPANDED SWEET SPOT ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88S 1Gen	3	нет	каталог						5	Жёсткая	4		4	В голову			
+	Yonex	Astrox	Astrox 88S 1Gen	4	нет	каталог						5	Жёсткая	4		4	В голову			
+20310	Yonex	Astrox	Astrox 88S Game	3	да	замер	90.1	41.2	293.0	86.5	290	3	Средняя	3		2	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+20796	Yonex	Astrox	Astrox 88S Game	4	да	замер	84.1	40.7	304.0	86.5	290	3	Средняя	3		2	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; EXPANDED SWEET SPOT ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88S Game 2Gen	4	нет	замер	82.5	37.2	290.0	80.0		3	Средняя	3		2		ISOMETRIC ; ROTATIONAL GENERATOR SYSTEM ; POWER-ASSIST BUMPER ; CSR		
+	Yonex	Astrox	Astrox 88S Pro 2Gen	3	нет	каталог						5	Жёсткая	4		4	В голову			
+	Yonex	Astrox	Astrox 88S Pro 2Gen	4	нет	каталог						5	Жёсткая	4		4	В голову			
+20312	Yonex	Astrox	Astrox 88S Tour	3	да	замер	89.0	42.3	300.0	88.0	295	5	Жёсткая	4		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; EXPANDED SWEET SPOT ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+20313	Yonex	Astrox	Astrox 88S Tour	4	да	замер	85.0	38.5	291.0	82.5	295	5	Жёсткая	4		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; POWER-ASSIST BUMPER ; ROTATIONAL GENERATOR SYSTEM ; EXPANDED SWEET SPOT ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; CSR ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 88S Tour 2Gen	4	нет	каталог						5	Жёсткая	4		3	В голову			
+	Yonex	Astrox	Astrox 99	3	нет	каталог						5	Жёсткая	5		4	В голову			
+20001	Yonex	Astrox	Astrox 99	4	да	каталог					310	5	Жёсткая	5		4	В голову			
+20316	Yonex	Astrox	Astrox 99 Game	3	да	замер	89.5		299.0	89.0	310	3	Средняя	3		2	В голову	ROTATIONAL GENERATOR SYSTEM ; CONCENTRATED / FOCUSED SWEET SPOT ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; CSR ; SHOT INFORMATION CONNECTOR ; 10 MM / 5 MM LONGER DESIGN		
+21004	Yonex	Astrox	Astrox 99 Game	4	да	замер	83.4	40.9	306.0	87.2	305	3	Средняя	3		2	В голову	ISOMETRIC ; ROTATIONAL GENERATOR SYSTEM ; CONCENTRATED / FOCUSED SWEET SPOT ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; CSR ; SHOT INFORMATION CONNECTOR ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 99 Game 2Gen	4	нет	замер	84.7	41.3	305.0	87.0						2		ISOMETRIC ; NANOMESH NEO / 2G-NANOMESH NEO ; ROTATIONAL GENERATOR SYSTEM ; AERO+BOX FRAME ; CONTROL SUPPORT CAP ; BUILT-IN T-JOINT		
+20797	Yonex	Astrox	Astrox 99 Play	4	да	каталог					312	3	Средняя	3		1	В голову	ROTATIONAL GENERATOR SYSTEM ; CONCENTRATED / FOCUSED SWEET SPOT ; 10 MM / 5 MM LONGER DESIGN		
+21006	Yonex	Astrox	Astrox 99 Pro	3	да	замер	88.4	45.8	317.0	95.0	317	5	Жёсткая	5		4	В голову	ROTATIONAL GENERATOR SYSTEM ; CONCENTRATED / FOCUSED SWEET SPOT ; 2G-NAMD FLEX FORCE ; ULTRA PE FIBER ; BUILT-IN T-JOINT ; SHOT INFORMATION CONNECTOR ; 10 MM / 5 MM LONGER DESIGN		
+20318	Yonex	Astrox	Astrox 99 Pro	4	да	замер	84.2	43.8	318.0	91.5	305	5	Жёсткая	5		4	В голову	ROTATIONAL GENERATOR SYSTEM ; CONCENTRATED / FOCUSED SWEET SPOT ; 2G-NAMD FLEX FORCE ; ULTRA PE FIBER ; BUILT-IN T-JOINT ; SHOT INFORMATION CONNECTOR ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 99 Pro 2Gen	4	нет	замер	84.8	42.0	308.0	88.0						4		ISOMETRIC ; NAMD ; ROTATIONAL GENERATOR SYSTEM ; AERO+BOX FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; VOLUME CUT RESIN ; BUILT-IN T-JOINT		
+20321	Yonex	Astrox	Astrox 99 Tour	3	да	каталог					305	5	Жёсткая	5		3	В голову	ISOMETRIC ; ROTATIONAL GENERATOR SYSTEM ; CONCENTRATED / FOCUSED SWEET SPOT ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; CSR ; SHOT INFORMATION CONNECTOR ; 10 MM / 5 MM LONGER DESIGN		
+21008	Yonex	Astrox	Astrox 99 Tour	4	да	замер	84.0	42.3	311.3	89.3	307	5	Жёсткая	5		3	В голову	ISOMETRIC ; ROTATIONAL GENERATOR SYSTEM ; CONCENTRATED / FOCUSED SWEET SPOT ; 2G-NAMD FLEX FORCE ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; CSR ; SHOT INFORMATION CONNECTOR ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Astrox	Astrox 99 Tour 2Gen	4	нет	замер	83.2	39.3	299.0	85.0						3		ISOMETRIC ; NAMD ; ROTATIONAL GENERATOR SYSTEM ; AERO+BOX FRAME ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT		
+	Yonex	Astrox	Astrox 99 Tour 2Gen	4	нет	замер	82.0	39.4	301.0	84.0						3		ISOMETRIC ; NAMD ; ROTATIONAL GENERATOR SYSTEM ; AERO+BOX FRAME ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT		
+21009	Yonex	Astrox	Astrox Black Edge	4	да	замер	82.7	39.9	303.0	85.5	303	3	Средняя			2	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NANOMESH NEO / 2G-NANOMESH NEO ; BUILT-IN T-JOINT		
+	Yonex	Astrox	Astrox E13	3	нет	каталог										1	В голову			
+	Yonex	Astrox	Astrox FB	6	нет	каталог						3	Средняя	3		2	В голову			
+21127	Yonex	Astrox	Astrox NexTage	4	да	замер	85.9	40.1	292.7	84.0	290	3	Средняя	3		3	В голову	ISOMETRIC ; AERO+BOX FRAME ; ROTATIONAL GENERATOR SYSTEM ; NAMD ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; VDM ; BUILT-IN T-JOINT ; NANOMESH NEO / 2G-NANOMESH NEO ; 10 MM / 5 MM LONGER DESIGN		
+20021	Yonex	Astrox	Astrox Smash	6	да	каталог						1	Гибкая			1	В голову			
+	Yonex	Carbonex	Carbonex 8000 N	3	нет	каталог						3	Средняя			1				
+20018	Yonex	Duora	Duora 10	3	да	каталог					294	5	Жёсткая	5		4	В голову			
+20039	Yonex	Duora	Duora 10 LT	4	да	каталог						5	Жёсткая	4		4	Нейтральный			
+	Yonex	Duora	Duora 6	4	нет	каталог						1	Гибкая	2		3	Нейтральный			
+	Yonex	Duora	Duora 7	3	нет	каталог						5	Жёсткая	4		4	Нейтральный			
+	Yonex	Duora	Duora 99	3	нет	каталог						5	Жёсткая	5		3	Нейтральный			
+	Yonex	Duora	Duora Z-Strike	2	нет	каталог						6	Очень жёсткая			4	В голову	ISOMETRIC ; AERO+BOX FRAME ; AERO FRAME / AERO-COMPACT FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; CONTROL SUPPORT CAP ; SOLID FEEL CORE ; T-ANCHOR ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+20013	Yonex	Duora	Duora Z-Strike	3	да	каталог					295	6	Очень жёсткая	5		4	В голову	ISOMETRIC ; AERO+BOX FRAME ; AERO FRAME / AERO-COMPACT FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; CONTROL SUPPORT CAP ; SOLID FEEL CORE ; T-ANCHOR ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Isometric	Isometric Lite 3	3	нет	каталог						3	Средняя			1				
+	Yonex	Nanoflare	Nanoflare 001	5	нет	каталог						1	Гибкая	2		1	В ручку			
+	Yonex	Nanoflare	Nanoflare 002	4	нет	каталог						1	Гибкая	2		1	В ручку			
+	Yonex	Nanoflare	Nanoflare 1000 Game	4	нет	каталог						3	Средняя	4		2	Нейтральный			
+20323	Yonex	Nanoflare	Nanoflare 1000 Play	4	да	замер	85.2	40.1	310.0	86.1	298	3	Средняя	3		1	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; NANOCELL NEO ; 10 MM / 5 MM LONGER DESIGN		
+20324	Yonex	Nanoflare	Nanoflare 1000 Tour	3	да	каталог					300	6	Очень жёсткая	5		3	Нейтральный	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SPEED-ASSIST BUMPER ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+20325	Yonex	Nanoflare	Nanoflare 1000 Tour	4	да	каталог					300	6	Очень жёсткая	5		3	Нейтральный	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SPEED-ASSIST BUMPER ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Nanoflare	Nanoflare 1000 Z	3	нет	каталог						6	Очень жёсткая	5		4	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SPEED-ASSIST BUMPER ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; SUPER HMG / EX-HMG / EX-HYPER MG ; TORAYCA M40X ; 10 MM / 5 MM LONGER DESIGN		
+20522	Yonex	Nanoflare	Nanoflare 1000 Z	4	да	замер	85.7	40.1	297.0	84.0	295	6	Очень жёсткая	5		4	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SPEED-ASSIST BUMPER ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; NANOMETRIC / NANOMETRIC DR ; SUPER HMG / EX-HMG / EX-HYPER MG ; TORAYCA M40X ; 10 MM / 5 MM LONGER DESIGN		
+21128	Yonex	Nanoflare	Nanoflare 10S	4	да	каталог										1	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+21129	Yonex	Nanoflare	Nanoflare 10S	5	да	каталог										1	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Nanoflare	Nanoflare 160 FX	5	нет	каталог						1	Гибкая	2		1	В ручку			
+	Yonex	Nanoflare	Nanoflare 170 Light	5	нет	каталог						1	Гибкая	2		1	В ручку			
+	Yonex	Nanoflare	Nanoflare 270 Speed	4	нет	каталог						3	Средняя	3		2	В ручку			
+	Yonex	Nanoflare	Nanoflare 370 Speed	5	нет	каталог						5	Жёсткая	4		2	В ручку			
+	Yonex	Nanoflare	Nanoflare 380 Sharp	4	нет	каталог						5	Жёсткая	5		2	В ручку			
+20326	Yonex	Nanoflare	Nanoflare 500	4	да	замер	82.9	35.3	284.0	79.5		3	Средняя			1	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; NANOMESH NEO / 2G-NANOMESH NEO ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT		
+20327	Yonex	Nanoflare	Nanoflare 500	5	да	замер	80.1	38.3	301.0	82.0		3	Средняя			1	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; NANOMESH NEO / 2G-NANOMESH NEO ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT		
+	Yonex	Nanoflare	Nanoflare 555	4	нет	каталог						5	Жёсткая	5		3	В ручку			
+	Yonex	Nanoflare	Nanoflare 600	4	нет	каталог						1	Гибкая	1		3	В ручку			
+	Yonex	Nanoflare	Nanoflare 70	4	нет	каталог						1	Гибкая	2		4	В ручку			
+	Yonex	Nanoflare	Nanoflare 700	4	нет	каталог						3	Средняя	3		4	В ручку			
+20799	Yonex	Nanoflare	Nanoflare 700 Game	4	да	замер	83.8	36.6	285.0	80.5		1	Гибкая	2		2	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; WIDE PROFILE FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SERVO FILTER ; BUILT-IN T-JOINT ; NANOCELL NEO ; 10 MM / 5 MM LONGER DESIGN		
+20801	Yonex	Nanoflare	Nanoflare 700 Play	4	да	каталог						1	Гибкая	2		1	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Nanoflare	Nanoflare 700 Pro	4	нет	каталог						3	Средняя	3		4	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; WIDE PROFILE FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SERVO FILTER ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Nanoflare	Nanoflare 700 Pro	5	нет	каталог						3	Средняя	3		4	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; WIDE PROFILE FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SERVO FILTER ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+21131	Yonex	Nanoflare	Nanoflare 700 Tour	4	да	замер	84.6	39.0	297.7	83.8	285	3	Средняя	3		3	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; WIDE PROFILE FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SERVO FILTER ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Nanoflare	Nanoflare 700 Tour	5	нет	каталог						3	Средняя	3		3	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; WIDE PROFILE FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; SERVO FILTER ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; 10 MM / 5 MM LONGER DESIGN		
+20014	Yonex	Nanoflare	Nanoflare 800	3	да	каталог					292	5	Жёсткая	5		4	В ручку			
+	Yonex	Nanoflare	Nanoflare 800	4	нет	каталог						5	Жёсткая	5		4	В ручку			
+20328	Yonex	Nanoflare	Nanoflare 800 Game	4	да	замер	82.8	38.0	292.5	82.2	300	3	Средняя	4		2	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; WIDE PROFILE FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; TORAYCA M40X ; COPPER ; NANOPREME ; 10 MM / 5 MM LONGER DESIGN		
+20040	Yonex	Nanoflare	Nanoflare 800 LT	5	да	каталог					295	5	Жёсткая	5		4	Нейтральный			
+21132	Yonex	Nanoflare	Nanoflare 800 Play	4	да	каталог					280	3	Средняя	3		1	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Nanoflare	Nanoflare 800 Pro	3	нет	каталог						5	Жёсткая	5		4	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; SUPER HMG / EX-HMG / EX-HYPER MG ; TORAYCA M40X ; COPPER ; 10 MM / 5 MM LONGER DESIGN		
+20523	Yonex	Nanoflare	Nanoflare 800 Pro	4	да	замер	84.2	39.0	295.0	83.5	290	5	Жёсткая	5		4	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ULTRA PE FIBER ; ENERGY BOOST CAP / E.B. CAP PLUS ; SOLID FEEL CORE ; BUILT-IN T-JOINT ; SUPER HMG / EX-HMG / EX-HYPER MG ; TORAYCA M40X ; COPPER ; 10 MM / 5 MM LONGER DESIGN		
+	Yonex	Nanoflare	Nanoflare 800 Tour	3	нет	каталог						5	Жёсткая	5		3	Нейтральный	ISOMETRIC ; SONIC FLARE SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; COPPER ; 10 MM / 5 MM LONGER DESIGN		
+20329	Yonex	Nanoflare	Nanoflare 800 Tour	4	да	замер	82.8	38.3	295.0	83.5	290	5	Жёсткая	5		3	Нейтральный	ISOMETRIC ; SONIC FLARE SYSTEM ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; REXIS SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOCELL NEO ; SUPER HMG / EX-HMG / EX-HYPER MG ; COPPER ; 10 MM / 5 MM LONGER DESIGN		
+20022	Yonex	Nanoflare	Nanoflare Drive	4	да	каталог						1	Гибкая			1	В ручку			
+	Yonex	Nanoflare	Nanoflare E13	3	нет	каталог										1	В ручку			
+	Yonex	Nanoflare	Nanoflare Junior	4	нет	каталог						1	Гибкая	1		1	В ручку			
+21133	Yonex	Nanoflare	Nanoflare NexTage	4	да	замер	84.1	37.6	288.7	81.8	280	3	Средняя	2		3	В ручку	ISOMETRIC ; SONIC FLARE SYSTEM ; AERO FRAME / AERO-COMPACT FRAME ; WIDE PROFILE FRAME ; SUPER SLIM / ULTRA SLIM / HYPER SLIM SHAFT ; ENERGY BOOST CAP / E.B. CAP PLUS ; BUILT-IN T-JOINT ; NANOCELL NEO ; TORAYCA M40X ; 10 MM / 5 MM LONGER DESIGN		
+20000	Yonex	Nanoray	Nanoray 10F	4	да	каталог						1	Гибкая			1	В ручку			
+	Yonex	Nanoray	Nanoray GlanZ	4	нет	каталог						1	Гибкая			4	В ручку			
+	Yonex	Nanoray	Nanoray Z-Speed	3	нет	каталог						6	Очень жёсткая			4	В ручку			
+	Yonex	Voltric	Voltric 0F	4	нет	каталог						1	Гибкая			1	В голову			
+	Yonex	Voltric	Voltric 21DG Slim	3	нет	каталог						3	Средняя			1	В голову			
+	Yonex	Voltric	Voltric 8DG Slim	3	нет	каталог						1	Гибкая			1	В голову			
+	Yonex	Voltric	Voltric GlanZ	4	нет	каталог						3	Средняя			4	В голову			
+	Yonex	Voltric	Voltric Lite	4	нет	каталог						1	Гибкая			1	В голову			
+	Yonex	Voltric	Voltric Z-Force II	4	нет	каталог						6	Очень жёсткая			4	В голову			
