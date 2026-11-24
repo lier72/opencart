@@ -123,18 +123,21 @@ select{width:100%;font:500 14px var(--f-body);padding:9px 10px;border-radius:8px
 .tune .hint{margin:4px 0 10px}
 .sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 18px}
 .sl{display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:8px;font-size:13px}
+.sl-hidden{display:none}
 .sl input[type=range]{width:100%;accent-color:var(--court)}
+/* thumb only (track stays accent-color, as before) in solid orange — the sliders were
+   hard to pick out otherwise */
+.sl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;background:rgba(255,90,40,.9);cursor:pointer}
+.sl input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:rgba(255,90,40,.9);border:none;cursor:pointer}
 .sl output{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
 .profile{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--surface);z-index:1;padding-top:2px;padding-bottom:8px}
 .profile h2{font-family:var(--f-display);font-size:17px;font-weight:500;margin:0;flex-basis:100%}
 .pill{font-family:var(--f-mono);font-size:12.5px;background:var(--court-soft);color:var(--ink);padding:4px 9px;border-radius:6px}
 .cards{display:grid;gap:14px}
 .card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px}
-/* price is pulled out of the text flow and anchored bottom-right, in the gap the axes
-   column leaves below itself — one place to look for it on every card. */
-.card .price{position:absolute;right:24px;bottom:22px;font-size:13px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 @media (max-width:640px){.card{grid-template-columns:1fr}}
 .card h3{margin:0;font-size:18px;font-weight:700;line-height:1.25}
+.card h3 .badge{vertical-align:middle;margin-left:2px}
 .meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin:6px 0 10px}
 .meta b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 .badge{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--f-body);padding:3px 8px;border-radius:6px}
@@ -162,8 +165,11 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .score .l{font-size:12px;color:var(--muted)}
 .axes{display:grid;gap:7px}
 .axis{display:grid;grid-template-columns:88px 1fr 22px;gap:8px;align-items:center;font-size:12.5px}
-.axis .bar{position:relative;height:8px;background:var(--sunk);border-radius:4px}
-.axis .fill{position:absolute;left:0;top:0;bottom:0;background:var(--court);border-radius:4px}
+/* two-layer bar: .bar is the always-visible "bottom layer" (previous fill color, full
+   width, with a visible border so the 1..10 range's start/end read clearly), .fill is the
+   orange "top layer" overlaid on top of it, width = the actual value. */
+.axis .bar{position:relative;height:8px;background:var(--fill);border:1px solid var(--line-strong);border-radius:4px}
+.axis .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,90,40,.8);border-radius:4px}
 .axis .tgt{position:absolute;top:-4px;width:2px;height:16px;background:var(--cork);transform:translateX(-1px)}
 .axis .v{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
 /* main result cards: give the 5 axis rows a visible "table" frame — a shaded panel with
@@ -183,7 +189,10 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .legend i{display:inline-block;vertical-align:middle;margin-right:5px}
 .lg-fill{width:16px;height:8px;background:var(--court);border-radius:3px}
 .lg-tgt{width:2px;height:12px;background:var(--cork)}
-.rf-root .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.rf-root .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+/* price as its own badge in the actions row, lined up with the button text instead of
+   floating lost at the card's bottom-right corner */
+.actions .price{margin-left:auto;font-size:13px;font-weight:700;color:var(--ink);background:var(--sunk);padding:7px 12px;border-radius:8px;font-variant-numeric:tabular-nums}
 .rf-root .btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,40,.8);background:rgba(255,90,40,.8);color:#fff;cursor:pointer;text-decoration:none;transition:background-color .15s ease,border-color .15s ease}
 .rf-root .btn:hover{background:rgba(255,90,40,1);border-color:rgba(255,90,40,1)}
 /* !important: the theme has an inline, site-wide ".btn, .btn:visited{color:#fff!important}"
@@ -372,8 +381,7 @@ nav.tabs a[aria-current="page"]{background:var(--bg);color:var(--ink);box-shadow
 .hint,.note{font-size:13px}
 .score .n{color:var(--ink)}
 .card.best .score .n{color:rgb(255,90,40)}
-.axis .fill,.lg-fill{background:var(--fill)}
-.card.best .axis .fill{background:rgba(255,90,40,.8)}
+.lg-fill{background:rgba(255,90,40,.8)}
 .axis .tgt,.lg-tgt{background:var(--ink)}
 .formula{border-left:1px solid var(--line)}
 .map-tabs button[aria-selected=true]{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}

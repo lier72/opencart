@@ -74,6 +74,7 @@
         <button type="button" id="m-like" aria-pressed="false" data-i18n="m_like">От моей ракетки</button>
       </div>
       <form id="quiz" autocomplete="off">
+        <label class="toggle"><input type="checkbox" id="instock"> <span data-i18n="instock">Только в наличии</span></label>
         <fieldset><legend data-i18n="q_who">Для кого ракетка?</legend><div class="chips" data-q="who"></div></fieldset>
         <fieldset><legend data-i18n="q_lvl">Как давно играете?</legend><div class="chips" data-q="lvl"></div></fieldset>
         <fieldset><legend data-i18n="q_tier">Какую ракетку ищете?</legend><div class="chips" data-q="tier"></div><p class="hint" data-i18n="h_tier">Оптимальную — подбор из всех классов под ваш уровень.</p></fieldset>
@@ -82,9 +83,9 @@
         <fieldset><legend data-i18n="q_swing">Какой у вас замах?</legend><div class="chips" data-q="swing"></div><p class="hint" data-i18n="h_swing">Резкий — ударом только кистью, волан легко долетает до задней линии.</p></fieldset>
         <fieldset><legend data-i18n="q_arm">Устаёт рука или локоть?</legend><div class="chips" data-q="arm"></div></fieldset>
         <fieldset><legend data-i18n="q_brand">Бренд</legend><div class="chips" data-q="brand"></div></fieldset>
-        <label class="toggle"><input type="checkbox" id="instock"> <span data-i18n="instock">Только в наличии</span></label>
       </form>
       <form id="like" hidden autocomplete="off">
+        <label class="toggle"><input type="checkbox" id="instock2"> <span data-i18n="instock">Только в наличии</span></label>
         <fieldset id="f-search"><legend><label for="ref-q" data-i18n="ref_q">Ваша ракетка или та, что понравилась</label></legend>
           <div class="search">
             <input id="ref-q" type="search" placeholder="Например: аксфорс 80 или Astrox 88D" data-i18n-attr="placeholder:a_refph" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ref-list" autocomplete="off" spellcheck="false">
@@ -98,7 +99,7 @@
           <div class="mfield"><span data-i18n="man_u">Вес</span><div class="chips" data-q="man_u"></div></div>
           <div class="mrow">
             <label class="mfield"><span data-i18n="man_bp">Баланс, мм</span><input id="man-bp" type="number" inputmode="numeric" min="270" max="340" placeholder="если знаете" data-i18n-attr="placeholder:a_ifknown"></label>
-            <label class="mfield"><span data-i18n="man_p">Цена, ₽</span><input id="man-p" type="number" inputmode="numeric" min="0" placeholder="для «Дешевле»" data-i18n-attr="placeholder:a_forcheap"></label>
+            <label class="mfield"><span data-i18n="man_p">Цена, ₽</span><input id="man-p" type="number" inputmode="numeric" min="0" placeholder="необязательно" data-i18n-attr="placeholder:a_forcheap"></label>
           </div>
           <label class="mfield"><span data-i18n="man_sw">Маховый вес, кг·см² (если измеряли)</span><input id="man-sw" type="number" inputmode="decimal" step="0.5" min="70" max="100" placeholder="например 85" data-i18n-attr="placeholder:a_eg85"></label>
           <div class="mfield"><span data-i18n="man_bt">Баланс, если мм не знаете</span><div class="chips" data-q="man_bt"></div></div>
@@ -107,9 +108,7 @@
           <button type="button" class="linkbtn" id="to-search" data-i18n="to_search">Вернуться к поиску по каталогу</button>
         </fieldset>
         <fieldset><legend data-i18n="q_dir">Что хотите получить?</legend><div class="chips" data-q="dir"></div></fieldset>
-        <fieldset><legend data-i18n="q_tier">Какую ракетку ищете?</legend><div class="chips" data-q="ltier"></div><p class="hint" id="ltier-hint" data-i18n="h_ltier">Оптимальную — того же класса, что и ваша. Дешевле — похожие из класса ниже. Или выберите класс сами.</p></fieldset>
         <fieldset><legend data-i18n="q_brand">Бренд</legend><div class="chips" data-q="brand2"></div></fieldset>
-        <label class="toggle"><input type="checkbox" id="instock2"> <span data-i18n="instock">Только в наличии</span></label>
         <p class="hint" data-i18n="h_like">Ищем ракетки с похожим характером из других серий и брендов, со сдвигом в выбранную сторону.</p>
       </form>
     </aside>
