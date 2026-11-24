@@ -230,15 +230,63 @@ function leadTech(o,ax,n){const j=AXK.indexOf(ax);return (o.t||[]).filter(i=>!BA
 // so different rackets don't collapse onto the same sentence; and the axis order is sorted
 // by the player's current target t (when given) so the same racket can read differently for
 // a different quiz answer / profile, instead of being a static per-racket string.
+// A fixed closing clause per axis ("...отдаёт силу в удар") read as the same sentence on every
+// card that shared that axis, no matter how different the rackets actually were — differing only
+// by a tech name or a swing-weight digit. essTail() replaces that fixed ending with one of three
+// clauses picked by comparing the racket's OWN axis score to the player's target for it (t[k]):
+// clearly ahead of what was asked for, right on target, or simply solid for the class. That ties
+// the sentence to *this player's* profile instead of just restating the racket's spec, and two
+// rackets land on the same wording only when they are genuinely similar relative to that target —
+// not merely because they share a top axis. Skipped for isRef (describing the player's own
+// racket in Like mode), where there is no "target" to compare it against.
+function essTail(o,t,k,isRef,hi,mid,lo){
+  if(isRef||!t)return '';
+  const m=o.ax[k]-t[k];
+  return ', '+(m>=1.5?hi:(m>=-.8?mid:lo));
+}
 const WHY_SENT={
- power:o=>T(`мощная${leadTech(o,'power',1)[0]?' — технология '+leadTech(o,'power',1)[0]:''}: ${o.swEst?'баланс '+o.bp+' мм':'маховый вес '+num1(o.SW)+' кг·см²'} отдаёт силу в удар`,
-             `powerful${leadTech(o,'power',1)[0]?' — the '+leadTech(o,'power',1)[0]+' technology':''}: ${o.swEst?'balance '+o.bp+' mm':'swing weight '+num1(o.SW)+' kg·cm²'} puts the force into the hit`),
- speed:o=>T(`быстрая в руке${leadTech(o,'speed',1)[0]?': '+leadTech(o,'speed',1)[0]:(o.bpe<=296?': вес смещён к ручке':'')}`,
-            `quick in the hand${leadTech(o,'speed',1)[0]?': '+leadTech(o,'speed',1)[0]:(o.bpe<=296?': weight sits towards the handle':'')}`),
- control:o=>T(`стабильная на ударе${leadTech(o,'control',1)[0]?': '+leadTech(o,'control',1)[0]:''}`,
-              `stable on impact${leadTech(o,'control',1)[0]?': '+leadTech(o,'control',1)[0]:''}`),
- ease:o=>T(`легко осваивается: ${o.f?FX(o.f)+' стержень, ':''}вес ${o.u}U`,`easy to pick up: ${o.f?FX(o.f)+' shaft, ':''}${o.u}U weight`),
- comfort:o=>T(`бережная к руке${leadTech(o,'comfort',1)[0]?': '+leadTech(o,'comfort',1)[0]:''}`,`easy on the arm${leadTech(o,'comfort',1)[0]?': '+leadTech(o,'comfort',1)[0]:''}`)
+ power:(o,t,isRef)=>{
+   const tech=leadTech(o,'power',1)[0];
+   const metric=o.swEst?T(`баланс ${o.bp} мм`,`balance ${o.bp} mm`):T(`маховый вес ${num1(o.SW)} кг·см²`,`swing weight ${num1(o.SW)} kg·cm²`);
+   const tail=essTail(o,t,'power',isRef,
+     T('мощи здесь больше, чем просил ваш профиль — удар получится ещё сильнее','more power than your profile asked for — the hit lands even harder'),
+     T('мощь ровно на нужном вам уровне','power right at the level you need'),
+     T('мощь на хорошем уровне для этого класса','solid power for this class'));
+   return T(`мощная${tech?' — технология '+tech:''}: ${metric}${tail}`,
+            `powerful${tech?' — the '+tech+' technology':''}: ${metric}${tail}`);
+ },
+ speed:(o,t,isRef)=>{
+   const tech=leadTech(o,'speed',1)[0];
+   const lead=tech?': '+tech:(o.bpe<=296?T(': вес смещён к ручке',': weight sits towards the handle'):'');
+   const tail=essTail(o,t,'speed',isRef,
+     T('здесь скорости даже больше, чем вы просили','even quicker than you asked for'),
+     T('скорость ровно на вашем уровне','speed right at your level'),
+     T('скорость на хорошем уровне для этого класса','solid speed for this class'));
+   return T(`быстрая в руке${lead}${tail}`,`quick in the hand${lead}${tail}`);
+ },
+ control:(o,t,isRef)=>{
+   const tech=leadTech(o,'control',1)[0];
+   const tail=essTail(o,t,'control',isRef,
+     T('контроля даже с запасом сверх нужного','more control than strictly needed'),
+     T('контроль ровно на вашем уровне','control right at your level'),
+     T('контроль на хорошем уровне для этого класса','solid control for this class'));
+   return T(`стабильная на ударе${tech?': '+tech:''}${tail}`,`stable on impact${tech?': '+tech:''}${tail}`);
+ },
+ ease:(o,t,isRef)=>{
+   const tail=essTail(o,t,'ease',isRef,
+     T('даётся легче, чем вы просили','even easier to pick up than you asked for'),
+     T('ровно на том уровне простоты, который вам нужен','just the right level of ease for you'),
+     T('проще среднего в этом классе','easier than average for this class'));
+   return T(`легко осваивается: ${o.f?FX(o.f)+' стержень, ':''}вес ${o.u}U${tail}`,`easy to pick up: ${o.f?FX(o.f)+' shaft, ':''}${o.u}U weight${tail}`);
+ },
+ comfort:(o,t,isRef)=>{
+   const tech=leadTech(o,'comfort',1)[0];
+   const tail=essTail(o,t,'comfort',isRef,
+     T('бережёт руку даже больше, чем вы просили','even easier on the arm than you asked for'),
+     T('комфорт ровно на вашем уровне','comfort right at your level'),
+     T('комфорт на хорошем уровне для этого класса','solid comfort for this class'));
+   return T(`бережная к руке${tech?': '+tech:''}${tail}`,`easy on the arm${tech?': '+tech:''}${tail}`);
+ }
 };
 function essenceAxes(o,t){
   if(!o.hasT)return [];
@@ -249,11 +297,12 @@ function essenceAxes(o,t){
 }
 // axes already shown in `.essence` are passed in as `axes` (from essenceAxes) so reasons()
 // can skip them below — otherwise the same tech/axis ends up stated twice on one card.
-function essence(o,t,axes){
+function essence(o,t,axes,isRef){
   axes=axes||essenceAxes(o,t);
   if(!axes.length)return '';
-  const top=axes.map(k=>WHY_SENT[k](o));
-  return `<p class="essence"><b>${T('Почему она:','Why this one:')}</b> ${T('Она','It is')} ${top.join(T(' и ',' and '))}.</p>`;
+  const top=axes.map(k=>WHY_SENT[k](o,t,isRef));
+  const head=isRef?T('О ракетке:','About the racket:'):T('Почему она:','Why this one:');
+  return `<p class="essence"><b>${head}</b> ${T('Она','It is')} ${top.join(T(' и ',' and '))}.</p>`;
 }
 // ---- questions
 const Q={
@@ -486,7 +535,7 @@ function cardHTML(x,t,i,extra){
       ${essence(o,t,x.ea)}
       <ul class="why">${x.why.map(w=>`<li>${w}</li>`).join('')}${(x.tips||[]).slice(0,2).map(w=>`<li class="tip"><b>${T('Совет:','Tip:')}</b> ${w}</li>`).join('')}</ul>
       ${techHTML(o)}
-      <div class="actions"><a class="btn" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><button type="button" class="btn ghost" data-like="${o.uid}">${T('Похожие по характеру','Similar rackets')}</button><span class="price">${fmtP(o.p)}</span></div>
+      <div class="actions"><div class="actions-btns"><a class="btn" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><button type="button" class="btn ghost" data-like="${o.uid}">${T('Похожие по характеру','Similar rackets')}</button></div><span class="price">${fmtP(o.p)}</span></div>
     </div>
     <div><div class="score"><span class="n">${x.d??x.s}%</span><span class="l">${extra||T('совпадение с вашим профилем','match with your profile')}</span></div>${axesHTML(o,t)}</div>
   </article>`;
@@ -498,8 +547,13 @@ const slBox=document.getElementById('sliders');let own=null,ownMode=null;
 // all 5 AXK values) but are hidden from view — only power/speed/control show per the axes change above.
 slBox.innerHTML=AXK.map(k=>`<label class="sl${AXV.includes(k)?'':' sl-hidden'}" for="sl-${k}"><span>${axLbl(k)}</span><input type="range" id="sl-${k}" min="1" max="10" step="0.5"><output id="so-${k}"></output></label>`).join('');
 function effT(base){return own&&ownMode===mode?{...own}:base}
+// Chrome needs the slider's progress repainted by hand (see widget.css .sl comment):
+// a left-to-right gradient on the input itself, which the (now transparent) track
+// pseudo-element lets show through. Firefox ignores this — it paints its own
+// ::-moz-range-progress instead.
+function paintSl(i){const mn=+i.min||0,mx=+i.max||100,pc=Math.max(0,Math.min(100,(+i.value-mn)/(mx-mn)*100));i.style.background=`linear-gradient(to right, rgba(255,90,40,.85) ${pc}%, var(--line-strong) ${pc}%)`}
 function syncTune(t,title,hint){
-  AXK.forEach(k=>{const i=document.getElementById('sl-'+k);if(document.activeElement!==i)i.value=t[k];document.getElementById('so-'+k).textContent=num1(+i.value)});
+  AXK.forEach(k=>{const i=document.getElementById('sl-'+k);if(document.activeElement!==i)i.value=t[k];document.getElementById('so-'+k).textContent=num1(+i.value);paintSl(i)});
   const isOwn=!!(own&&ownMode===mode);
   document.getElementById('tune-h').textContent=title;
   const st=document.getElementById('tune-state');st.textContent=isOwn?T('свои значения','your values'):(mode==='quiz'?T('по ответам','from your answers'):T('по ракетке','from the racket'));st.classList.toggle('own',isOwn);
@@ -622,7 +676,7 @@ function renderLike(){
   sp.forEach(x=>{const w=[];if(x.stockNote)w.push(x.stockNote);if(!ref.custom&&x.o.s!==ref.s)w.push(T(`Другая серия (${x.o.s}) — другая рама, проверьте ощущения в руке`,`Different series (${x.o.s}) — a different frame, try how it feels in your hand`));x.why=[...w,...(x.why||[])].slice(0,3)});
   const simL=T('похожесть с учётом пожелания','similarity, with your preference');
   out.innerHTML=`<div class="profile"><h2>${T('Характер','Character')}: ${label(ref)} ${ref.u}U${ref.custom?T(' (по вашим данным)',' (from your data)'):ref.site?'':T(' · нет в магазине',' · not sold in store')}</h2>${AXV.map(k=>`<span class="pill">${axLbl(k)} ${num1(ref.ax[k])}</span>`).join('')}</div>
-  ${!ref.custom&&ref.hasT?essence(ref,t):''}
+  ${!ref.custom&&ref.hasT?essence(ref,t,null,true):''}
   <div class="legend"><span><i class="lg-fill"></i>${T('характер ракетки','racket character')}</span><span><i class="lg-tgt"></i>${T('желаемый характер','target character')}</span></div>
   ${ref.custom?`<p class="topnote">${T('Характер рассчитан по введённым данным','Character calculated from the data you entered')}${ref.bpGuess?T(': точный баланс в мм не указан, взято типичное значение',': balance in mm not given, a typical value is used'):''}${ref.swEst?T('; маховый вес оценён по весу и балансу','; swing weight estimated from weight and balance'):''}. ${T('Чем больше вы укажете, тем точнее подбор.','The more you enter, the more accurate the match.')}</p>`:''}
   ${fixCls?`<p class="topnote">${T(`Показываем только класс «${LVN(fixCls)}». «Оптимальную» — того же класса, что и ваша ракетка, «Дешевле» — похожие из класса ниже.`,`Showing ${LVN(fixCls)} rackets only. “Best match” keeps the class of your racket, “Cheaper” looks one class lower.`)}</p>`:''}
@@ -633,7 +687,7 @@ function renderLike(){
 }
 let mode='quiz';
 function render(){document.getElementById('tune').hidden=false;mode==='quiz'?renderQuiz():renderLike()}
-function setMode(m){mode=m;document.getElementById('m-quiz').setAttribute('aria-pressed',m==='quiz');document.getElementById('m-like').setAttribute('aria-pressed',m==='like');document.getElementById('quiz').hidden=m!=='quiz';document.getElementById('like').hidden=m!=='like';render()}
+function setMode(m){mode=m;document.getElementById('m-quiz').setAttribute('aria-pressed',m==='quiz');document.getElementById('m-like').setAttribute('aria-pressed',m==='like');document.getElementById('quiz').hidden=m!=='quiz';document.getElementById('like').hidden=m!=='like';document.getElementById('tgl-quiz').hidden=m!=='quiz';document.getElementById('tgl-like').hidden=m!=='like';document.querySelector('.quiz-col').classList.toggle('like-mode',m==='like');render()}
 document.getElementById('m-quiz').onclick=()=>setMode('quiz');
 document.getElementById('m-like').onclick=()=>setMode('like');
 document.getElementById('quiz').addEventListener('change',()=>{if(!started){started=true;goal('podbor_start',{mode:'quiz'})}render();goal('podbor_result',{mode:'quiz',lvl:val('lvl'),who:val('who'),tier:val('tier')})});

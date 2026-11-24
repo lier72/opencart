@@ -69,12 +69,16 @@
     <div class="quiz-col">
       <button type="button" class="mapbtn" id="mapbtn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 3v14h14"/><circle cx="7" cy="12" r="1.6"/><circle cx="11" cy="8" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="14" cy="12" r="1.6"/></svg><span data-i18n="map_title">Карты ракеток · Li-Ning · Victor · Yonex</span></button>
     <aside class="panel quiz">
-      <div class="modes" role="group" aria-label="Способ подбора" data-i18n-attr="aria-label:a_modes">
-        <button type="button" id="m-quiz" aria-pressed="true" data-i18n="m_quiz">По вопросам</button>
-        <button type="button" id="m-like" aria-pressed="false" data-i18n="m_like">От моей ракетки</button>
+      <div class="quiz-top">
+        <div class="modes" role="group" aria-label="Способ подбора" data-i18n-attr="aria-label:a_modes">
+          <button type="button" id="m-quiz" aria-pressed="true" data-i18n="m_quiz">По вопросам</button>
+          <button type="button" id="m-like" aria-pressed="false" data-i18n="m_like">От моей ракетки</button>
+        </div>
+        <label class="toggle" id="tgl-quiz"><input type="checkbox" id="instock"> <span data-i18n="instock">Только в наличии</span></label>
+        <label class="toggle" id="tgl-like" hidden><input type="checkbox" id="instock2"> <span data-i18n="instock">Только в наличии</span></label>
       </div>
+      <div class="quiz-scroll">
       <form id="quiz" autocomplete="off">
-        <label class="toggle"><input type="checkbox" id="instock"> <span data-i18n="instock">Только в наличии</span></label>
         <fieldset><legend data-i18n="q_who">Для кого ракетка?</legend><div class="chips" data-q="who"></div></fieldset>
         <fieldset><legend data-i18n="q_lvl">Как давно играете?</legend><div class="chips" data-q="lvl"></div></fieldset>
         <fieldset><legend data-i18n="q_tier">Какую ракетку ищете?</legend><div class="chips" data-q="tier"></div><p class="hint" data-i18n="h_tier">Оптимальную — подбор из всех классов под ваш уровень.</p></fieldset>
@@ -85,7 +89,6 @@
         <fieldset><legend data-i18n="q_brand">Бренд</legend><div class="chips" data-q="brand"></div></fieldset>
       </form>
       <form id="like" hidden autocomplete="off">
-        <label class="toggle"><input type="checkbox" id="instock2"> <span data-i18n="instock">Только в наличии</span></label>
         <fieldset id="f-search"><legend><label for="ref-q" data-i18n="ref_q">Ваша ракетка или та, что понравилась</label></legend>
           <div class="search">
             <input id="ref-q" type="search" placeholder="Например: аксфорс 80 или Astrox 88D" data-i18n-attr="placeholder:a_refph" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ref-list" autocomplete="off" spellcheck="false">
@@ -111,6 +114,7 @@
         <fieldset><legend data-i18n="q_brand">Бренд</legend><div class="chips" data-q="brand2"></div></fieldset>
         <p class="hint" data-i18n="h_like">Ищем ракетки с похожим характером из других серий и брендов, со сдвигом в выбранную сторону.</p>
       </form>
+      </div>
     </aside>
     </div>
     <div style="min-width:0">
