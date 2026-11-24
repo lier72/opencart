@@ -231,7 +231,7 @@ function leadTech(o,ax,n){const j=AXK.indexOf(ax);return (o.t||[]).filter(i=>!BA
 // by the player's current target t (when given) so the same racket can read differently for
 // a different quiz answer / profile, instead of being a static per-racket string.
 const WHY_SENT={
- power:o=>T(`мощная${leadTech(o,'power',1)[0]?' — технология '+leadTech(o,'power',1)[0]:''}: ${o.swEst?'баланс '+o.bp+' мм':'маховый вес '+num1(o.SW)+' кг·см²'} отдают силу в удар`,
+ power:o=>T(`мощная${leadTech(o,'power',1)[0]?' — технология '+leadTech(o,'power',1)[0]:''}: ${o.swEst?'баланс '+o.bp+' мм':'маховый вес '+num1(o.SW)+' кг·см²'} отдаёт силу в удар`,
              `powerful${leadTech(o,'power',1)[0]?' — the '+leadTech(o,'power',1)[0]+' technology':''}: ${o.swEst?'balance '+o.bp+' mm':'swing weight '+num1(o.SW)+' kg·cm²'} puts the force into the hit`),
  speed:o=>T(`быстрая в руке${leadTech(o,'speed',1)[0]?': '+leadTech(o,'speed',1)[0]:(o.bpe<=296?': вес смещён к ручке':'')}`,
             `quick in the hand${leadTech(o,'speed',1)[0]?': '+leadTech(o,'speed',1)[0]:(o.bpe<=296?': weight sits towards the handle':'')}`),
@@ -240,12 +240,19 @@ const WHY_SENT={
  ease:o=>T(`легко осваивается: ${o.f?FX(o.f)+' стержень, ':''}вес ${o.u}U`,`easy to pick up: ${o.f?FX(o.f)+' shaft, ':''}${o.u}U weight`),
  comfort:o=>T(`бережная к руке${leadTech(o,'comfort',1)[0]?': '+leadTech(o,'comfort',1)[0]:''}`,`easy on the arm${leadTech(o,'comfort',1)[0]?': '+leadTech(o,'comfort',1)[0]:''}`)
 };
-function essence(o,t){
-  if(!o.hasT)return '';
+function essenceAxes(o,t){
+  if(!o.hasT)return [];
   let scored=AXK.map((k,j)=>[k,o.D[j]]).filter(x=>x[1]>=.62);
-  if(!scored.length)return '';
+  if(!scored.length)return [];
   scored=t?scored.sort((a,b)=>(t[b[0]]-t[a[0]])||b[1]-a[1]):scored.sort((a,b)=>b[1]-a[1]);
-  const top=scored.slice(0,2).map(x=>WHY_SENT[x[0]](o));
+  return scored.slice(0,2).map(x=>x[0]);
+}
+// axes already shown in `.essence` are passed in as `axes` (from essenceAxes) so reasons()
+// can skip them below — otherwise the same tech/axis ends up stated twice on one card.
+function essence(o,t,axes){
+  axes=axes||essenceAxes(o,t);
+  if(!axes.length)return '';
+  const top=axes.map(k=>WHY_SENT[k](o));
   return `<p class="essence"><b>${T('Почему она:','Why this one:')}</b> ${T('Она','It is')} ${top.join(T(' и ',' and '))}.</p>`;
 }
 // ---- questions
@@ -380,7 +387,8 @@ function scoreQuiz(o,t){
   if(who==='kid'||who==='teen'||(who==='w'&&(lvl==='beg'||lvl==='am')))tips.push(T('если ладонь небольшая, возьмите ручку G6 — она тоньше и удобнее','for a smaller hand, choose a G6 grip — it is thinner and more comfortable'));
   return {s:Math.max(0,s),tips};
 }
-function reasons(o,t){
+function reasons(o,t,skip){
+  skip=skip||[];
   const r=[];const swing=val('swing'),fmt=val('fmt');
   const fits=k=>t[k]>=6&&o.ax[k]>=t[k]-1.5;
   const tl=(k,pre)=>{const x=leadTech(o,k);return x.length?(pre||'')+x.join(T(' и ',' and ')):''};
@@ -393,13 +401,17 @@ function reasons(o,t){
   };
   const order=AXK.slice().sort((a,b)=>t[b]-t[a]);
   for(const k of order){
+    if(skip.includes(k))continue;
     if(!fits(k))continue;
     if(k==='ease'&&!((o.f||3)<=3&&o.u>=4))continue;
     r.push(phrase[k]());
   }
   if(!r.length){
-    const k=(t.ease>=7&&(o.f||3)<=3)?'ease':(order.filter(k=>t[k]>=5&&!(k==='ease'&&(o.f||3)>3)).sort((a,b)=>(o.ax[b]-t[b])-(o.ax[a]-t[a]))[0]||order[0]);
-    r.push(phrase[k]());
+    const pool=order.filter(k=>!skip.includes(k));
+    if(pool.length){
+      const k=(t.ease>=7&&(o.f||3)<=3&&!skip.includes('ease'))?'ease':(pool.filter(k=>t[k]>=5&&!(k==='ease'&&(o.f||3)>3)).sort((a,b)=>(o.ax[b]-t[b])-(o.ax[a]-t[a]))[0]||pool[0]);
+      r.push(phrase[k]());
+    }
   }
   const who=val('who');
   if(who==='kid'&&o.u>=5)r.unshift(T(`Лёгкая полноразмерная ракетка ${o.u}U — ребёнок сразу привыкает к правильной длине`,`A light full-size ${o.u}U racket — the child gets used to the right length from the start`));
@@ -471,10 +483,10 @@ function cardHTML(x,t,i,extra){
     <div style="min-width:0">
       <h3>${label(o)} <span style="font-weight:500;color:var(--muted)">${o.u}U</span>${o.q===1?' <span class="badge stock">'+T('В наличии','In stock')+'</span>':o.q===0?' <span class="badge out">'+T('Нет в наличии','Out of stock')+'</span>':''}</h3>
       <div class="meta"><span>${T('Баланс','Balance')} <b>${o.bp} ${T('мм','mm')}</b>${/^официальный/.test(o.bpsrc||'')?T(' (офиц.)',' (official)'):/^(оценка|как у)/.test(o.bpsrc||'')?T(' (оценка)',' (estimate)'):''}${o.hp&&o.bp-o.bpe>=2?T(` (лёгкая пластиковая ручка: в замахе как ≈${o.bpe} мм)`,` (light plastic handle: swings like ≈${o.bpe} mm)`):''}</span><span>${T('Маховый вес','Swing weight')} <b>${num1(o.SW)}</b>${o.swEst?T(' (оценка)',' (estimate)'):''}</span><span>${T('Стержень','Shaft')} <b>${o.f?FX(o.f):T('нет данных','no data')}</b></span>${o.d?`<span>Ø <b>${num1(o.d)} ${T('мм','mm')}</b></span>`:''}<span class="badge ${o.swEst?'est':'meas'}">${o.swEst?T('Измерения по каталогу','Catalogue specs'):T('Измерено в Uniqsport','Measured by Uniqsport')}</span></div>
-      ${essence(o,t)}
+      ${essence(o,t,x.ea)}
       <ul class="why">${x.why.map(w=>`<li>${w}</li>`).join('')}${(x.tips||[]).slice(0,2).map(w=>`<li class="tip"><b>${T('Совет:','Tip:')}</b> ${w}</li>`).join('')}</ul>
       ${techHTML(o)}
-      <div class="actions"><a class="btn" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><button type="button" class="btn ghost" data-like="${o.uid}">${T('Похожие по характеру','Similar rackets')}</button><span class="price">${T('Цена','Price')}: ${fmtP(o.p)}</span></div>
+      <div class="actions"><a class="btn" href="${url(o)}" target="_blank" rel="noopener" data-goal="podbor_card" data-id="${o.id}">${T('Открыть карточку','View in store')}</a><button type="button" class="btn ghost" data-like="${o.uid}">${T('Похожие по характеру','Similar rackets')}</button><span class="price">${fmtP(o.p)}</span></div>
     </div>
     <div><div class="score"><span class="n">${x.d??x.s}%</span><span class="l">${extra||T('совпадение с вашим профилем','match with your profile')}</span></div>${axesHTML(o,t)}</div>
   </article>`;
@@ -520,7 +532,7 @@ function renderQuiz(){
   const allQ=list;list=fitSort(list);
   const sp=document.getElementById('instock').checked?[]:stockPicks(allQ,list);
   sp.forEach(x=>{if(x.stockNote)x.tips=[x.stockNote,...(x.tips||[])]});
-  [...list,...sp].forEach(x=>x.why=reasons(x.o,t));
+  [...list,...sp].forEach(x=>{x.ea=essenceAxes(x.o,t);x.why=reasons(x.o,t,x.ea)});
   const spU=new Set(sp.map(x=>x.o.b+x.o.m)),tp=list.slice(0,3),more=list.slice(3).filter(x=>!spU.has(x.o.b+x.o.m)).slice(0,4);mono([...tp,...more]);mono(sp);
   const clsP=SITE.filter(o=>top&&o.lv===+cls&&o.p).map(o=>o.p),minP=clsP.length?Math.min(...clsP):0,maxP=clsP.length?Math.max(...clsP):0;
   out.innerHTML=`${top?`<p class="topnote">${T(`Показываем только класс «${LVN(+cls)}»${minP?` (от ${fmtP(minP)} до ${fmtP(maxP)})`:''} — из него выбраны ракетки, которые лучше всего подходят под вашу игру. «Оптимальную» — подбор из всех классов с учётом вашего уровня.`,`Showing ${LVN(+cls)} rackets only${minP?` (${fmtP(minP)} to ${fmtP(maxP)})`:''} — picked from this class to suit your game best. “Best for my game” searches all classes with your level in mind.`)}</p>`:''}

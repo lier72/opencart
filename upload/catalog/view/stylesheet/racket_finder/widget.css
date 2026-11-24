@@ -94,7 +94,10 @@ legend{font-weight:700;font-size:13.5px;margin-bottom:7px;padding:0}
 .chip input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
 .chip span{display:inline-block;padding:6px 11px;border:1px solid var(--line);border-radius:999px;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;user-select:none}
 .chip input:checked+span{background:var(--court);border-color:var(--court);color:var(--court-ink)}
-.toggle{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
+.toggle{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;cursor:pointer;user-select:none;padding:7px 13px 7px 10px;border:1px solid var(--line);border-radius:999px;background:var(--chip-bg);transition:background .15s,border-color .15s;margin-bottom:14px}
+.toggle:hover{border-color:var(--line-strong)}
+.toggle input{width:15px;height:15px;margin:0;accent-color:var(--court);cursor:pointer}
+.toggle:has(input:checked){background:var(--sec-soft);border-color:var(--line-strong)}
 .search{position:relative}
 .search input,.mfield input{width:100%;font:500 14px var(--f-body);padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 .search input:focus,.mfield input:focus{outline:2px solid var(--court);outline-offset:0;border-color:var(--court)}
@@ -189,10 +192,10 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .legend i{display:inline-block;vertical-align:middle;margin-right:5px}
 .lg-fill{width:16px;height:8px;background:var(--court);border-radius:3px}
 .lg-tgt{width:2px;height:12px;background:var(--cork)}
-.rf-root .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.rf-root .actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:12px}
 /* price as its own badge in the actions row, lined up with the button text instead of
    floating lost at the card's bottom-right corner */
-.actions .price{margin-left:auto;font-size:13px;font-weight:700;color:var(--ink);background:var(--sunk);padding:7px 12px;border-radius:8px;font-variant-numeric:tabular-nums}
+.actions .price{margin-left:auto;font-size:13px;font-weight:700;color:var(--ink);background:var(--sunk);padding:6px 10px;border-radius:8px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .rf-root .btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,40,.8);background:rgba(255,90,40,.8);color:#fff;cursor:pointer;text-decoration:none;transition:background-color .15s ease,border-color .15s ease}
 .rf-root .btn:hover{background:rgba(255,90,40,1);border-color:rgba(255,90,40,1)}
 /* !important: the theme has an inline, site-wide ".btn, .btn:visited{color:#fff!important}"
@@ -363,7 +366,7 @@ legend{font-size:14px;margin-bottom:8px}
 .topnote{background:var(--sunk);border-radius:10px}
 nav.tabs a{color:var(--muted);opacity:1}
 nav.tabs a[aria-current="page"]{background:var(--bg);color:var(--ink);box-shadow:inset 0 -2px 0 rgba(255,90,40,.8)}
-.rf-root .btn{border-color:transparent;border-radius:10px;padding:9px 14px}
+.rf-root .btn{border-color:transparent;border-radius:10px;padding:8px 11px}
 .rf-root .btn.ghost{color:var(--ink)!important}
 .rf-root .btn.ghost:hover{background:var(--sunk);border-color:var(--line-strong);color:var(--ink)!important}
 .cards{gap:16px}
