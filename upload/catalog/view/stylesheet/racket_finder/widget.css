@@ -107,6 +107,12 @@ legend{font-weight:700;font-size:13.5px;margin-bottom:7px;padding:0}
 .chip input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
 .chip span{display:inline-block;padding:6px 11px;border:1px solid var(--line);border-radius:999px;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;user-select:none}
 .chip input:checked+span{background:var(--court);border-color:var(--court);color:var(--court-ink)}
+/* [hidden] has the same specificity as a class selector, and our rules load after the
+   browser's own [hidden]{display:none} — so a plain class like .toggle{display:...} silently
+   wins over [hidden] and the "hidden" attribute stops doing anything. That's why switching
+   modes showed both "Только в наличии" toggles at once instead of swapping them. This
+   restores [hidden] for every element in the module, whatever class it has. */
+.rf-root [hidden]{display:none!important}
 .toggle{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;cursor:pointer;user-select:none;padding:7px 13px 7px 10px;border:1px solid var(--line);border-radius:999px;background:var(--chip-bg);transition:background .15s,border-color .15s;margin-bottom:14px}
 .toggle:hover{border-color:var(--line-strong)}
 .toggle input{width:15px;height:15px;margin:0;accent-color:var(--court);cursor:pointer}
@@ -213,14 +219,13 @@ details.tech .ef{display:block;color:var(--muted);font-size:12.5px}
 .legend i{display:inline-block;vertical-align:middle;margin-right:5px}
 .lg-fill{width:16px;height:8px;background:var(--court);border-radius:3px}
 .lg-tgt{width:2px;height:12px;background:var(--cork)}
-/* Trying to fit both buttons + the price badge on one line kept breaking: depending on
-   card width and how many digits the price has, it would unpredictably wrap below the
-   buttons with an odd gap above it. Instead the price always gets its own row — right
-   under the buttons, right-aligned — so the layout looks the same and intentional on
-   every card, regardless of width or price length. */
-.rf-root .actions{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:12px;width:fit-content;max-width:100%}
+/* Price sits on the same line as the buttons, pushed to the right edge with margin-left:auto.
+   flex-wrap is just a safety net for a card too narrow to fit both buttons + the price: then
+   the price (being last and margin-left:auto) is the one that drops to its own line, still
+   right-aligned, instead of the row overflowing or the price landing in some odd spot. */
+.rf-root .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
 .actions-btns{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.actions .price{align-self:flex-end;font-size:13px;font-weight:700;color:var(--ink);background:var(--sunk);padding:6px 10px;border-radius:8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.actions .price{margin-left:auto;font-size:13px;font-weight:700;color:var(--ink);background:var(--sunk);padding:6px 10px;border-radius:8px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .rf-root .btn{font:600 13px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,40,.8);background:rgba(255,90,40,.8);color:#fff;cursor:pointer;text-decoration:none;transition:background-color .15s ease,border-color .15s ease}
 .rf-root .btn:hover{background:rgba(255,90,40,1);border-color:rgba(255,90,40,1)}
 /* !important: the theme has an inline, site-wide ".btn, .btn:visited{color:#fff!important}"

@@ -321,7 +321,7 @@ const Q={
  dir:[['same','Такую же','The same'],['similar','Похожую','Similar'],['power','Мощнее','More power'],['speed','Быстрее','Faster'],['light','Легче','Lighter'],['comfort','Бережнее к руке','Easier on the arm']],
  brand2:[['any','Любой','Any'],['Li-Ning','Li-Ning'],['Yonex','Yonex'],['Victor','Victor']]
 };
-const DEF={man_u:'4',man_bt:'?',man_f:'0',man_s:'?',who:'m',tier:'opt',lvl:'am',fmt:'pair',style:'atk',swing:'mid',arm:'some',brand:'any',dir:'same',brand2:'any'};
+const DEF={man_u:'4',man_bt:'?',man_f:'0',man_s:'?',who:'m',tier:'opt',lvl:'am',fmt:'pair',style:'atk',swing:'mid',arm:'no',brand:'any',dir:'same',brand2:'any'};
 document.querySelectorAll('.chips').forEach(box=>{
   const q=box.dataset.q;
   box.innerHTML=Q[q].map(([v,l,e])=>`<label class="chip"><input type="radio" name="${q}" id="${q}-${v}" value="${v}"${v===DEF[q]?' checked':''}><span>${T(l,e||l)}</span></label>`).join('');
