@@ -1,0 +1,30 @@
+{
+  "name": "ai-chatbot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server + provider-agnostic chat orchestrator for the racket advisor chatbot",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch & node --watch dist/src/index.js",
+    "start": "node dist/src/index.js",
+    "start:mcp": "node dist/mcp-server/src/index.js",
+    "test": "node --test --import tsx 'test/**/*.test.ts'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "dotenv": "^16.4.5",
+    "openai": "^7.65.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

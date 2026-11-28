@@ -1,0 +1,14 @@
+<div id="ai-chatbot" class="ai-chatbot" data-chat-url="{{ chat_url }}" data-welcome="{{ welcome_message }}">
+  <button type="button" class="ai-chatbot-toggle" aria-expanded="false">{{ open_button }}</button>
+  <div class="ai-chatbot-panel" hidden>
+    <div class="ai-chatbot-header">
+      <span class="ai-chatbot-title">{{ heading_title }}</span>
+      <button type="button" class="ai-chatbot-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="ai-chatbot-messages" aria-live="polite"></div>
+    <form class="ai-chatbot-form">
+      <input type="text" class="ai-chatbot-input" placeholder="{{ input_placeholder }}" autocomplete="off" aria-label="{{ input_placeholder }}">
+      <button type="submit" class="ai-chatbot-send">{{ send_button }}</button>
+    </form>
+  </div>
+</div>
